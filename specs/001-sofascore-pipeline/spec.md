@@ -2,8 +2,17 @@
 
 **Feature Branch**: `001-sofascore-pipeline`
 **Created**: 2026-05-23
-**Status**: Draft
+**Status**: Clarified
 **Input**: User description: "Build a data pipeline that discovers and stores all Liga 1 Peruana 2025 season data locally."
+
+**Clarifications received (2026-05-23)**:
+- Scraper uses **LanusStats** library (wraps undetected-chromedriver internally) — do NOT use raw requests/httpx
+- Database: **SQLite via stdlib `sqlite3`** — no ORM
+- Transfer history + market values: **LanusStats Transfermarkt module**
+- Backend API: **FastAPI**, one router per data domain (future feature)
+- Frontend: **React + Vite + Recharts + Tailwind** (future feature)
+- Environment: **Miniconda**, env name `liga1-scout`, deps via **pip + requirements.txt**
+- Deployment: **local only** — no Docker, no cloud, no deployment
 
 ---
 
@@ -221,25 +230,27 @@ application code.
 
 ## Assumptions
 
-- SofaScore's public API (api.sofascore.com) does not require authentication for the endpoints
-  listed in FR-001 through FR-005. These are the same endpoints the SofaScore mobile app uses
-  and are widely documented in the open-source community.
-- The SofaScore API returns JSON responses and does not require JavaScript execution (plain
-  `httpx` or `requests` is sufficient; Playwright is not needed for this data source).
+- All SofaScore scraping is done through the **LanusStats** library (`from LanusStats import Sofascore`),
+  which handles browser automation via undetected-chromedriver internally. Raw `requests` or `httpx`
+  are NOT used for SofaScore calls.
+- Transfer history and market values are fetched via the **LanusStats Transfermarkt module**
+  (`from LanusStats import Transfermarkt`). This is an additional data source not in the original spec.
+- The Python environment is **Miniconda** with a conda env named `liga1-scout`. Dependencies are
+  managed with `pip` and documented in `requirements.txt`.
 - The LEAGUE_ID (406) and SEASON_ID (88529) are correct and stable for the Liga 1 2025 season.
   These constants are stored in `scraper/config.py` and must be easily changeable for future seasons.
-- The developer is running Python 3.11+ and `uv` is available for environment management.
-- The initial full scrape (all teams, all squads, all season stats, all match stats) will
-  take 30–90 minutes due to the mandatory politeness delays. This is expected and acceptable.
+- LanusStats handles its own internal delays and browser sessions. The scraper layer still enforces
+  a minimum inter-call delay in the pipeline orchestrator to avoid overloading LanusStats.
+- The initial full scrape will take significant time (30–90 min estimated). This is acceptable.
 - Match stats for future (unplayed) matches will not be scraped — the scraper checks
   match `status` before attempting to fetch lineup/stats data.
 - Player statistics for a mid-season transfer will be attributed to their team at the time of
-  the match, not their current team. The `player_match_stats.team_id` field captures this.
-- Out-of-scope for this feature: API server, frontend, any analytics computations, similarity
-  scores. Those come in later features.
-- A player with no appearances in Liga 1 2025 (e.g., signed but never selected) will have a
-  row in `players` but NO row in `player_season_stats`. The analytics layer will handle this
-  with a LEFT JOIN.
+  the match (captured via `player_match_stats.team_id`). `players.team_id` reflects current team.
+- Out-of-scope for this pipeline feature: API server, frontend, analytics computations,
+  similarity scores. Those come in later features.
+- A player with no appearances in Liga 1 2025 will have a row in `players` but NO row in
+  `player_season_stats`. Dashboard queries use LEFT JOIN to handle this.
+- The project runs entirely locally — no Docker, no cloud deployment, no external servers.
 
 ---
 
@@ -249,29 +260,36 @@ application code.
 
 ```
 liga1-scout/
-├── liga1.db                    # SQLite database (gitignored)
+├── liga1.db                      # SQLite database (gitignored)
+├── requirements.txt              # pip dependencies (conda env: liga1-scout)
 ├── migrations/
-│   ├── 001_initial_schema.sql  # Teams, players, matches tables
-│   ├── 002_season_stats.sql    # player_season_stats table
-│   ├── 003_match_stats.sql     # player_match_stats table
-│   └── 004_scrape_log.sql      # scrape_log audit table
+│   ├── 001_initial_schema.sql    # teams, players, matches tables
+│   ├── 002_season_stats.sql      # player_season_stats table
+│   ├── 003_match_stats.sql       # player_match_stats table
+│   ├── 004_scrape_log.sql        # scrape_log audit table
+│   └── 005_transfermarkt.sql     # market_values, transfer_history tables
 ├── scraper/
 │   ├── __init__.py
-│   ├── run.py                  # CLI entry point (python -m scraper.run)
-│   ├── config.py               # LEAGUE_ID, SEASON_ID, DB_PATH, delays
-│   ├── db.py                   # DB connection, migration runner
-│   ├── http_client.py          # PoliteRequester with delays + caching
+│   ├── run.py                    # CLI entry point: python -m scraper.run
+│   ├── config.py                 # LEAGUE_ID, SEASON_ID, DB_PATH, constants
+│   ├── db.py                     # sqlite3 connection, migration runner
 │   └── sources/
 │       ├── __init__.py
-│       ├── sofascore.py        # All SofaScore API calls
-│       ├── teams.py            # Team discovery pipeline step
-│       ├── squads.py           # Squad/player discovery pipeline step
-│       ├── season_stats.py     # Season-level stats pipeline step
-│       ├── matches.py          # Match discovery pipeline step
-│       └── match_stats.py      # Per-match player stats pipeline step
+│       ├── sofascore.py          # LanusStats Sofascore wrappers
+│       ├── transfermarkt.py      # LanusStats Transfermarkt wrappers
+│       ├── teams.py              # Team discovery pipeline step
+│       ├── squads.py             # Squad/player discovery pipeline step
+│       ├── season_stats.py       # Season-level stats pipeline step
+│       ├── matches.py            # Match discovery pipeline step
+│       ├── match_stats.py        # Per-match player stats pipeline step
+│       └── market_values.py      # Market value + transfer history step
 ├── shared/
-│   └── models.py               # Dataclasses for Team, Player, Match, etc.
-└── .env                        # DB_PATH, LOG_LEVEL (gitignored)
+│   └── models.py                 # Dataclasses: Team, Player, Match, etc.
+├── api/                          # FastAPI backend (future feature)
+│   └── .gitkeep
+├── frontend/                     # React+Vite+Recharts+Tailwind (future feature)
+│   └── .gitkeep
+└── .env                          # DB_PATH, LOG_LEVEL (gitignored)
 ```
 
 ### SofaScore API Endpoints
