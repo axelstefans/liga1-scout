@@ -7,35 +7,43 @@ interface FormStripProps {
 }
 
 const FormStrip: React.FC<FormStripProps> = ({ matches }) => {
-  // Take the 5 most recent matches (assuming they are ordered DESC by date)
+  // Take the 5 most recent matches (already ordered DESC by date from API)
   const recent = matches.slice(0, 5).reverse();
 
   return (
     <div className="flex items-center space-x-2">
       {recent.map((match, idx) => {
-        const rating = match.sofascore_rating || 0;
-        
-        // Define color loosely based on standard rating scales
-        let colorClass = "bg-gray-300 text-gray-800";
-        if (rating >= 7.5) colorClass = "bg-green-600 text-white";
-        else if (rating >= 7.0) colorClass = "bg-green-500 text-white";
-        else if (rating >= 6.5) colorClass = "bg-yellow-500 text-white";
-        else if (rating > 0) colorClass = "bg-red-500 text-white";
+        const rating = match.sofascore_rating;
+        const result = match.result;
+
+        // Color based on match result (W/D/L), fallback to gray if unknown
+        const bgClass =
+          result === 'W' ? 'bg-green-600 text-white' :
+          result === 'D' ? 'bg-yellow-500 text-white' :
+          result === 'L' ? 'bg-red-500 text-white' :
+          'bg-gray-300 text-gray-700';
 
         return (
-          <div 
-            key={idx} 
+          <div
+            key={idx}
             className={clsx(
-              "flex flex-col items-center justify-center w-12 h-12 rounded shadow-sm border border-border",
-              colorClass
+              'flex flex-col items-center justify-center w-14 h-16 rounded shadow-sm border border-border',
+              bgClass
             )}
-            title={`vs ${match.opponent_name} - ${rating.toFixed(1)}`}
+            title={`vs ${match.opponent_name}  ${match.score ?? ''}  Rating: ${rating ? rating.toFixed(1) : 'N/A'}`}
           >
-            <span className="font-bold text-sm">
-              {rating > 0 ? rating.toFixed(1) : '-'}
+            {/* W / D / L badge */}
+            <span className="text-sm font-black leading-tight">
+              {result ?? '?'}
             </span>
-            {/* W/D/L is hard to know without full match score, just show home/away indicator for now */}
-            <span className="text-[10px] opacity-80 font-bold">
+
+            {/* SofaScore rating */}
+            <span className="text-xs font-semibold leading-tight opacity-90">
+              {rating ? rating.toFixed(1) : '-'}
+            </span>
+
+            {/* Home / Away indicator */}
+            <span className="text-[9px] font-bold opacity-70 leading-tight uppercase tracking-wide">
               {match.is_home ? 'H' : 'A'}
             </span>
           </div>

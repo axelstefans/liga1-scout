@@ -58,3 +58,5 @@ class PlayerMatchStats(BaseModel):
     assists: Optional[int] = None
     shots_on_target: Optional[int] = None
     accurate_passes_pct: Optional[float] = None
+    result: Optional[str] = None   # W / D / L
+    score: Optional[str] = None    # e.g. "2-1" from player team's perspective

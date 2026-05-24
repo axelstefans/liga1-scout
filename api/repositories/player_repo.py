@@ -69,7 +69,7 @@ def get_player_season_stats(db: sqlite3.Connection, player_id: int) -> Optional[
     return dict(row) if row else None
 
 def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[str, Any]]:
-    """Fetch match-by-match stats for a player, including match details and opponent."""
+    """Fetch match-by-match stats for a player, including match details, opponent and W/D/L result."""
     query = """
         SELECT 
             pms.match_id,
@@ -80,7 +80,10 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
             pms.assists,
             pms.shots_on_target,
             pms.accurate_passes_pct,
-            -- Determine if player's team was home
+            -- Scores needed to compute result
+            m.home_score,
+            m.away_score,
+            -- Determine if player's team was home (1=home, 0=away)
             CASE WHEN m.home_team_id = pms.team_id THEN 1 ELSE 0 END as is_home,
             -- Determine opponent name
             CASE WHEN m.home_team_id = pms.team_id THEN away_t.name ELSE home_t.name END as opponent_name
@@ -96,7 +99,37 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
     results = []
     for row in rows:
         d = dict(row)
-        d['is_home'] = bool(d['is_home'])
+        is_home = bool(d['is_home'])
+        d['is_home'] = is_home
+        
+        # Compute W/D/L result from match scores
+        home_score = d.pop('home_score', None)
+        away_score = d.pop('away_score', None)
+        
+        if home_score is not None and away_score is not None:
+            if is_home:
+                player_goals = home_score
+                opponent_goals = away_score
+            else:
+                player_goals = away_score
+                opponent_goals = home_score
+            
+            if player_goals > opponent_goals:
+                d['result'] = 'W'
+            elif player_goals == opponent_goals:
+                d['result'] = 'D'
+            else:
+                d['result'] = 'L'
+            
+            # Also store the score string for display e.g. "2-1"
+            if is_home:
+                d['score'] = f"{home_score}-{away_score}"
+            else:
+                d['score'] = f"{away_score}-{home_score}"
+        else:
+            d['result'] = None
+            d['score'] = None
+        
         results.append(d)
         
     return results

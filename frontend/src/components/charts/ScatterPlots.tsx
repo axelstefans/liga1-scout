@@ -21,10 +21,20 @@ const StatDistributionPlot: React.FC<{ statKey: string; label: string; playerId:
   // Format data for Recharts (Rank vs Value)
   const chartData = rankings.map(r => ({
     x: r.rank,
-    y: r.value,
+    y: typeof r.value === 'number' ? r.value : parseFloat(r.value as string),
     name: r.name,
     isTarget: r.player_id === playerId
   }));
+
+  // Compute Y-axis domain from actual data with 15% padding so points spread vertically
+  const yValues = chartData.map(d => d.y).filter(v => !isNaN(v));
+  const yMin = Math.min(...yValues);
+  const yMax = Math.max(...yValues);
+  const yPadding = (yMax - yMin) * 0.15 || 1; // fallback 1 if all values are equal
+  const yDomain: [number, number] = [
+    Math.max(0, parseFloat((yMin - yPadding).toFixed(2))),
+    parseFloat((yMax + yPadding).toFixed(2))
+  ];
 
   // Ensure the target player is rendered on top
   const targetData = chartData.filter(d => d.isTarget);
@@ -37,7 +47,9 @@ const StatDistributionPlot: React.FC<{ statKey: string; label: string; playerId:
         <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E0" />
           <XAxis type="number" dataKey="x" name="Rank" reversed tick={{fontSize: 10}} label={{ value: 'Rank', position: 'insideBottom', offset: -10, fontSize: 10 }} />
-          <YAxis type="number" dataKey="y" name="Value" tick={{fontSize: 10}} />
+          {/* domain derived from actual data min/max with padding to prevent vertical compression */}
+          <YAxis type="number" dataKey="y" name="Value" domain={yDomain} tick={{fontSize: 10}} />
+
           <Tooltip 
             cursor={{ strokeDasharray: '3 3' }}
             content={({ active, payload }) => {

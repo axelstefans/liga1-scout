@@ -11,7 +11,7 @@ export const apiClient = axios.create({
 
 export interface PlayerSearchResult {
   player_id: number;
-  name: str;
+  name: string;
   position_group: string | null;
   team_name: string | null;
   team_logo_url: string | null;
@@ -70,6 +70,8 @@ export interface PlayerMatchStats {
   assists: number | null;
   shots_on_target: number | null;
   accurate_passes_pct: number | null;
+  result: string | null;   // 'W' | 'D' | 'L'
+  score: string | null;    // e.g. '2-1' from player's team perspective
 }
 
 export interface PlayerRankingEntry {
