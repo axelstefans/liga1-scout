@@ -37,6 +37,7 @@ def get_player_rankings(db: sqlite3.Connection, stat: str, limit: int = 10) -> L
             t.name as team_name,
             t.logo_url as team_logo_url,
             p.position_group,
+            p.position,
             pss.minutes_played,
             {order_column} as value
         FROM player_season_stats pss

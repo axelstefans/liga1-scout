@@ -7,9 +7,10 @@ interface ScatterPlotsProps {
   playerId: number;
   playerName: string;
   playerStats: any; // Kept for compatibility but unused
+  positionGroup?: string | null;
 }
 
-const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => {
+const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, positionGroup }) => {
   const { data: goalsRanking, isLoading: loadingGoals } = useLeagueRankings('goals', 200);
   const { data: assistsRanking, isLoading: loadingAssists } = useLeagueRankings('assists', 200);
 
@@ -23,6 +24,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
         map.set(p.player_id, {
           player_id: p.player_id,
           name: p.name,
+          position_group: p.position_group,
           goalsPer90: 0,
           assistsPer90: 0,
           isTarget: p.player_id === playerId,
@@ -52,12 +54,18 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
   const loading = loadingGoals || loadingAssists;
 
   const targetData = mergedData.filter(d => d.isTarget);
-  const otherData = mergedData.filter(d => !d.isTarget && (d.goalsPer90 > 0 || d.assistsPer90 > 0));
+  const otherData = mergedData.filter(d => 
+    !d.isTarget && 
+    (d.goalsPer90 > 0 || d.assistsPer90 > 0) &&
+    (!positionGroup || d.position_group === positionGroup)
+  );
+
+  const positionLabel = positionGroup ? `${positionGroup}s` : 'Players';
 
   return (
     <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
       <h3 className="text-xl font-display text-navy mb-1">LEAGUE DISTRIBUTION</h3>
-      <p className="text-xs text-gray-500 mb-6">Goals vs Assists per 90 · Liga 1 Apertura 2026</p>
+      <p className="text-xs text-gray-500 mb-6">Goals vs Assists per 90 · Liga 1 {positionLabel} 2026</p>
 
       {loading ? (
         <div className="h-64 flex items-center justify-center text-sm text-gray-500">Loading distribution...</div>

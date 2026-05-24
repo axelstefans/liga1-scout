@@ -149,6 +149,7 @@ const PlayerDashboard: React.FC = () => {
                 playerId={playerId} 
                 playerName={profile.name} 
                 playerStats={seasonStats} 
+                positionGroup={profile.position_group}
               />
             </div>
           )}
