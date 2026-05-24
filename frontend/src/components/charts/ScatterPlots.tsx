@@ -72,7 +72,8 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
                 type="number" 
                 dataKey="goalsPer90" 
                 name="Goals per 90" 
-                domain={[0, 'dataMax + 0.1']}
+                domain={[0, 1.2]}
+                allowDataOverflow={true}
                 tick={{fontSize: 10}} 
                 label={{ value: 'Goals per 90', position: 'insideBottom', offset: -10, fontSize: 12 }} 
               />
@@ -80,7 +81,8 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
                 type="number" 
                 dataKey="assistsPer90" 
                 name="Assists per 90" 
-                domain={[0, 'dataMax + 0.1']}
+                domain={[0, 0.8]}
+                allowDataOverflow={true}
                 tick={{fontSize: 10}}
                 label={{ value: 'Assists per 90', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, fontSize: 12 }}
               />
