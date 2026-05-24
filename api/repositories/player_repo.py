@@ -43,6 +43,21 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
         
     return profile
 
+def search_players(db: sqlite3.Connection, query: str) -> List[Dict[str, Any]]:
+    """Search for players by name."""
+    sql = """
+        SELECT 
+            p.player_id, p.name, p.position_group,
+            t.name as team_name, t.logo_url as team_logo_url
+        FROM players p
+        LEFT JOIN teams t ON p.team_id = t.team_id
+        WHERE p.name LIKE ?
+        ORDER BY p.name ASC
+        LIMIT 20
+    """
+    rows = db.execute(sql, (f"%{query}%",)).fetchall()
+    return [dict(row) for row in rows]
+
 def get_player_season_stats(db: sqlite3.Connection, player_id: int) -> Optional[Dict[str, Any]]:
     """Fetch aggregate season stats for a player."""
     query = """

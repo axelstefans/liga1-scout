@@ -19,6 +19,13 @@ class PlayerProfile(BaseModel):
     market_value_eur: Optional[int] = None
     market_value_str: Optional[str] = None
 
+class PlayerSearchResult(BaseModel):
+    player_id: int
+    name: str
+    position_group: Optional[str] = None
+    team_name: Optional[str] = None
+    team_logo_url: Optional[str] = None
+
 class PlayerSeasonStats(BaseModel):
     player_id: int
     appearances: Optional[int] = None
