@@ -81,6 +81,7 @@ export interface PlayerMatchStats {
   accurate_passes_pct: number | null;
   result: string | null;   // 'W' | 'D' | 'L'
   score: string | null;    // e.g. '2-1' from player's team perspective
+  position?: string | null; // e.g. 'CM', 'ST'
 }
 
 

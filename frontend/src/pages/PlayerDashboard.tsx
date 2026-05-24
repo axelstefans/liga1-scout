@@ -9,6 +9,7 @@ import PercentileBars from '../components/charts/PercentileBars';
 import FormStrip from '../components/FormStrip';
 import MatchTable from '../components/MatchTable';
 import ScatterPlots from '../components/charts/ScatterPlots';
+import PositionProfile from '../components/PositionProfile';
 
 const PlayerDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -135,9 +136,9 @@ const PlayerDashboard: React.FC = () => {
               )}
             </div>
 
-            {/* Right Column: Placeholder for future features */}
-            <div className="bg-card border border-border border-dashed p-6 rounded-lg shadow-sm lg:col-span-1 flex items-center justify-center min-h-[300px]">
-              <p className="text-sm text-gray-400 font-medium">Future widgets go here</p>
+            {/* Right Column: Position Profile */}
+            <div className="lg:col-span-1">
+              <PositionProfile profile={profile} matchStats={matchStats} />
             </div>
           </div>
 
