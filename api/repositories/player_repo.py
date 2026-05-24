@@ -85,8 +85,10 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
             m.away_score,
             -- Determine if player's team was home (1=home, 0=away)
             CASE WHEN m.home_team_id = pms.team_id THEN 1 ELSE 0 END as is_home,
-            -- Determine opponent name
-            CASE WHEN m.home_team_id = pms.team_id THEN away_t.name ELSE home_t.name END as opponent_name
+            -- Opponent name: whoever is NOT the player's team
+            CASE WHEN m.home_team_id = pms.team_id THEN away_t.name     ELSE home_t.name     END as opponent_name,
+            -- Opponent logo: same logic
+            CASE WHEN m.home_team_id = pms.team_id THEN away_t.logo_url ELSE home_t.logo_url END as opponent_logo_url
         FROM player_match_stats pms
         JOIN matches m ON pms.match_id = m.match_id
         JOIN teams home_t ON m.home_team_id = home_t.team_id
@@ -94,6 +96,7 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
         WHERE pms.player_id = ?
         ORDER BY m.match_date DESC
     """
+
     rows = db.execute(query, (player_id,)).fetchall()
     
     results = []

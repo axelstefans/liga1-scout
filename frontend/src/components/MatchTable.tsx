@@ -17,7 +17,7 @@ const MatchTable: React.FC<MatchTableProps> = ({ matches }) => {
             <th scope="col" className="px-4 py-3 text-center">Mins</th>
             <th scope="col" className="px-4 py-3 text-center">G</th>
             <th scope="col" className="px-4 py-3 text-center">A</th>
-            <th scope="col" className="px-4 py-3 text-center">Pass %</th>
+            <th scope="col" className="px-4 py-3 text-center">Shots</th>
             <th scope="col" className="px-4 py-3 text-center">Rating</th>
           </tr>
         </thead>
@@ -28,8 +28,19 @@ const MatchTable: React.FC<MatchTableProps> = ({ matches }) => {
                 {new Date(match.match_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
               </td>
               <td className="px-4 py-3 font-medium text-navy">
-                <span className="text-xs font-bold text-gray-400 mr-2">{match.is_home ? '(H)' : '(A)'}</span>
-                {match.opponent_name}
+                <div className="flex items-center gap-2">
+                  {/* Opponent team logo (20px) */}
+                  {match.opponent_logo_url ? (
+                    <img
+                      src={match.opponent_logo_url}
+                      alt={match.opponent_name}
+                      className="w-5 h-5 object-contain flex-shrink-0"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold text-gray-400">{match.is_home ? '(H)' : '(A)'}</span>
+                  )}
+                  <span>{match.opponent_name}</span>
+                </div>
               </td>
               {/* Result badge: W/D/L with score */}
               <td className="px-4 py-3 text-center">
@@ -46,7 +57,7 @@ const MatchTable: React.FC<MatchTableProps> = ({ matches }) => {
               <td className="px-4 py-3 text-center">{match.minutes_played ?? '-'}</td>
               <td className="px-4 py-3 text-center font-bold text-navy-blue">{match.goals ?? '-'}</td>
               <td className="px-4 py-3 text-center text-navy-blue">{match.assists ?? '-'}</td>
-              <td className="px-4 py-3 text-center">{match.accurate_passes_pct != null ? `${Math.round(match.accurate_passes_pct)}%` : '-'}</td>
+              <td className="px-4 py-3 text-center">{match.shots_on_target ?? '-'}</td>
               <td className="px-4 py-3 text-center font-bold">
                 {match.sofascore_rating != null ? (
                   <span className={`px-2 py-1 rounded text-white ${

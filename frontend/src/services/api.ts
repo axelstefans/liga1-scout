@@ -63,6 +63,7 @@ export interface PlayerMatchStats {
   match_id: number;
   match_date: string;
   opponent_name: string;
+  opponent_logo_url: string | null;  // Team logo for the opponent
   is_home: boolean;
   minutes_played: number | null;
   sofascore_rating: number | null;
@@ -73,6 +74,7 @@ export interface PlayerMatchStats {
   result: string | null;   // 'W' | 'D' | 'L'
   score: string | null;    // e.g. '2-1' from player's team perspective
 }
+
 
 export interface PlayerRankingEntry {
   rank: number;

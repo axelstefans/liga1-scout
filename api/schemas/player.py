@@ -51,6 +51,7 @@ class PlayerMatchStats(BaseModel):
     match_id: int
     match_date: str
     opponent_name: str
+    opponent_logo_url: Optional[str] = None  # Team logo for opponent
     is_home: bool
     minutes_played: Optional[int] = None
     sofascore_rating: Optional[float] = None
@@ -60,3 +61,4 @@ class PlayerMatchStats(BaseModel):
     accurate_passes_pct: Optional[float] = None
     result: Optional[str] = None   # W / D / L
     score: Optional[str] = None    # e.g. "2-1" from player team's perspective
+

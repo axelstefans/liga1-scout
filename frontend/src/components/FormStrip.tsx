@@ -27,7 +27,7 @@ const FormStrip: React.FC<FormStripProps> = ({ matches }) => {
           <div
             key={idx}
             className={clsx(
-              'flex flex-col items-center justify-center w-14 h-16 rounded shadow-sm border border-border',
+              'flex flex-col items-center justify-center w-14 h-16 rounded shadow-sm border border-border gap-0.5',
               bgClass
             )}
             title={`vs ${match.opponent_name}  ${match.score ?? ''}  Rating: ${rating ? rating.toFixed(1) : 'N/A'}`}
@@ -42,10 +42,19 @@ const FormStrip: React.FC<FormStripProps> = ({ matches }) => {
               {rating ? rating.toFixed(1) : '-'}
             </span>
 
-            {/* Home / Away indicator */}
-            <span className="text-[9px] font-bold opacity-70 leading-tight uppercase tracking-wide">
-              {match.is_home ? 'H' : 'A'}
-            </span>
+            {/* Opponent team logo (24px), fallback to initials if no URL */}
+            {match.opponent_logo_url ? (
+              <img
+                src={match.opponent_logo_url}
+                alt={match.opponent_name}
+                className="w-6 h-6 object-contain rounded-sm"
+                style={{ filter: 'brightness(0) invert(1) opacity(0.85)' }}
+              />
+            ) : (
+              <span className="text-[9px] font-bold opacity-70 leading-tight uppercase tracking-wide">
+                {match.opponent_name.slice(0, 3)}
+              </span>
+            )}
           </div>
         );
       })}
