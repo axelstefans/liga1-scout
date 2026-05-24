@@ -71,22 +71,37 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                             # If we can't find ID, we skip
                             continue
                             
+                        # Flatten keys by removing 'statistics.' prefix if present
+                        flat_dict = {}
+                        for k, v in row_dict.items():
+                            clean_k = k.replace('statistics.', '')
+                            flat_dict[clean_k] = v
+                            
                         # Prepare insert dictionary
                         stat_data = {
                             'player_id': player_id,
                             'match_id': match_id,
                             'team_id': team_id,
-                            'scraped_at': now
+                            'scraped_at': now,
+                            'sofascore_rating': flat_dict.get('rating'),
+                            'goals': flat_dict.get('goals'),
+                            'assists': flat_dict.get('goalAssist'),
+                            'shots_on_target': flat_dict.get('onTargetScoringAttempt'),
+                            'tackles': flat_dict.get('totalTackle'),
+                            'interceptions': flat_dict.get('interceptionWon'),
+                            'key_passes': flat_dict.get('keyPass'),
+                            'minutes_played': flat_dict.get('minutesPlayed'),
+                            'total_shots': flat_dict.get('totalShots')
                         }
                         
-                        for k, v in row_dict.items():
-                            # skip id fields to avoid conflicts, we already extracted them
-                            if k.lower() in ('id', 'player_id', 'player.id', 'team_id', 'match_id', 'name', 'slug'):
-                                continue
-                                
-                            snake_k = camel_to_snake(k.replace('.', '_'))
-                            # Only add if it's a valid column
-                            stat_data[snake_k] = v
+                        # Calculate accurate_passes_pct
+                        acc_pass = flat_dict.get('accuratePass')
+                        tot_pass = flat_dict.get('totalPass')
+                        if acc_pass is not None and tot_pass is not None and tot_pass > 0:
+                            stat_data['accurate_passes_pct'] = (acc_pass / tot_pass) * 100
+                            
+                        # Remove None values so we only insert valid data
+                        stat_data = {k: v for k, v in stat_data.items() if v is not None}
                         
                         records.append(stat_data)
                 

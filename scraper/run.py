@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--season-stats-only", action="store_true", help="Run only the season stats pipeline step")
     parser.add_argument("--matches-only", action="store_true", help="Run only the matches pipeline step")
     parser.add_argument("--match-stats-only", action="store_true", help="Run only the match stats pipeline step")
+    parser.add_argument("--rematch-stats", action="store_true", help="Clear existing match stats and re-scrape them")
     parser.add_argument("--transfermarkt-only", action="store_true", help="Run only the transfermarkt pipeline step")
     parser.add_argument("--full", action="store_true", help="Run the full pipeline")
     
@@ -68,8 +69,14 @@ def main():
     if args.season_stats_only or args.full:
         scrape_and_store_season_stats(conn, api_client)
         
-    if args.matches_only or args.full or args.match_stats_only:
+    if args.matches_only or args.full or args.match_stats_only or args.rematch_stats:
         matches = scrape_and_store_matches(conn, api_client)
+        
+    if args.rematch_stats:
+        logger.info("Clearing existing match stats data for re-scraping...")
+        conn.execute("DELETE FROM player_match_stats")
+        conn.execute("DELETE FROM scrape_log WHERE resource_type = 'match_stats'")
+        args.match_stats_only = True
         
     if args.match_stats_only or args.full:
         scrape_and_store_match_stats(conn, api_client.sofascore, matches)
