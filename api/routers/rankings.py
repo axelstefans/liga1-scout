@@ -11,7 +11,7 @@ router = APIRouter(prefix="/rankings", tags=["Rankings"])
 @router.get("/players", response_model=List[PlayerRankingEntry])
 def get_player_rankings(
     stat: str = Query(..., description="The statistic to rank by (e.g. goals, rating)"),
-    limit: int = Query(10, ge=1, le=100, description="Number of players to return"),
+    limit: int = Query(10, ge=1, le=500, description="Number of players to return"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get league-wide player rankings for a specific statistic."""
