@@ -15,3 +15,10 @@ class RosterPlayer(BaseModel):
     shirt_number: Optional[int] = None
     nationality: Optional[str] = None
     market_value_str: Optional[str] = None
+
+class TeamNextMatch(BaseModel):
+    match_date: str
+    opponent_name: str
+    opponent_logo_url: Optional[str] = None
+    home_away: str
+    match_id: int
