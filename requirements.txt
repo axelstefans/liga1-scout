@@ -1,0 +1,4 @@
+LanusStats>=1.2.0
+requests
+pandas
+python-dotenv

@@ -1,0 +1,68 @@
+-- Season-aggregate statistics per player.
+-- 52 fields match SofaScore.league_stats_fields exactly.
+
+CREATE TABLE IF NOT EXISTS player_season_stats (
+    player_id                        INTEGER PRIMARY KEY REFERENCES players(player_id),
+    team_id                          INTEGER REFERENCES teams(team_id),
+    appearances                      INTEGER,
+    started                          INTEGER,
+    minutes_played                   INTEGER,
+    goals                            INTEGER,
+    assists                          INTEGER,
+    yellow_cards                     INTEGER,
+    red_cards                        INTEGER,
+    rating                           REAL,
+    -- Shooting
+    total_shots                      INTEGER,
+    shots_on_target                  INTEGER,
+    blocked_shots                    INTEGER,
+    big_chances_missed               INTEGER,
+    hit_woodwork                     INTEGER,
+    expected_goals                   REAL,
+    goal_conversion_percentage       REAL,
+    offsides                         INTEGER,
+    -- Passing
+    accurate_passes                  INTEGER,
+    accurate_passes_percentage       REAL,
+    key_passes                       INTEGER,
+    accurate_long_balls              INTEGER,
+    accurate_long_balls_percentage   REAL,
+    accurate_crosses                 INTEGER,
+    accurate_crosses_percentage      REAL,
+    accurate_final_third_passes      INTEGER,
+    big_chances_created              INTEGER,
+    pass_to_assist                   INTEGER,
+    -- Dribbling / duels
+    successful_dribbles              INTEGER,
+    successful_dribbles_percentage   REAL,
+    ground_duels_won                 INTEGER,
+    ground_duels_won_percentage      REAL,
+    aerial_duels_won                 INTEGER,
+    aerial_duels_won_percentage      REAL,
+    total_duels_won                  INTEGER,
+    total_duels_won_percentage       REAL,
+    -- Defending
+    tackles                          INTEGER,
+    interceptions                    INTEGER,
+    clearances                       INTEGER,
+    dribbled_past                    INTEGER,
+    error_lead_to_goal               INTEGER,
+    error_lead_to_shot               INTEGER,
+    -- Discipline / possession
+    fouls                            INTEGER,
+    was_fouled                       INTEGER,
+    dispossessed                     INTEGER,
+    possession_lost                  INTEGER,
+    -- GK only
+    saves                            INTEGER,
+    clean_sheets                     INTEGER,
+    saved_shots_inside_box           INTEGER,
+    saved_shots_outside_box          INTEGER,
+    goals_conceded_inside_box        INTEGER,
+    goals_conceded_outside_box       INTEGER,
+    high_claims                      INTEGER,
+    successful_runs_out              INTEGER,
+    punches                          INTEGER,
+    runs_out                         INTEGER,
+    scraped_at                       TEXT NOT NULL
+);

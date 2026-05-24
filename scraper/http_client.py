@@ -36,23 +36,27 @@ class SofaScoreAPIClient:
         raise RuntimeError(f"Exhausted retries for {endpoint}")
 
     def get_teams(self, league_id: int, season_id: int) -> list[dict]:
-        endpoint = f"unique-tournament/{league_id}/season/{season_id}/teams"
+        endpoint = f"api/v1/unique-tournament/{league_id}/season/{season_id}/teams"
         data = self._polite_get(endpoint)
         return data.get('teams', [])
 
     def get_squad(self, team_id: int) -> list[dict]:
-        endpoint = f"team/{team_id}/players"
+        endpoint = f"api/v1/team/{team_id}/players"
         data = self._polite_get(endpoint)
         return data.get('players', [])
 
     def get_season_stats_page(self, league_id: int, season_id: int, offset: int = 0) -> dict:
-        endpoint = f"unique-tournament/{league_id}/season/{season_id}/statistics?limit=100&offset={offset}&order=-rating&accumulation=total"
+        endpoint = f"api/v1/unique-tournament/{league_id}/season/{season_id}/statistics?limit=100&offset={offset}&order=-rating&accumulation=total"
         return self._polite_get(endpoint)
 
-    def get_matches_by_round(self, league_id: int, season_id: int, round_num: int) -> list[dict]:
-        endpoint = f"unique-tournament/{league_id}/season/{season_id}/events/round/{round_num}"
+    def get_matches_by_round(self, league_id: int, season_id: int, round_num: int, prefix: str = 'Apertura') -> list[dict]:
+        endpoint = f"api/v1/unique-tournament/{league_id}/season/{season_id}/events/round/{round_num}/prefix/{prefix}"
         data = self._polite_get(endpoint)
         return data.get('events', [])
+    
+    def get_rounds(self, league_id: int, season_id: int) -> dict:
+        endpoint = f"api/v1/unique-tournament/{league_id}/season/{season_id}/rounds"
+        return self._polite_get(endpoint)
 
     def close(self):
         """Closes the underlying browser if needed."""
