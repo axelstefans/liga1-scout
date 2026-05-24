@@ -92,6 +92,7 @@ export interface PlayerRankingEntry {
   team_name: string;
   team_logo_url: string | null;
   position_group: string | null;
+  minutes_played: number | null;
   value: number | string;
 }
 

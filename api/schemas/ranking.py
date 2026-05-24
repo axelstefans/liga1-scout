@@ -8,4 +8,5 @@ class PlayerRankingEntry(BaseModel):
     team_name: str
     team_logo_url: Optional[str] = None
     position_group: Optional[str] = None
+    minutes_played: Optional[int] = None
     value: Any  # The value of the stat being ranked (could be int or float)

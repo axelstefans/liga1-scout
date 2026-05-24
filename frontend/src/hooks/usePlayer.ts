@@ -34,11 +34,11 @@ export const usePlayerMatchStats = (id: number) => {
   });
 };
 
-// Use this to fetch the top 100 players for a stat to calculate distributions
-export const useLeagueRankings = (stat: string) => {
+// Use this to fetch the top players for a stat to calculate distributions
+export const useLeagueRankings = (stat: string, limit: number = 100) => {
   return useQuery({
-    queryKey: ['rankings', stat],
-    queryFn: () => rankingsApi.getTopPlayers(stat, 100),
+    queryKey: ['rankings', stat, limit],
+    queryFn: () => rankingsApi.getTopPlayers(stat, limit),
     enabled: !!stat,
     staleTime: 1000 * 60 * 30, // 30 minutes since rankings don't change often
   });
