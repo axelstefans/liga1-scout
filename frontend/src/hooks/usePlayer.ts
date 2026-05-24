@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { playersApi, rankingsApi } from '../services/api';
+import { playersApi, rankingsApi, teamsApi } from '../services/api';
 
 export const usePlayerSearch = (query: string) => {
   return useQuery({
@@ -41,5 +41,14 @@ export const useLeagueRankings = (stat: string) => {
     queryFn: () => rankingsApi.getTopPlayers(stat, 100),
     enabled: !!stat,
     staleTime: 1000 * 60 * 30, // 30 minutes since rankings don't change often
+  });
+};
+
+export const useTeamNextMatch = (teamId: number | undefined) => {
+  return useQuery({
+    queryKey: ['teams', teamId, 'nextMatch'],
+    queryFn: () => teamsApi.getNextMatch(teamId!),
+    enabled: !!teamId,
+    retry: false, // Do not retry on 404
   });
 };

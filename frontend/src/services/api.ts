@@ -24,6 +24,14 @@ export interface TeamBase {
   logo_url: string | null;
 }
 
+export interface TeamNextMatch {
+  match_date: string;
+  opponent_name: string;
+  opponent_logo_url: string | null;
+  home_away: string;
+  match_id: number;
+}
+
 export interface PlayerProfile {
   player_id: number;
   name: string;
@@ -110,4 +118,11 @@ export const rankingsApi = {
     const response = await apiClient.get(`/rankings/players?stat=${stat}&limit=${limit}`);
     return response.data;
   }
-}
+};
+
+export const teamsApi = {
+  getNextMatch: async (teamId: number): Promise<TeamNextMatch> => {
+    const response = await apiClient.get(`/teams/${teamId}/next-match`);
+    return response.data;
+  }
+};

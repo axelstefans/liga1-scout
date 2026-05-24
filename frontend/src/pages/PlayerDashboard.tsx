@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { usePlayerProfile, usePlayerSeasonStats, usePlayerMatchStats } from '../hooks/usePlayer';
+import { usePlayerProfile, usePlayerSeasonStats, usePlayerMatchStats, useTeamNextMatch } from '../hooks/usePlayer';
 
 // Import components
 import PlayerHeader from '../components/PlayerHeader';
@@ -17,6 +17,9 @@ const PlayerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'match_log'>('overview');
 
   const { data: profile, isLoading: isProfileLoading } = usePlayerProfile(playerId);
+  const teamId = profile?.team?.team_id;
+  const { data: nextMatch, isLoading: isNextMatchLoading } = useTeamNextMatch(teamId);
+
   const { data: seasonStats, isLoading: isSeasonStatsLoading } = usePlayerSeasonStats(playerId);
   const { data: matchStats, isLoading: isMatchStatsLoading } = usePlayerMatchStats(playerId);
 
@@ -80,6 +83,44 @@ const PlayerDashboard: React.FC = () => {
                     <FormStrip matches={matchStats} />
                  ) : (
                     <p className="text-sm text-gray-500">No match data available.</p>
+                 )}
+              </div>
+
+              {/* Next Match Card */}
+              <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
+                 <h3 className="text-xl font-display mb-4 text-navy">NEXT MATCH</h3>
+                 {isNextMatchLoading ? (
+                    <p className="text-sm text-gray-500">Loading...</p>
+                 ) : nextMatch ? (
+                    <div className="flex items-center space-x-4 border border-border rounded p-3">
+                       {nextMatch.opponent_logo_url ? (
+                         <img src={nextMatch.opponent_logo_url} alt={nextMatch.opponent_name} className="w-8 h-8 object-contain" />
+                       ) : (
+                         <div className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded text-xs font-bold text-gray-500">
+                           {nextMatch.opponent_name.substring(0,3)}
+                         </div>
+                       )}
+                       <div className="flex flex-col flex-1">
+                         <span className="font-bold text-navy text-sm">{nextMatch.opponent_name}</span>
+                         <span className="text-xs text-gray-500">
+                            {(() => {
+                              const date = new Date(nextMatch.match_date);
+                              const dayMonth = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                              if (nextMatch.match_date.includes('T') && !nextMatch.match_date.includes('00:00:00')) {
+                                 const hours = date.getHours().toString().padStart(2, '0');
+                                 const mins = date.getMinutes().toString().padStart(2, '0');
+                                 return `${dayMonth} · ${hours}:${mins}`;
+                              }
+                              return dayMonth;
+                            })()}
+                         </span>
+                       </div>
+                       <span className={`px-2 py-1 text-xs font-bold rounded ${nextMatch.home_away === 'H' ? 'bg-navy text-white' : 'bg-gray-200 text-gray-600'}`}>
+                         {nextMatch.home_away}
+                       </span>
+                    </div>
+                 ) : (
+                    <p className="text-sm text-gray-500">No upcoming matches scheduled</p>
                  )}
               </div>
             </div>
