@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis, LabelList } from 'recharts';
 import { useLeagueRankings } from '../../hooks/usePlayer';
 import { PlayerRankingEntry } from '../../services/api';
 
@@ -26,7 +26,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
           goalsPer90: 0,
           assistsPer90: 0,
           isTarget: p.player_id === playerId,
-          z: p.player_id === playerId ? 120 : 40,
+          z: p.player_id === playerId ? 150 : 40,
         });
       }
       return map.get(p.player_id);
@@ -52,7 +52,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
   const loading = loadingGoals || loadingAssists;
 
   const targetData = mergedData.filter(d => d.isTarget);
-  const otherData = mergedData.filter(d => !d.isTarget);
+  const otherData = mergedData.filter(d => !d.isTarget && (d.goalsPer90 > 0 || d.assistsPer90 > 0));
 
   return (
     <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
@@ -86,7 +86,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
                 tick={{fontSize: 10}}
                 label={{ value: 'Assists per 90', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, fontSize: 12 }}
               />
-              <ZAxis type="number" dataKey="z" range={[40, 120]} />
+              <ZAxis type="number" dataKey="z" range={[40, 150]} />
               
               <Tooltip 
                 cursor={{ strokeDasharray: '3 3' }}
@@ -105,9 +105,11 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName }) => 
                 }}
               />
               
-              <Scatter data={otherData} fill="#9CA3AF" />
+              <Scatter data={otherData} fill="#9CA3AF" fillOpacity={0.3} />
               {targetData.length > 0 && (
-                <Scatter data={targetData} fill="#1B4F8A" />
+                <Scatter data={targetData} fill="#1B4F8A" fillOpacity={1.0}>
+                  <LabelList dataKey="name" position="top" fill="#1B4F8A" fontSize={12} fontWeight="bold" />
+                </Scatter>
               )}
             </ScatterChart>
           </ResponsiveContainer>
