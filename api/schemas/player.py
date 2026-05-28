@@ -58,7 +58,9 @@ class PlayerMatchStats(BaseModel):
     goals: Optional[int] = None
     assists: Optional[int] = None
     shots_on_target: Optional[int] = None
+    key_passes: Optional[int] = None
     accurate_passes_pct: Optional[float] = None
     result: Optional[str] = None   # W / D / L
     score: Optional[str] = None    # e.g. "2-1" from player team's perspective
+    round: Optional[int] = None    # League round number
 

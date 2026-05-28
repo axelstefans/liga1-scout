@@ -160,6 +160,29 @@ const PlayerDashboard: React.FC = () => {
         <div className="animate-in fade-in duration-300">
           <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
             <h3 className="text-xl font-display mb-4 text-navy">Match History</h3>
+            
+            {/* Summary Bar */}
+            {seasonStats && (
+              <div className="flex flex-wrap gap-6 mb-6 p-4 bg-cream rounded border border-border">
+                <div className="flex flex-col">
+                   <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Appearances</span>
+                   <span className="text-lg font-bold text-navy">{seasonStats.appearances ?? '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                   <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Goals</span>
+                   <span className="text-lg font-bold text-navy">{seasonStats.goals ?? '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                   <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Assists</span>
+                   <span className="text-lg font-bold text-navy">{seasonStats.assists ?? '-'}</span>
+                </div>
+                <div className="flex flex-col">
+                   <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Avg Rating</span>
+                   <span className="text-lg font-bold text-navy">{seasonStats.rating?.toFixed(2) ?? '-'}</span>
+                </div>
+              </div>
+            )}
+
             {matchStats && matchStats.length > 0 ? (
                <MatchTable matches={matchStats} />
             ) : (
