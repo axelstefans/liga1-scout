@@ -90,8 +90,8 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
 
           {/* SVG Pitch Markings Layer - Rendered on top of Canvas */}
           <svg viewBox="0 0 400 260" className="relative w-full h-auto z-20 pointer-events-none" style={{ background: 'transparent' }}>
-            {/* Pitch background and outer boundary */}
-            <rect x="0" y="0" width="400" height="260" fill="#FFFFFF" stroke="#000000" strokeWidth="1" />
+            {/* Pitch outer boundary */}
+            <rect x="0" y="0" width="400" height="260" fill="none" stroke="#000000" strokeWidth="1" />
             
             {/* Center line */}
             <line x1="200" y1="0" x2="200" y2="260" stroke="#000000" strokeWidth="1" />
