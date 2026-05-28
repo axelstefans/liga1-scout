@@ -11,9 +11,9 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
   const gridCells = useMemo(() => {
     if (!data || data.length === 0) return [];
     
-    // Create a 20x13 grid
-    const cols = 20;
-    const rows = 13;
+    // Create a 40x26 grid
+    const cols = 40;
+    const rows = 26;
     const grid: { x: number, y: number, count: number }[] = [];
     for (let x = 0; x < cols; x++) {
       for (let y = 0; y < rows; y++) {
@@ -86,10 +86,12 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
             {gridCells.map((cell, idx) => (
               <rect
                 key={`cell-${idx}`}
-                x={cell.x * 20}
-                y={cell.y * 20}
-                width={20}
-                height={20}
+                x={cell.x * 10}
+                y={cell.y * 10}
+                width={10}
+                height={10}
+                rx={3}
+                ry={3}
                 fill={getCellColor(cell.count)}
               />
             ))}
