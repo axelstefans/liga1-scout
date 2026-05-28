@@ -34,6 +34,15 @@ export const usePlayerMatchStats = (id: number) => {
   });
 };
 
+export const usePlayerHeatmap = (playerId: number) => {
+  return useQuery({
+    queryKey: ['players', playerId, 'heatmap'],
+    queryFn: () => playersApi.getHeatmap(playerId),
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+};
+
 // Use this to fetch the top players for a stat to calculate distributions
 export const useLeagueRankings = (stat: string, limit: number = 100) => {
   return useQuery({

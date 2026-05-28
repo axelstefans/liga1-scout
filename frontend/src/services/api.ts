@@ -99,6 +99,12 @@ export interface PlayerRankingEntry {
   value: number | string;
 }
 
+export interface HeatmapPoint {
+  x: number;
+  y: number;
+  count: number;
+}
+
 export const playersApi = {
   search: async (query: string): Promise<PlayerSearchResult[]> => {
     const response = await apiClient.get(`/players/search?q=${query}`);
@@ -114,6 +120,10 @@ export const playersApi = {
   },
   getMatchStats: async (id: number): Promise<PlayerMatchStats[]> => {
     const response = await apiClient.get(`/players/${id}/match-stats`);
+    return response.data;
+  },
+  getHeatmap: async (id: number): Promise<HeatmapPoint[]> => {
+    const response = await apiClient.get(`/players/${id}/heatmap`);
     return response.data;
   },
 };

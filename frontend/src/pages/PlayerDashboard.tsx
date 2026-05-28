@@ -10,6 +10,7 @@ import FormStrip from '../components/FormStrip';
 import MatchTable from '../components/MatchTable';
 import ScatterPlots from '../components/charts/ScatterPlots';
 import PositionProfile from '../components/PositionProfile';
+import SeasonHeatmap from '../components/SeasonHeatmap';
 
 const PlayerDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -142,17 +143,18 @@ const PlayerDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom Row: Distribution Scatter Plots */}
-          {seasonStats && (
-            <div className="mt-6">
+          {/* Bottom Row: Distribution Scatter Plots & Heatmap */}
+          <div className="mt-6 space-y-6">
+            {seasonStats && (
               <ScatterPlots 
                 playerId={playerId} 
                 playerName={profile.name} 
                 playerStats={seasonStats} 
                 positionGroup={profile.position_group}
               />
-            </div>
-          )}
+            )}
+            <SeasonHeatmap playerId={playerId} />
+          </div>
         </div>
       )}
 
