@@ -47,7 +47,7 @@ def get_player_heatmap(player_id: int):
     """Get player's season heatmap coordinates using LanusStats."""
     try:
         sofascore = ls.SofaScore()
-        heatmap_data = sofascore.get_player_season_heatmap("Peru Liga 1", "2025", player_id)
+        heatmap_data = sofascore.get_player_season_heatmap("Peru Liga 1", "2026", player_id)
         
         if hasattr(heatmap_data, 'to_dict'):
             return heatmap_data.to_dict(orient='records')
