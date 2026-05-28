@@ -77,7 +77,7 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
       )}
 
       {!isLoading && !error && data && data.length > 0 && (
-        <div className="w-full mx-auto relative bg-[#FAFAF7] rounded-lg overflow-hidden border-4 border-[#FAFAF7]" style={{ maxWidth: '400px' }}>
+        <div className="w-full mx-auto relative bg-[#FFFFFF] rounded-lg overflow-hidden border-4 border-[#FFFFFF]" style={{ maxWidth: '400px' }}>
           
           {/* Canvas Layer - Rendering Heat Blobs */}
           <canvas
