@@ -40,8 +40,8 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
 
       // Create radial gradient for the blob
       const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      gradient.addColorStop(0, `rgba(255, 50, 50, ${0.25 * countNormalized})`);
-      gradient.addColorStop(1, 'rgba(255, 50, 50, 0)');
+      gradient.addColorStop(0, `rgba(220, 38, 38, ${0.2 * countNormalized})`);
+      gradient.addColorStop(1, 'rgba(220, 38, 38, 0)');
 
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
@@ -77,7 +77,7 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
       )}
 
       {!isLoading && !error && data && data.length > 0 && (
-        <div className="w-full mx-auto relative bg-[#2d5a1b] rounded-lg overflow-hidden border-4 border-[#2d5a1b]" style={{ maxWidth: '400px' }}>
+        <div className="w-full mx-auto relative bg-[#FAFAF7] rounded-lg overflow-hidden border-4 border-[#FAFAF7]" style={{ maxWidth: '400px' }}>
           
           {/* Canvas Layer - Rendering Heat Blobs */}
           <canvas
@@ -91,24 +91,24 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
           {/* SVG Pitch Markings Layer - Rendered on top of Canvas */}
           <svg viewBox="0 0 400 260" className="relative w-full h-auto z-20 pointer-events-none">
             {/* Center line */}
-            <line x1="200" y1="0" x2="200" y2="260" stroke="rgba(255,255,255,0.6)" strokeWidth="2" />
+            <line x1="200" y1="0" x2="200" y2="260" stroke="#0D1B2A" strokeWidth="2" />
             {/* Center circle */}
-            <circle cx="200" cy="130" r="40" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
-            <circle cx="200" cy="130" r="3" fill="rgba(255,255,255,0.6)" />
+            <circle cx="200" cy="130" r="40" stroke="#0D1B2A" strokeWidth="2" fill="none" />
+            <circle cx="200" cy="130" r="3" fill="#0D1B2A" />
             
             {/* Left Penalty Area */}
-            <rect x="0" y="55" width="65" height="150" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
+            <rect x="0" y="55" width="65" height="150" stroke="#0D1B2A" strokeWidth="2" fill="none" />
             {/* Left Goal Area */}
-            <rect x="0" y="95" width="20" height="70" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
+            <rect x="0" y="95" width="20" height="70" stroke="#0D1B2A" strokeWidth="2" fill="none" />
             {/* Left D Arc */}
-            <path d="M 65 95 A 40 40 0 0 1 65 165" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
+            <path d="M 65 95 A 40 40 0 0 1 65 165" stroke="#0D1B2A" strokeWidth="2" fill="none" />
 
             {/* Right Penalty Area */}
-            <rect x="335" y="55" width="65" height="150" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
+            <rect x="335" y="55" width="65" height="150" stroke="#0D1B2A" strokeWidth="2" fill="none" />
             {/* Right Goal Area */}
-            <rect x="380" y="95" width="20" height="70" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
+            <rect x="380" y="95" width="20" height="70" stroke="#0D1B2A" strokeWidth="2" fill="none" />
             {/* Right D Arc */}
-            <path d="M 335 95 A 40 40 0 0 0 335 165" stroke="rgba(255,255,255,0.6)" strokeWidth="2" fill="none" />
+            <path d="M 335 95 A 40 40 0 0 0 335 165" stroke="#0D1B2A" strokeWidth="2" fill="none" />
           </svg>
         </div>
       )}
