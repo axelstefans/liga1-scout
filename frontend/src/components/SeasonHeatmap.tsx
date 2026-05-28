@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { usePlayerHeatmap } from '../hooks/usePlayer';
 
 interface SeasonHeatmapProps {
@@ -7,51 +7,48 @@ interface SeasonHeatmapProps {
 
 const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
   const { data, isLoading, error } = usePlayerHeatmap(playerId);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const gridCells = useMemo(() => {
-    if (!data || data.length === 0) return [];
-    
-    // Create a 40x26 grid
-    const cols = 40;
-    const rows = 26;
-    const grid: { x: number, y: number, count: number }[] = [];
-    for (let x = 0; x < cols; x++) {
-      for (let y = 0; y < rows; y++) {
-        grid.push({ x, y, count: 0 });
-      }
-    }
-
-    // Assign points to grid cells
-    data.forEach(point => {
-      // Convert 0-100 coordinates to grid indices
-      let cx = Math.floor((point.x / 100) * cols);
-      let cy = Math.floor((point.y / 100) * rows);
-      
-      // Ensure bounds
-      if (cx >= cols) cx = cols - 1;
-      if (cy >= rows) cy = rows - 1;
-      if (cx < 0) cx = 0;
-      if (cy < 0) cy = 0;
-      
-      const idx = cx * rows + cy;
-      grid[idx].count += point.count;
-    });
-
-    return grid;
+  const maxCount = useMemo(() => {
+    if (!data || data.length === 0) return 0;
+    return Math.max(...data.map(d => d.count));
   }, [data]);
 
-  const maxCellCount = useMemo(() => {
-    if (gridCells.length === 0) return 0;
-    return Math.max(...gridCells.map(c => c.count));
-  }, [gridCells]);
+  useEffect(() => {
+    if (!data || data.length === 0 || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  const getCellColor = (count: number) => {
-    if (count === 0 || maxCellCount === 0) return 'transparent';
-    const ratio = count / maxCellCount;
-    if (ratio < 0.33) return 'rgba(59,130,246,0.3)'; // low = blue
-    if (ratio < 0.66) return 'rgba(234,179,8,0.7)'; // medium = yellow
-    return 'rgba(239,68,68,1.0)'; // high = red
-  };
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const pitchWidth = 400;
+    const pitchHeight = 260;
+
+    // Draw the heat blobs
+    data.forEach(point => {
+      // Map coordinates: x=0 is left, y=0 is bottom
+      const cx = (point.x / 100) * pitchWidth;
+      const cy = pitchHeight - (point.y / 100) * pitchHeight;
+
+      // Normalize count
+      const countNormalized = maxCount > 0 ? point.count / maxCount : 0;
+      
+      const radius = 20;
+
+      // Create radial gradient for the blob
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      gradient.addColorStop(0, `rgba(255, 50, 50, ${0.15 * countNormalized})`);
+      gradient.addColorStop(1, 'rgba(255, 50, 50, 0)');
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    });
+  }, [data, maxCount]);
 
   return (
     <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
@@ -80,23 +77,19 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
       )}
 
       {!isLoading && !error && data && data.length > 0 && (
-        <div className="w-full mx-auto" style={{ maxWidth: '400px' }}>
-          <svg viewBox="0 0 400 260" className="w-full h-auto bg-[#1a1f2e] rounded-lg overflow-hidden border-4 border-[#1a1f2e]">
-            {/* Heatmap Density Grid (Drawn first to be UNDER the pitch lines) */}
-            {gridCells.map((cell, idx) => (
-              <rect
-                key={`cell-${idx}`}
-                x={cell.x * 10}
-                y={cell.y * 10}
-                width={10}
-                height={10}
-                rx={3}
-                ry={3}
-                fill={getCellColor(cell.count)}
-              />
-            ))}
+        <div className="w-full mx-auto relative bg-[#1a1f2e] rounded-lg overflow-hidden border-4 border-[#1a1f2e]" style={{ maxWidth: '400px' }}>
+          
+          {/* Canvas Layer - Rendering Heat Blobs */}
+          <canvas
+            ref={canvasRef}
+            width={400}
+            height={260}
+            className="absolute inset-0 w-full h-full z-10"
+            style={{ filter: 'blur(8px)' }}
+          />
 
-            {/* Pitch Lines */}
+          {/* SVG Pitch Markings Layer - Rendered on top of Canvas */}
+          <svg viewBox="0 0 400 260" className="relative w-full h-auto z-20 pointer-events-none">
             {/* Center line */}
             <line x1="200" y1="0" x2="200" y2="260" stroke="#4a5568" strokeWidth="2" />
             {/* Center circle */}
