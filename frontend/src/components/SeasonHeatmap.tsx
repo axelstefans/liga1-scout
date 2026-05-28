@@ -89,26 +89,35 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
           />
 
           {/* SVG Pitch Markings Layer - Rendered on top of Canvas */}
-          <svg viewBox="0 0 400 260" className="relative w-full h-auto z-20 pointer-events-none">
+          <svg viewBox="0 0 400 260" className="relative w-full h-auto z-20 pointer-events-none" style={{ background: 'transparent' }}>
+            {/* Pitch background and outer boundary */}
+            <rect x="0" y="0" width="400" height="260" fill="#FFFFFF" stroke="#000000" strokeWidth="1" />
+            
             {/* Center line */}
-            <line x1="200" y1="0" x2="200" y2="260" stroke="#0D1B2A" strokeWidth="2" />
+            <line x1="200" y1="0" x2="200" y2="260" stroke="#000000" strokeWidth="1" />
             {/* Center circle */}
-            <circle cx="200" cy="130" r="40" stroke="#0D1B2A" strokeWidth="2" fill="none" />
-            <circle cx="200" cy="130" r="3" fill="#0D1B2A" />
+            <circle cx="200" cy="130" r="40" stroke="#000000" strokeWidth="1" fill="none" />
+            <circle cx="200" cy="130" r="2" fill="#000000" />
             
             {/* Left Penalty Area */}
-            <rect x="0" y="55" width="65" height="150" stroke="#0D1B2A" strokeWidth="2" fill="none" />
+            <rect x="0" y="55" width="65" height="150" stroke="#000000" strokeWidth="1" fill="none" />
             {/* Left Goal Area */}
-            <rect x="0" y="95" width="20" height="70" stroke="#0D1B2A" strokeWidth="2" fill="none" />
+            <rect x="0" y="95" width="20" height="70" stroke="#000000" strokeWidth="1" fill="none" />
             {/* Left D Arc */}
-            <path d="M 65 95 A 40 40 0 0 1 65 165" stroke="#0D1B2A" strokeWidth="2" fill="none" />
+            <path d="M 65 95 A 40 40 0 0 1 65 165" stroke="#000000" strokeWidth="1" fill="none" />
+            {/* Left corner arcs */}
+            <path d="M 0 10 A 10 10 0 0 0 10 0" stroke="#000000" strokeWidth="1" fill="none" />
+            <path d="M 0 250 A 10 10 0 0 1 10 260" stroke="#000000" strokeWidth="1" fill="none" />
 
             {/* Right Penalty Area */}
-            <rect x="335" y="55" width="65" height="150" stroke="#0D1B2A" strokeWidth="2" fill="none" />
+            <rect x="335" y="55" width="65" height="150" stroke="#000000" strokeWidth="1" fill="none" />
             {/* Right Goal Area */}
-            <rect x="380" y="95" width="20" height="70" stroke="#0D1B2A" strokeWidth="2" fill="none" />
+            <rect x="380" y="95" width="20" height="70" stroke="#000000" strokeWidth="1" fill="none" />
             {/* Right D Arc */}
-            <path d="M 335 95 A 40 40 0 0 0 335 165" stroke="#0D1B2A" strokeWidth="2" fill="none" />
+            <path d="M 335 95 A 40 40 0 0 0 335 165" stroke="#000000" strokeWidth="1" fill="none" />
+            {/* Right corner arcs */}
+            <path d="M 400 10 A 10 10 0 0 1 390 0" stroke="#000000" strokeWidth="1" fill="none" />
+            <path d="M 400 250 A 10 10 0 0 0 390 260" stroke="#000000" strokeWidth="1" fill="none" />
           </svg>
         </div>
       )}
