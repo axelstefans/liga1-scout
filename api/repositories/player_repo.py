@@ -6,7 +6,7 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
     query = """
         SELECT 
             p.player_id, p.name, p.date_of_birth, p.nationality,
-            p.position, p.position_group, p.shirt_number,
+            p.position, p.position_group, p.shirt_number, p.height, p.preferred_foot,
             t.team_id, t.name as team_name, t.short_name as team_short_name, t.logo_url as team_logo_url,
             pmv.market_value_eur, pmv.market_value_str
         FROM players p
@@ -29,6 +29,8 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
         "position": data["position"],
         "position_group": data["position_group"],
         "shirt_number": data["shirt_number"],
+        "height": data["height"],
+        "preferred_foot": data["preferred_foot"],
         "market_value_eur": data["market_value_eur"],
         "market_value_str": data["market_value_str"]
     }

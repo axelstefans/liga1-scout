@@ -15,6 +15,8 @@ class PlayerProfile(BaseModel):
     position: Optional[str] = None
     position_group: Optional[str] = None
     shirt_number: Optional[int] = None
+    height: Optional[int] = None
+    preferred_foot: Optional[str] = None
     team: Optional[TeamBase] = None
     market_value_eur: Optional[int] = None
     market_value_str: Optional[str] = None

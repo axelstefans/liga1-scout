@@ -47,11 +47,13 @@ def scrape_and_store_squads(conn, api_client, teams) -> int:
                 position = player.get('position')
                 position_group = config.POSITION_GROUP_MAP.get(position, 'Unknown')
                 shirt_number = player.get('shirtNumber')
+                height = player.get('height')
+                preferred_foot = player.get('preferredFoot')
                 
                 if player_id and name:
                     records.append((
                         player_id, team_id, name, dob, nationality,
-                        position, position_group, shirt_number, now
+                        position, position_group, shirt_number, height, preferred_foot, now
                     ))
             
             if records:
@@ -59,8 +61,8 @@ def scrape_and_store_squads(conn, api_client, teams) -> int:
                 conn.executemany('''
                     INSERT OR REPLACE INTO players (
                         player_id, team_id, name, date_of_birth, nationality,
-                        position, position_group, shirt_number, scraped_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        position, position_group, shirt_number, height, preferred_foot, scraped_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', records)
                 conn.execute("COMMIT")
                 total_inserted += len(records)
