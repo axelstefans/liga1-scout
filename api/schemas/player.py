@@ -63,4 +63,5 @@ class PlayerMatchStats(BaseModel):
     result: Optional[str] = None   # W / D / L
     score: Optional[str] = None    # e.g. "2-1" from player team's perspective
     round: Optional[int] = None    # League round number
+    position: Optional[str] = None # Tactical position played
 

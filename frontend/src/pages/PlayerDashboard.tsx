@@ -9,7 +9,7 @@ import PercentileBars from '../components/charts/PercentileBars';
 import FormStrip from '../components/FormStrip';
 import MatchTable from '../components/MatchTable';
 import ScatterPlots from '../components/charts/ScatterPlots';
-import PositionProfile from '../components/PositionProfile';
+import TimeInPosition from '../components/TimeInPosition';
 import SeasonHeatmap from '../components/SeasonHeatmap';
 
 const PlayerDashboard: React.FC = () => {
@@ -137,9 +137,9 @@ const PlayerDashboard: React.FC = () => {
               )}
             </div>
 
-            {/* Right Column: Position Profile */}
+            {/* Right Column: Time In Position */}
             <div className="lg:col-span-1">
-              <PositionProfile profile={profile} matchStats={matchStats} />
+              <TimeInPosition matchStats={matchStats} />
             </div>
           </div>
 

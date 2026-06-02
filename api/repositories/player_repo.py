@@ -76,6 +76,7 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
             m.match_date,
             m.round,
             pms.minutes_played,
+            pms.position,
             pms.sofascore_rating,
             pms.goals,
             pms.assists,
