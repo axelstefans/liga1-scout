@@ -12,9 +12,9 @@ const POSITION_COORDS: Record<string, { x: number, y: number }> = {
 
   // Defensores (Banda Izquierda arriba y Banda Derecha abajo)
   'LB': { x: 80, y: 45 },
-  'LCB': { x: 70, y: 95 },
+  'LCB': { x: 70, y: 70 },
   'CB': { x: 65, y: 130 },
-  'RCB': { x: 70, y: 165 },
+  'RCB': { x: 70, y: 190 },
   'RB': { x: 80, y: 215 },
   'D': { x: 70, y: 130 },
 
@@ -25,26 +25,26 @@ const POSITION_COORDS: Record<string, { x: number, y: number }> = {
 
   // Mediocampistas Centrales y Carrileros
   'LWB': { x: 150, y: 35 },
-  'LM': { x: 200, y: 40 },
-  'LCM': { x: 190, y: 95 },
+  'LM': { x: 200, y: 35 },
+  'LCM': { x: 190, y: 70 },
   'CM': { x: 180, y: 130 },
   'M': { x: 190, y: 130 },
-  'RCM': { x: 190, y: 165 },
-  'RM': { x: 200, y: 220 },
+  'RCM': { x: 190, y: 190 },
+  'RM': { x: 200, y: 225 },
   'RWB': { x: 150, y: 225 },
 
   // Mediocampistas Ofensivos
-  'LAM': { x: 250, y: 85 },
+  'LAM': { x: 250, y: 70 },
   'CAM': { x: 240, y: 130 },
-  'RAM': { x: 250, y: 175 },
+  'RAM': { x: 250, y: 190 },
 
   // Delanteros y Extremos
   'LW': { x: 310, y: 45 },
-  'LS': { x: 330, y: 95 },
+  'LS': { x: 330, y: 70 },
   'CF': { x: 320, y: 130 },
   'ST': { x: 340, y: 130 },
   'F': { x: 330, y: 130 },
-  'RS': { x: 330, y: 165 },
+  'RS': { x: 330, y: 190 },
   'RW': { x: 310, y: 215 },
 };
 
@@ -102,10 +102,11 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
               <path d="M 335 95 A 40 40 0 0 0 335 165" stroke="#cbd5e1" strokeWidth="2" fill="none" />
 
               {/* Position Circles */}
-              {positionStats.map((stat, idx) => {
+              {[...positionStats].reverse().map((stat) => {
+                const rank = positionStats.findIndex(s => s.pos === stat.pos);
                 const coords = POSITION_COORDS[stat.pos] || POSITION_COORDS['CM']; 
-                const isTop3 = idx < 3;
-                const opacity = idx === 0 ? 0.95 : idx === 1 ? 0.75 : idx === 2 ? 0.55 : 0.3;
+                const isTop3 = rank < 3;
+                const opacity = rank === 0 ? 0.95 : rank === 1 ? 0.75 : rank === 2 ? 0.55 : 0.3;
 
                 return (
                   <g key={stat.pos} opacity={opacity}>
@@ -145,6 +146,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
                           fontSize={10}
                           fontWeight="bold"
                           textAnchor="middle"
+                          style={{ textShadow: '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white' }}
                         >
                           {stat.pos}
                         </text>
