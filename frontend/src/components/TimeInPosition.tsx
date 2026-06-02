@@ -86,11 +86,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
         </div>
       ) : (
         <>
-          <p className="text-sm text-gray-500 mb-4">
-            {totalMinutes} minutes across {positionStats.length} positions
-          </p>
-
-          <div className="w-full mx-auto mb-6" style={{ maxWidth: '400px' }}>
+          <div className="w-full mx-auto mb-6 mt-4" style={{ maxWidth: '400px' }}>
             <svg viewBox="0 0 400 260" className="w-full h-auto bg-[#f9fafb] rounded-lg overflow-hidden border border-[#cbd5e1]">
               {/* Pitch Lines */}
               <line x1="200" y1="0" x2="200" y2="260" stroke="#cbd5e1" strokeWidth="2" />
@@ -118,23 +114,35 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
                       cx={coords.x}
                       cy={coords.y}
                       r={r}
-                      fill="#ef4444"
+                      fill="#1e40af"
                       stroke="#ffffff"
                       strokeWidth="2"
                       opacity={opacity}
                     />
                     {isTop3 && (
-                      <text
-                        x={coords.x}
-                        y={coords.y}
-                        fill="#ffffff"
-                        fontSize={10}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                      >
-                        {Math.round(stat.pct)}%
-                      </text>
+                      <>
+                        <text
+                          x={coords.x}
+                          y={coords.y}
+                          fill="#ffffff"
+                          fontSize={10}
+                          fontWeight="bold"
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                        >
+                          {Math.round(stat.pct)}%
+                        </text>
+                        <text
+                          x={coords.x}
+                          y={coords.y + 22}
+                          fill="#1e293b"
+                          fontSize={10}
+                          fontWeight="bold"
+                          textAnchor="middle"
+                        >
+                          {stat.pos}
+                        </text>
+                      </>
                     )}
                   </g>
                 );
@@ -147,9 +155,10 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
             {positionStats.slice(0, 3).map(stat => (
               <div key={stat.pos} className="flex items-center justify-between p-2 bg-cream rounded-md border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-[#ef4444] shadow-sm border border-white"></div>
-                  <span className="font-bold text-navy w-8">{stat.pos}</span>
-                  <span className="text-gray-500 text-sm">{stat.mins}&apos;</span>
+                  <div className="w-8 h-8 rounded-full bg-[#1e40af] text-white flex items-center justify-center text-xs font-bold shadow-sm border border-white">
+                    {stat.pos}
+                  </div>
+                  <span className="text-gray-500 text-sm font-medium">{stat.mins}&apos;</span>
                 </div>
                 <div className="font-semibold text-navy-blue">
                   {Math.round(stat.pct)}%
