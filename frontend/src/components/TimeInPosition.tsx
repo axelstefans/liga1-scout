@@ -105,22 +105,28 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
               {positionStats.map((stat, idx) => {
                 const coords = POSITION_COORDS[stat.pos] || POSITION_COORDS['CM']; 
                 const isTop3 = idx < 3;
-                const r = isTop3 ? 16 : 8;
-                const opacity = isTop3 ? 0.85 : 0.3;
+                const opacity = idx === 0 ? 0.95 : idx === 1 ? 0.75 : idx === 2 ? 0.55 : 0.3;
 
                 return (
-                  <g key={stat.pos}>
-                    <circle
-                      cx={coords.x}
-                      cy={coords.y}
-                      r={r}
-                      fill="#1e40af"
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                      opacity={opacity}
-                    />
-                    {isTop3 && (
+                  <g key={stat.pos} opacity={opacity}>
+                    {isTop3 ? (
                       <>
+                        <circle
+                          cx={coords.x}
+                          cy={coords.y}
+                          r={18}
+                          fill="none"
+                          stroke="#0f172a"
+                          strokeWidth="2"
+                        />
+                        <circle
+                          cx={coords.x}
+                          cy={coords.y}
+                          r={16}
+                          fill="#1e40af"
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                        />
                         <text
                           x={coords.x}
                           y={coords.y}
@@ -134,7 +140,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
                         </text>
                         <text
                           x={coords.x}
-                          y={coords.y + 22}
+                          y={coords.y + 32}
                           fill="#1e293b"
                           fontSize={10}
                           fontWeight="bold"
@@ -143,6 +149,15 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
                           {stat.pos}
                         </text>
                       </>
+                    ) : (
+                      <circle
+                        cx={coords.x}
+                        cy={coords.y}
+                        r={8}
+                        fill="#1e40af"
+                        stroke="#ffffff"
+                        strokeWidth="2"
+                      />
                     )}
                   </g>
                 );
@@ -155,7 +170,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
             {positionStats.slice(0, 3).map(stat => (
               <div key={stat.pos} className="flex items-center justify-between p-2 bg-cream rounded-md border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#1e40af] text-white flex items-center justify-center text-xs font-bold shadow-sm border border-white">
+                  <div className="min-w-[2.5rem] h-8 px-2 flex items-center justify-center rounded-full bg-blue-800 text-white text-xs font-bold shadow-sm border border-white">
                     {stat.pos}
                   </div>
                   <span className="text-gray-500 text-sm font-medium">{stat.mins}&apos;</span>
