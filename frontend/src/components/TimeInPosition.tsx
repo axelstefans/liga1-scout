@@ -6,24 +6,46 @@ interface TimeInPositionProps {
 }
 
 const POSITION_COORDS: Record<string, { x: number, y: number }> = {
-  GK: { x: 20, y: 130 },
-  RB: { x: 60, y: 50 },
-  RCB: { x: 80, y: 100 },
-  LCB: { x: 80, y: 160 },
-  LB: { x: 60, y: 210 },
-  CDM: { x: 120, y: 130 },
-  CM: { x: 160, y: 100 },
-  CM2: { x: 160, y: 160 },
-  CAM: { x: 220, y: 130 },
-  RW: { x: 280, y: 60 },
-  LW: { x: 280, y: 200 },
-  ST: { x: 340, y: 130 },
-  CF: { x: 320, y: 130 },
-  // Fallbacks
-  F: { x: 340, y: 130 },
-  D: { x: 80, y: 130 },
-  M: { x: 160, y: 130 },
-  G: { x: 20, y: 130 }
+  // Arquero
+  'GK': { x: 30, y: 130 },
+  'G': { x: 30, y: 130 },
+
+  // Defensores (Banda Izquierda arriba y Banda Derecha abajo)
+  'LB': { x: 80, y: 45 },
+  'LCB': { x: 70, y: 95 },
+  'CB': { x: 65, y: 130 },
+  'RCB': { x: 70, y: 165 },
+  'RB': { x: 80, y: 215 },
+  'D': { x: 70, y: 130 },
+
+  // Mediocampistas Defensivos
+  'LDM': { x: 140, y: 85 },
+  'CDM': { x: 130, y: 130 },
+  'RDM': { x: 140, y: 175 },
+
+  // Mediocampistas Centrales y Carrileros
+  'LWB': { x: 150, y: 35 },
+  'LM': { x: 200, y: 40 },
+  'LCM': { x: 190, y: 95 },
+  'CM': { x: 180, y: 130 },
+  'M': { x: 190, y: 130 },
+  'RCM': { x: 190, y: 165 },
+  'RM': { x: 200, y: 220 },
+  'RWB': { x: 150, y: 225 },
+
+  // Mediocampistas Ofensivos
+  'LAM': { x: 250, y: 85 },
+  'CAM': { x: 240, y: 130 },
+  'RAM': { x: 250, y: 175 },
+
+  // Delanteros y Extremos
+  'LW': { x: 310, y: 45 },
+  'LS': { x: 330, y: 95 },
+  'CF': { x: 320, y: 130 },
+  'ST': { x: 340, y: 130 },
+  'F': { x: 330, y: 130 },
+  'RS': { x: 330, y: 165 },
+  'RW': { x: 310, y: 215 },
 };
 
 const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
