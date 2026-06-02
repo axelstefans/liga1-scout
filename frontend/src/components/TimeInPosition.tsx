@@ -48,6 +48,15 @@ const POSITION_COORDS: Record<string, { x: number, y: number }> = {
   'RW': { x: 310, y: 215 },
 };
 
+const POSITION_ALIASES: Record<string, string> = {
+  'F': 'ST',
+  'CF': 'ST',
+  'D': 'CB',
+  'CD': 'CB',
+  'M': 'CM',
+  'G': 'GK'
+};
+
 const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
   const positionStats = useMemo(() => {
     if (!matchStats) return [];
@@ -57,7 +66,10 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
     
     matchStats.forEach(m => {
       if (m.position && m.minutes_played) {
-        const pos = m.position.toUpperCase();
+        let pos = m.position.toUpperCase();
+        if (POSITION_ALIASES[pos]) {
+          pos = POSITION_ALIASES[pos];
+        }
         minsByPos[pos] = (minsByPos[pos] || 0) + m.minutes_played;
         totalMinutes += m.minutes_played;
       }
