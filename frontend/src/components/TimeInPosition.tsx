@@ -110,7 +110,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
               <path d="M 335 95 A 40 40 0 0 0 335 165" stroke="#4a5568" strokeWidth="2" fill="none" />
 
               {/* Position Circles */}
-              {positionStats.map((stat, idx) => {
+              {positionStats.filter(stat => stat.pct >= 10).map((stat, idx) => {
                 const coords = POSITION_COORDS[stat.pos] || POSITION_COORDS['CM']; 
                 const r = getCircleRadius(idx);
                 return (
@@ -140,11 +140,11 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
           </div>
           
           <div className="flex flex-wrap gap-2 justify-center mt-4">
-            {positionStats.map(stat => (
+            {positionStats.filter(stat => stat.pct >= 5).map(stat => (
               <div key={stat.pos} className="px-3 py-1 bg-cream rounded-full border border-border text-xs font-bold text-navy flex items-center gap-1">
                 <span>{stat.pos}</span>
                 <span className="text-gray-400">·</span>
-                <span className="text-navy-blue">{Math.round(stat.pct)}%</span>
+                <span className="text-navy-blue">{stat.mins}&apos;</span>
               </div>
             ))}
           </div>
