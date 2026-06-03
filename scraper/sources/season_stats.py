@@ -62,6 +62,29 @@ def scrape_and_store_season_stats(conn, api_client) -> int:
                     if k in ('player', 'team'):
                         continue
                     snake_k = camel_to_snake(k)
+                    # Fix SofaScore typos and field name mismatches
+                    field_fixes = {
+                        'possesion_lost': 'possession_lost',
+                        'saved_shots_from_inside_the_box': 'saved_shots_inside_box',
+                        'saved_shots_from_outside_the_box': 'saved_shots_outside_box',
+                        'goals_conceded_inside_the_box': 'goals_conceded_inside_box',
+                        'goals_conceded_outside_the_box': 'goals_conceded_outside_box',
+                        'total_clearances': 'clearances',
+                        'total_tackles': 'tackles',
+                        'total_interceptions': 'interceptions',
+                        'total_passes': 'passes',
+                        'shots_total': 'total_shots',
+                        'shots_on_goal': 'shots_on_target',
+                        'total_goals': 'goals',
+                        'total_assists': 'assists',
+                        'dribbles_succeeded': 'successful_dribbles',
+                        'duels_won_ground': 'ground_duels_won',
+                        'duels_won_aerial': 'aerial_duels_won',
+                        'total_key_passes': 'key_passes',
+                        'pass_accuracy': 'accurate_passes_percentage',
+                    }
+                    snake_k = field_fixes.get(snake_k, snake_k)
+                    
                     stat_data[snake_k] = v
                 
                 records.append(stat_data)

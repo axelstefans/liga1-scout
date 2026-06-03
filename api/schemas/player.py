@@ -41,11 +41,14 @@ class PlayerSeasonStats(BaseModel):
     shots_on_target: Optional[int] = None
     successful_dribbles: Optional[int] = None
     accurate_passes_percentage: Optional[float] = None
+    ground_duels_won: Optional[int] = None
     ground_duels_won_percentage: Optional[float] = None
     aerial_duels_won: Optional[int] = None
     key_passes: Optional[int] = None
     interceptions: Optional[int] = None
     tackles: Optional[int] = None
+    clearances: Optional[int] = None
+    total_shots: Optional[int] = None
     saves: Optional[int] = None
     clean_sheets: Optional[int] = None
 
