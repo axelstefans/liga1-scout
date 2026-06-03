@@ -51,92 +51,88 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition }) =>
   const isRightFoot = footLower.includes('right') || footLower === 'both';
 
   return (
-    <div className="bg-white border border-border p-6 rounded-lg shadow-sm flex flex-col lg:flex-row lg:items-stretch justify-between gap-8">
+    <div className="bg-white border border-border p-6 rounded-lg shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
       
       {/* Left Column: Player Info */}
-      <div className="flex flex-col flex-1 justify-between h-full py-2 w-full">
+      <div className="lg:col-span-5 flex flex-col justify-center w-full">
         
-        <div>
-          {/* Name */}
-          <div className="flex flex-col">
-            {firstName && <span className="text-xl text-gray-500 font-medium">{firstName}</span>}
-            <span className="text-5xl font-black text-slate-800 uppercase leading-none mt-1">
-              {lastName}
-            </span>
-          </div>
-
-          {/* Club Row */}
-          <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 uppercase tracking-wide flex-wrap mt-6">
-            {countryCode !== 'xx' ? (
-              <img src={`https://flagcdn.com/w40/${countryCode}.png`} alt={profile.nationality} className="w-6 h-auto shadow-sm" />
-            ) : (
-              <span>{profile.nationality || 'Unknown'}</span>
-            )}
-            <span className="text-gray-400">•</span>
-            {profile.team && (
-              <>
-                <span>{profile.team.name}</span>
-                {profile.team.logo_url && (
-                  <img src={profile.team.logo_url} alt={profile.team.name} className="h-6 object-contain" />
-                )}
-              </>
-            )}
-            <img src="/liga1-logo.png" alt="Liga 1" className="h-6 object-contain ml-2" />
-          </div>
+        {/* Name */}
+        <div className="flex flex-col">
+          {firstName && <span className="text-xl text-gray-500 font-medium">{firstName}</span>}
+          <span className="text-5xl font-black text-slate-800 uppercase leading-none mt-1">
+            {lastName}
+          </span>
         </div>
 
-        {/* Metadata Grid */}
-        <div className="flex flex-wrap items-center gap-8 pt-8">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Position</span>
-            <span className="text-lg font-bold text-slate-800">{mainPosition || profile.position || profile.position_group || 'Unknown'}</span>
-          </div>
-          
-          {age !== null && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Age</span>
-              <span className="text-lg font-bold text-slate-800">{age}</span>
-            </div>
+        {/* Club Row */}
+        <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 uppercase tracking-wide flex-wrap mt-6">
+          {countryCode !== 'xx' ? (
+            <img src={`https://flagcdn.com/w40/${countryCode}.png`} alt={profile.nationality} className="w-6 h-auto shadow-sm" />
+          ) : (
+            <span>{profile.nationality || 'Unknown'}</span>
           )}
-          
-          {profile.height != null && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Height</span>
-              <span className="text-lg font-bold text-slate-800">{profile.height} cm</span>
-            </div>
+          <span className="text-gray-400">•</span>
+          {profile.team && (
+            <>
+              <span>{profile.team.name}</span>
+              {profile.team.logo_url && (
+                <img src={profile.team.logo_url} alt={profile.team.name} className="h-6 object-contain" />
+              )}
+            </>
           )}
-          
-          {profile.preferred_foot && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Foot</span>
-              <div className="flex items-center h-[28px]">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="4" y="5" width="6" height="14" rx="3" fill={isLeftFoot ? '#1e3a8a' : '#cbd5e1'} />
-                  <rect x="14" y="5" width="6" height="14" rx="3" fill={isRightFoot ? '#1e3a8a' : '#cbd5e1'} />
-                </svg>
-              </div>
-            </div>
-          )}
-          
-          {profile.shirt_number != null && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Shirt No.</span>
-              <span className="text-lg font-bold text-slate-800">#{profile.shirt_number}</span>
-            </div>
-          )}
+          <img src="/liga1-logo.png" alt="Liga 1" className="h-6 object-contain ml-2" />
         </div>
       </div>
 
+      {/* Center Column: Metadata */}
+      <div className="lg:col-span-3 flex flex-col gap-3 w-full">
+        <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+          <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Position</span>
+          <span className="text-sm font-bold text-navy">{mainPosition || profile.position || profile.position_group || 'Unknown'}</span>
+        </div>
+        
+        {age !== null && (
+          <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+            <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Age</span>
+            <span className="text-sm font-bold text-navy">{age}</span>
+          </div>
+        )}
+        
+        {profile.height != null && (
+          <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+            <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Height</span>
+            <span className="text-sm font-bold text-navy">{profile.height} cm</span>
+          </div>
+        )}
+        
+        {profile.preferred_foot && (
+          <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+            <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Foot</span>
+            <div className="flex items-center h-[20px]">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.5 3C7.5 3 6 4.5 5.5 7C5 9.5 4 12 4 15.5C4 18.5 5.5 21 7.5 21C9.5 21 11 18.5 11 15.5C11 12 10 9.5 9.5 7C9 4.5 10.5 3 9.5 3Z" fill={isLeftFoot ? '#1e3a8a' : '#cbd5e1'} />
+                <path d="M14.5 3C16.5 3 18 4.5 18.5 7C19 9.5 20 12 20 15.5C20 18.5 18.5 21 16.5 21C14.5 21 13 18.5 13 15.5C13 12 14 9.5 14.5 7C15 4.5 13.5 3 14.5 3Z" fill={isRightFoot ? '#1e3a8a' : '#cbd5e1'} />
+              </svg>
+            </div>
+          </div>
+        )}
+        
+        {profile.shirt_number != null && (
+          <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+            <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Shirt No.</span>
+            <span className="text-sm font-bold text-navy">#{profile.shirt_number}</span>
+          </div>
+        )}
+      </div>
+
       {/* Right Column: Action Photo */}
-      <div className="relative w-full lg:w-[450px] shrink-0 h-64 lg:h-auto min-h-[250px] rounded-xl overflow-hidden shadow-sm border border-gray-200 bg-slate-200">
+      <div className="lg:col-span-4 relative w-full h-64 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0 bg-[#1e3a8a]">
         <img 
           src={`/player_images/${profile.player_id}.jpg`} 
           alt={profile.name}
-          className="absolute inset-0 w-full h-full object-cover grayscale brightness-110 contrast-125"
+          className="w-full h-full object-cover grayscale mix-blend-luminosity opacity-70"
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
-        {/* The Tint Overlay */}
-        <div className="absolute inset-0 bg-[#1e3a8a] mix-blend-multiply opacity-40 pointer-events-none" />
       </div>
 
     </div>
