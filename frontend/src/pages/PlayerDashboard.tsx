@@ -11,6 +11,7 @@ import MatchTable from '../components/MatchTable';
 import ScatterPlots from '../components/charts/ScatterPlots';
 import TimeInPosition from '../components/TimeInPosition';
 import SeasonHeatmap from '../components/SeasonHeatmap';
+import KeyStrengths from '../components/KeyStrengths';
 
 const PlayerDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -170,7 +171,14 @@ const PlayerDashboard: React.FC = () => {
                 positionGroup={profile.position_group}
               />
             )}
-            <SeasonHeatmap playerId={playerId} />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-7">
+                <SeasonHeatmap playerId={playerId} />
+              </div>
+              <div className="lg:col-span-5">
+                <KeyStrengths profile={profile} seasonStats={seasonStats} />
+              </div>
+            </div>
           </div>
         </div>
       )}
