@@ -14,7 +14,7 @@ type TabKey = 'Defense' | 'Possession' | 'Creation' | 'Attack';
 
 const TABS: Record<TabKey, { x: string, y: string, xLabel: string, yLabel: string, xPer90: boolean, yPer90: boolean }> = {
   Defense: { x: 'tackles', y: 'interceptions', xLabel: 'Tackles per 90', yLabel: 'Interceptions per 90', xPer90: true, yPer90: true },
-  Possession: { x: 'accurate_passes_percentage', y: 'dribbles_succeeded', xLabel: 'Pass Accuracy %', yLabel: 'Succ. Dribbles per 90', xPer90: false, yPer90: true },
+  Possession: { x: 'accurate_passes_percentage', y: 'successful_dribbles', xLabel: 'Pass Accuracy %', yLabel: 'Succ. Dribbles per 90', xPer90: false, yPer90: true },
   Creation: { x: 'key_passes', y: 'assists', xLabel: 'Key Passes per 90', yLabel: 'Assists per 90', xPer90: true, yPer90: true },
   Attack: { x: 'goals', y: 'shots_on_target', xLabel: 'Goals per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true }
 };
