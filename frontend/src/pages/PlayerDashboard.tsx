@@ -33,10 +33,27 @@ const PlayerDashboard: React.FC = () => {
     return <div className="text-center text-red-500 mt-10">Player not found.</div>;
   }
 
+  const mainPosition = (() => {
+    if (!matchStats || matchStats.length === 0) return undefined;
+    const aliases: Record<string, string> = {
+      'F': 'ST', 'CF': 'ST', 'D': 'CB', 'CD': 'CB', 'M': 'CM', 'G': 'GK'
+    };
+    const minsByPos: Record<string, number> = {};
+    matchStats.forEach(m => {
+      if (m.position && m.minutes_played) {
+        let pos = m.position.toUpperCase();
+        pos = aliases[pos] || pos;
+        minsByPos[pos] = (minsByPos[pos] || 0) + m.minutes_played;
+      }
+    });
+    const sorted = Object.entries(minsByPos).sort((a, b) => b[1] - a[1]);
+    return sorted.length > 0 ? sorted[0][0] : undefined;
+  })();
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Top Header */}
-      <PlayerHeader profile={profile} />
+      <PlayerHeader profile={profile} mainPosition={mainPosition} />
 
       {/* Tabs */}
       <div className="border-b border-border flex space-x-8 px-2">
