@@ -9,7 +9,9 @@ interface KeyStrengthsProps {
 
 const renderPizzaSlice = (props: any) => {
   const { cx, cy, startAngle, endAngle, fill, payload } = props;
-  const radius = 20 + (payload.score / 100) * 80; 
+  const score = payload.score ?? payload.payload?.score ?? 0;
+  const maxRadius = 80;
+  const radius = 20 + (score / 100) * maxRadius; 
   return (
     <Sector
       cx={cx}
@@ -22,6 +24,38 @@ const renderPizzaSlice = (props: any) => {
       stroke="#fff"
       strokeWidth={2}
     />
+  );
+};
+
+const renderActivePizzaSlice = (props: any) => {
+  const { cx, cy, startAngle, endAngle, fill, payload } = props;
+  const score = payload.score ?? payload.payload?.score ?? 0;
+  const maxRadius = 80;
+  const radius = 20 + (score / 100) * maxRadius; 
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={10}
+        outerRadius={radius + 5}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+        stroke="#fff"
+        strokeWidth={2}
+      />
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={10}
+        outerRadius={radius + 10}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+        opacity={0.3}
+      />
+    </g>
   );
 };
 
@@ -124,8 +158,7 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
                     dataKey="angleVal"
                     cx="50%"
                     cy="50%"
-                    activeIndex={-1}
-                    activeShape={renderPizzaSlice}
+                    activeShape={renderActivePizzaSlice}
                     shape={renderPizzaSlice}
                     isAnimationActive={false}
                   >
@@ -162,8 +195,7 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
                     dataKey="angleVal"
                     cx="50%"
                     cy="50%"
-                    activeIndex={-1}
-                    activeShape={renderPizzaSlice}
+                    activeShape={renderActivePizzaSlice}
                     shape={renderPizzaSlice}
                     isAnimationActive={false}
                   >

@@ -34,8 +34,8 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
 
   const activeMetrics = TABS[activeTab];
   
-  const { data: xRanking, isLoading: loadingX } = useLeagueRankings(activeMetrics.x, 300);
-  const { data: yRanking, isLoading: loadingY } = useLeagueRankings(activeMetrics.y, 300);
+  const { data: xRanking, isLoading: loadingX } = useLeagueRankings(activeMetrics.x, 600);
+  const { data: yRanking, isLoading: loadingY } = useLeagueRankings(activeMetrics.y, 600);
 
   const mergedData = useMemo(() => {
     if (!xRanking || !yRanking) return [];
@@ -60,7 +60,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
 
     xRanking.forEach(x => {
       const p = ensurePlayer(x);
-      if (p.minutes_played >= 300 || p.isTarget) {
+      if (p.minutes_played >= 600 || p.isTarget) {
         if (activeMetrics.xPer90 && p.minutes_played > 0) {
           p.xValue = parseFloat(((Number(x.value) / p.minutes_played) * 90).toFixed(2));
         } else {
@@ -71,7 +71,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
 
     yRanking.forEach(y => {
       const p = ensurePlayer(y);
-      if (p.minutes_played >= 300 || p.isTarget) {
+      if (p.minutes_played >= 600 || p.isTarget) {
         if (activeMetrics.yPer90 && p.minutes_played > 0) {
           p.yValue = parseFloat(((Number(y.value) / p.minutes_played) * 90).toFixed(2));
         } else {
@@ -80,7 +80,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
       }
     });
 
-    return Array.from(map.values()).filter(p => p.minutes_played >= 300 || p.isTarget);
+    return Array.from(map.values()).filter(p => p.minutes_played >= 600 || p.isTarget);
   }, [xRanking, yRanking, playerId, activeMetrics]);
 
   const loading = loadingX || loadingY;
@@ -93,21 +93,21 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
   );
 
   return (
-    <div className="bg-[#111] border border-[#222] p-6 rounded-lg shadow-md">
+    <div className="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h3 className="text-xl font-display text-white mb-1 uppercase">League Distribution</h3>
-          <p className="text-xs text-gray-400">vs Liga 1 {positionGroup ? positionGroup + 's' : 'Players'} (min. 300 mins)</p>
+          <h3 className="text-xl font-display text-slate-800 mb-1 uppercase">League Distribution</h3>
+          <p className="text-xs text-gray-500">vs Liga 1 {positionGroup ? positionGroup + 's' : 'Players'} (min. 600 mins)</p>
         </div>
         
         {/* Smart Tabs */}
-        <div className="flex flex-wrap bg-[#222] p-1 rounded-md border border-[#333]">
+        <div className="flex flex-wrap bg-gray-100 p-1 rounded-md border border-gray-200">
           {(Object.keys(TABS) as TabKey[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${
-                activeTab === tab ? 'bg-cyan-500 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                activeTab === tab ? 'bg-cyan-500 text-white shadow-sm' : 'text-gray-500 hover:text-slate-800'
               }`}
             >
               {tab}
@@ -124,42 +124,42 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
         <div className="w-full h-80">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis 
                 type="number" 
                 dataKey="xValue" 
                 name={activeMetrics.xLabel}
-                tick={{fontSize: 10, fill: '#888'}} 
-                axisLine={{ stroke: '#444' }}
-                tickLine={{ stroke: '#444' }}
-                label={{ value: activeMetrics.xLabel, position: 'insideBottom', offset: -10, fontSize: 11, fill: '#aaa', fontWeight: 'bold' }} 
+                tick={{fontSize: 10, fill: '#64748b'}} 
+                axisLine={{ stroke: '#e5e7eb' }}
+                tickLine={{ stroke: '#e5e7eb' }}
+                label={{ value: activeMetrics.xLabel, position: 'insideBottom', offset: -10, fontSize: 11, fill: '#64748b', fontWeight: 'bold' }} 
               />
               <YAxis 
                 type="number" 
                 dataKey="yValue" 
                 name={activeMetrics.yLabel} 
-                tick={{fontSize: 10, fill: '#888'}}
-                axisLine={{ stroke: '#444' }}
-                tickLine={{ stroke: '#444' }}
-                label={{ value: activeMetrics.yLabel, angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' }, fontSize: 11, fill: '#aaa', fontWeight: 'bold' }}
+                tick={{fontSize: 10, fill: '#64748b'}}
+                axisLine={{ stroke: '#e5e7eb' }}
+                tickLine={{ stroke: '#e5e7eb' }}
+                label={{ value: activeMetrics.yLabel, angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' }, fontSize: 11, fill: '#64748b', fontWeight: 'bold' }}
               />
               <ZAxis type="number" dataKey="z" range={[50, 200]} />
               
               <Tooltip 
-                cursor={{ strokeDasharray: '3 3', stroke: '#555' }}
+                cursor={{ strokeDasharray: '3 3', stroke: '#94a3b8' }}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="bg-[#222] border border-[#333] p-3 rounded shadow-xl text-xs z-50">
-                        <p className="font-bold text-white mb-2">{data.name}</p>
+                      <div className="bg-white border border-gray-200 p-3 rounded shadow-lg text-xs z-50">
+                        <p className="font-bold text-slate-800 mb-2">{data.name}</p>
                         <div className="flex justify-between gap-4 mb-1">
-                          <span className="text-gray-400">{activeMetrics.xLabel}:</span>
-                          <span className="text-cyan-400 font-bold">{data.xValue}</span>
+                          <span className="text-gray-500">{activeMetrics.xLabel}:</span>
+                          <span className="text-cyan-500 font-bold">{data.xValue}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-400">{activeMetrics.yLabel}:</span>
-                          <span className="text-cyan-400 font-bold">{data.yValue}</span>
+                          <span className="text-gray-500">{activeMetrics.yLabel}:</span>
+                          <span className="text-cyan-500 font-bold">{data.yValue}</span>
                         </div>
                       </div>
                     );
@@ -169,7 +169,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
               />
               
               {/* Generic League Players */}
-              <Scatter data={otherData} fill="#555" fillOpacity={0.5} />
+              <Scatter data={otherData} fill="#cbd5e1" fillOpacity={0.6} />
               
               {/* Target Player */}
               {targetData.length > 0 && (
