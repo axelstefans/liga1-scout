@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PieChart, Pie, Sector, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { PlayerProfile } from '../services/api';
 
@@ -7,56 +7,33 @@ interface KeyStrengthsProps {
   seasonStats: any;
 }
 
-const renderPizzaSlice = (props: any) => {
-  const { cx, cy, startAngle, endAngle, fill, outerRadius } = props;
-  const dataItem = props.payload?.payload || props.payload || props;
-  const score = dataItem.score || 0;
+// Consolidate the Shape Function
+const renderPolarSlice = (props: any, hoveredIndex: number | null) => {
+  const { cx, cy, startAngle, endAngle, fill, outerRadius, payload, index } = props;
+  const dataItem = payload?.payload || payload || props;
+  const score = dataItem?.score || 0;
   const maxRadius = outerRadius || 80;
   const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
-  return (
-    <Sector
-      cx={cx}
-      cy={cy}
-      innerRadius={10}
-      outerRadius={dynamicRadius}
-      startAngle={startAngle}
-      endAngle={endAngle}
-      fill={fill}
-      stroke="#fff"
-      strokeWidth={2}
-    />
-  );
-};
+  const isHovered = index === hoveredIndex;
 
-const renderActivePizzaSlice = (props: any) => {
-  const { cx, cy, startAngle, endAngle, fill, outerRadius } = props;
-  const dataItem = props.payload?.payload || props.payload || props;
-  const score = dataItem.score || 0;
-  const maxRadius = outerRadius || 80;
-  const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
   return (
     <g>
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={10}
-        outerRadius={dynamicRadius + 5}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        stroke="#fff"
-        strokeWidth={2}
+      {/* Base slice */}
+      <Sector 
+        cx={cx} cy={cy} innerRadius={10} 
+        outerRadius={isHovered ? dynamicRadius + 5 : dynamicRadius} 
+        startAngle={startAngle} endAngle={endAngle} 
+        fill={fill} stroke="#fff" strokeWidth={2} 
       />
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={10}
-        outerRadius={dynamicRadius + 15}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        opacity={0.3}
-      />
+      {/* Ghost shadow only if hovered */}
+      {isHovered && (
+        <Sector 
+          cx={cx} cy={cy} innerRadius={10} 
+          outerRadius={dynamicRadius + 15} 
+          startAngle={startAngle} endAngle={endAngle} 
+          fill={fill} opacity={0.3} 
+        />
+      )}
     </g>
   );
 };
@@ -65,10 +42,10 @@ const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-white border border-border p-2 rounded shadow text-xs">
-        <p className="font-bold text-navy">{data.name}</p>
-        <p>Valor (por 90): <span className="font-bold text-navy-blue">{data.rawVal.toFixed(2)}</span></p>
-        <p>Puntaje: <span className="font-bold text-green-600">{Math.round(data.score)} / 100</span></p>
+      <div className="bg-white border border-gray-200 p-2 rounded shadow text-xs z-50">
+        <p className="font-bold text-slate-800">{data.name}</p>
+        <p className="text-gray-600">Valor (por 90): <span className="font-bold text-slate-800">{data.rawVal.toFixed(2)}</span></p>
+        <p className="text-gray-600">Puntaje: <span className="font-bold text-emerald-600">{Math.round(data.score)} / 100</span></p>
       </div>
     );
   }
@@ -76,6 +53,9 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => {
+  const [hoverIndex1, setHoverIndex1] = useState<number | null>(null);
+  const [hoverIndex2, setHoverIndex2] = useState<number | null>(null);
+
   const chartData = useMemo(() => {
     if (!seasonStats || !seasonStats.minutes_played) return null;
     
@@ -83,6 +63,7 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
     const normalize = (val: number, max: number) => Math.min(100, Math.max(0, (val / max) * 100));
 
     const s = seasonStats;
+    // 2. BUSCADOR AGRESIVO: Busca en camelCase y snake_case para que nunca devuelva 0 por error de sintaxis
     const getStat = (...keys: string[]) => {
       for (const k of keys) {
         if (s[k] !== undefined && s[k] !== null) return Number(s[k]);
@@ -90,19 +71,19 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
       return 0;
     };
 
-    // Fallback mappings
-    const tackles = getStat('total_tackles', 'tackles');
-    const interceptions = getStat('total_interceptions', 'interceptions');
-    const clearances = getStat('total_clearances', 'clearances');
-    const aerials = getStat('aerial_duels_won', 'duels_won_aerial');
-    const passAcc = getStat('accurate_passes_percentage', 'pass_accuracy', 'accurate_passes');
-    const keyPasses = getStat('key_passes', 'total_key_passes');
-    const groundDuels = getStat('ground_duels_won', 'duels_won_ground');
-    const assists = getStat('assists', 'total_assists');
-    const dribbles = getStat('successful_dribbles', 'dribbles_succeeded', 'dribbles');
-    const goals = getStat('goals', 'total_goals');
-    const shotsOnTarget = getStat('shots_on_target', 'shots_on_goal');
-    const totalShots = getStat('shots_total', 'total_shots', 'shots');
+    // Mapeo exhaustivo de variables
+    const tackles = getStat('totalTackles', 'total_tackles', 'tackles');
+    const interceptions = getStat('interceptions', 'total_interceptions', 'totalInterceptions');
+    const clearances = getStat('totalClearances', 'total_clearances', 'clearances');
+    const aerials = getStat('aerialDuelsWon', 'aerial_duels_won', 'duels_won_aerial');
+    const passAcc = getStat('accuratePassesPercentage', 'accurate_passes_percentage', 'pass_accuracy');
+    const keyPasses = getStat('keyPasses', 'key_passes', 'total_key_passes');
+    const groundDuels = getStat('groundDuelsWon', 'ground_duels_won', 'duels_won_ground');
+    const assists = getStat('assists', 'total_assists', 'totalAssists');
+    const dribbles = getStat('successfulDribbles', 'successful_dribbles', 'dribbles_succeeded', 'dribbles');
+    const goals = getStat('goals', 'total_goals', 'totalGoals');
+    const shotsOnTarget = getStat('shotsOnTarget', 'shots_on_target', 'shots_on_goal');
+    const totalShots = getStat('totalShots', 'shots_total', 'total_shots', 'shots');
 
     const pos = (profile.position_group || '').toUpperCase();
     
@@ -111,6 +92,7 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
     let title1 = '';
     let title2 = '';
 
+    // Lógica dinámica por posiciones totalmente en español
     if (pos.includes('DEFENDER') || pos === 'D') {
       title1 = "DEFENSA";
       dataset1 = [
@@ -139,7 +121,6 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
         { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#6d28d9' },
       ];
     } else {
-      // Attackers
       title1 = "AMENAZA DE GOL";
       dataset1 = [
         { name: 'Goles', rawVal: p90(goals), score: normalize(p90(goals), 0.8), fill: '#ef4444' },
@@ -154,7 +135,6 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
       ];
     }
 
-    // Add equal angle value
     dataset1 = dataset1.map(d => ({ ...d, angleVal: 1 }));
     dataset2 = dataset2.map(d => ({ ...d, angleVal: 1 }));
 
@@ -162,8 +142,8 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
   }, [profile, seasonStats]);
 
   return (
-    <div className="bg-card border border-border p-6 rounded-lg shadow-sm h-full">
-      <h3 className="text-xl font-display text-navy mb-1 uppercase">FORTALEZAS CLAVE</h3>
+    <div className="bg-white border border-gray-200 p-6 rounded-lg shadow-sm h-full">
+      <h3 className="text-xl font-bold text-slate-800 mb-1 uppercase">FORTALEZAS CLAVE</h3>
       <p className="text-xs text-gray-500 mb-6">Métricas tácticas normalizadas (por 90)</p>
       
       {!chartData ? (
@@ -177,14 +157,18 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Tooltip content={<CustomTooltip />} />
+                  {/* 3. AQUI ESTÁ LA MAGIA: outerRadius={80} obliga a React a no adivinar el tamaño */}
                   <Pie
                     data={chartData.dataset1}
                     dataKey="angleVal"
                     cx="50%"
                     cy="50%"
-                    activeShape={renderActivePizzaSlice}
-                    shape={renderPizzaSlice}
+                    outerRadius={80} 
+                    activeIndex={chartData.dataset1.map((_, i) => i)}
+                    activeShape={(props: any) => renderPolarSlice(props, hoverIndex1)}
                     isAnimationActive={false}
+                    onMouseEnter={(_, index) => setHoverIndex1(index)}
+                    onMouseLeave={() => setHoverIndex1(null)}
                   >
                     {chartData.dataset1.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -214,14 +198,18 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Tooltip content={<CustomTooltip />} />
+                  {/* Forzamos outerRadius aquí también */}
                   <Pie
                     data={chartData.dataset2}
                     dataKey="angleVal"
                     cx="50%"
                     cy="50%"
-                    activeShape={renderActivePizzaSlice}
-                    shape={renderPizzaSlice}
+                    outerRadius={80}
+                    activeIndex={chartData.dataset2.map((_, i) => i)}
+                    activeShape={(props: any) => renderPolarSlice(props, hoverIndex2)}
                     isAnimationActive={false}
+                    onMouseEnter={(_, index) => setHoverIndex2(index)}
+                    onMouseLeave={() => setHoverIndex2(null)}
                   >
                     {chartData.dataset2.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -240,7 +228,6 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
               ))}
             </div>
           </div>
-
         </div>
       )}
     </div>
