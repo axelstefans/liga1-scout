@@ -8,16 +8,16 @@ interface KeyStrengthsProps {
 }
 
 const renderPizzaSlice = (props: any) => {
-  const { cx, cy, startAngle, endAngle, fill, payload } = props;
+  const { cx, cy, startAngle, endAngle, fill, payload, outerRadius } = props;
   const score = payload.score ?? payload.payload?.score ?? 0;
-  const maxRadius = 80;
-  const radius = 20 + (score / 100) * maxRadius; 
+  const maxRadius = outerRadius || 80;
+  const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
   return (
     <Sector
       cx={cx}
       cy={cy}
       innerRadius={10}
-      outerRadius={radius}
+      outerRadius={dynamicRadius}
       startAngle={startAngle}
       endAngle={endAngle}
       fill={fill}
@@ -28,17 +28,17 @@ const renderPizzaSlice = (props: any) => {
 };
 
 const renderActivePizzaSlice = (props: any) => {
-  const { cx, cy, startAngle, endAngle, fill, payload } = props;
+  const { cx, cy, startAngle, endAngle, fill, payload, outerRadius } = props;
   const score = payload.score ?? payload.payload?.score ?? 0;
-  const maxRadius = 80;
-  const radius = 20 + (score / 100) * maxRadius; 
+  const maxRadius = outerRadius || 80;
+  const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
   return (
     <g>
       <Sector
         cx={cx}
         cy={cy}
         innerRadius={10}
-        outerRadius={radius + 5}
+        outerRadius={dynamicRadius + 5}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
@@ -49,7 +49,7 @@ const renderActivePizzaSlice = (props: any) => {
         cx={cx}
         cy={cy}
         innerRadius={10}
-        outerRadius={radius + 10}
+        outerRadius={dynamicRadius + 15}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
