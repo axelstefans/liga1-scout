@@ -142,10 +142,10 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
       }
     }
 
-    // Filter out players who don't meet mins and filter out extreme 0,0 clustering
+    // Filter out players who don't meet mins and rigidly filter ALL 0s from either axis
     return Array.from(map.values()).filter(p => 
       (p.minutes_played >= 600 || p.isTarget) && 
-      (p.xValue > 0 || p.yValue > 0)
+      (p.xValue > 0 && p.yValue > 0)
     );
   }, [xRanking, yRanking, playerId, activeMetrics, playerName, playerStats, positionGroup]);
 
@@ -194,6 +194,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
                 type="number" 
                 dataKey="xValue" 
                 name={activeMetrics.xLabel}
+                domain={['auto', 'auto']}
                 tick={{fontSize: 10, fill: '#64748b'}} 
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}
@@ -203,6 +204,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
                 type="number" 
                 dataKey="yValue" 
                 name={activeMetrics.yLabel} 
+                domain={['auto', 'auto']}
                 tick={{fontSize: 10, fill: '#64748b'}}
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}
