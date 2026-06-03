@@ -34,8 +34,8 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, posit
 
   const activeMetrics = TABS[activeTab];
   
-  const { data: xRanking, isLoading: loadingX } = useLeagueRankings(activeMetrics.x, 600);
-  const { data: yRanking, isLoading: loadingY } = useLeagueRankings(activeMetrics.y, 600);
+  const { data: xRanking, isLoading: loadingX } = useLeagueRankings(activeMetrics.x, 300);
+  const { data: yRanking, isLoading: loadingY } = useLeagueRankings(activeMetrics.y, 300);
 
   const mergedData = useMemo(() => {
     if (!xRanking || !yRanking) return [];
