@@ -51,21 +51,21 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition }) =>
   const isRightFoot = footLower.includes('right') || footLower === 'both';
 
   return (
-    <div className="bg-white border border-border p-6 rounded-lg shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+    <div className="bg-white border border-border p-8 rounded-lg shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
       
       {/* Left Column: Player Info */}
-      <div className="lg:col-span-5 flex flex-col justify-center w-full">
+      <div className="lg:col-span-4 flex flex-col justify-center h-full gap-6 w-full">
         
         {/* Name */}
         <div className="flex flex-col">
-          {firstName && <span className="text-xl text-gray-500 font-medium">{firstName}</span>}
-          <span className="text-5xl font-black text-slate-800 uppercase leading-none mt-1">
+          {firstName && <span className="text-2xl text-gray-500 font-medium">{firstName}</span>}
+          <span className="text-7xl tracking-tight font-black text-slate-800 uppercase leading-none mt-1">
             {lastName}
           </span>
         </div>
 
         {/* Club Row */}
-        <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 uppercase tracking-wide flex-wrap mt-6">
+        <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 uppercase tracking-wide flex-wrap">
           {countryCode !== 'xx' ? (
             <img src={`https://flagcdn.com/w40/${countryCode}.png`} alt={profile.nationality} className="w-6 h-auto shadow-sm" />
           ) : (
@@ -85,23 +85,23 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition }) =>
       </div>
 
       {/* Center Column: Metadata */}
-      <div className="lg:col-span-3 flex flex-col gap-3 w-full">
+      <div className="lg:col-span-3 flex flex-col justify-center h-full gap-4 w-full">
         <div className="flex justify-between items-center border-b border-gray-100 pb-1">
           <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Position</span>
-          <span className="text-sm font-bold text-navy">{mainPosition || profile.position || profile.position_group || 'Unknown'}</span>
+          <span className="text-lg font-black text-navy">{mainPosition || profile.position || profile.position_group || 'Unknown'}</span>
         </div>
         
         {age !== null && (
           <div className="flex justify-between items-center border-b border-gray-100 pb-1">
             <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Age</span>
-            <span className="text-sm font-bold text-navy">{age}</span>
+            <span className="text-lg font-black text-navy">{age}</span>
           </div>
         )}
         
         {profile.height != null && (
           <div className="flex justify-between items-center border-b border-gray-100 pb-1">
             <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Height</span>
-            <span className="text-sm font-bold text-navy">{profile.height} cm</span>
+            <span className="text-lg font-black text-navy">{profile.height} cm</span>
           </div>
         )}
         
@@ -120,13 +120,13 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition }) =>
         {profile.shirt_number != null && (
           <div className="flex justify-between items-center border-b border-gray-100 pb-1">
             <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Shirt No.</span>
-            <span className="text-sm font-bold text-navy">#{profile.shirt_number}</span>
+            <span className="text-lg font-black text-navy">#{profile.shirt_number}</span>
           </div>
         )}
       </div>
 
       {/* Right Column: Action Photo */}
-      <div className="lg:col-span-4 relative w-full h-64 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0 bg-[#1e3a8a]">
+      <div className="lg:col-span-5 relative w-full h-64 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0 bg-[#1e3a8a]">
         <img 
           src={`/player_images/${profile.player_id}.jpg`} 
           alt={profile.name}
