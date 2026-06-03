@@ -8,8 +8,9 @@ interface KeyStrengthsProps {
 }
 
 const renderPizzaSlice = (props: any) => {
-  const { cx, cy, startAngle, endAngle, fill, payload, outerRadius } = props;
-  const score = payload.score ?? payload.payload?.score ?? 0;
+  const { cx, cy, startAngle, endAngle, fill, outerRadius } = props;
+  const dataItem = props.payload?.payload || props.payload || props;
+  const score = dataItem.score || 0;
   const maxRadius = outerRadius || 80;
   const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
   return (
@@ -28,8 +29,9 @@ const renderPizzaSlice = (props: any) => {
 };
 
 const renderActivePizzaSlice = (props: any) => {
-  const { cx, cy, startAngle, endAngle, fill, payload, outerRadius } = props;
-  const score = payload.score ?? payload.payload?.score ?? 0;
+  const { cx, cy, startAngle, endAngle, fill, outerRadius } = props;
+  const dataItem = props.payload?.payload || props.payload || props;
+  const score = dataItem.score || 0;
   const maxRadius = outerRadius || 80;
   const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
   return (
@@ -65,8 +67,8 @@ const CustomTooltip = ({ active, payload }: any) => {
     return (
       <div className="bg-white border border-border p-2 rounded shadow text-xs">
         <p className="font-bold text-navy">{data.name}</p>
-        <p>Value (per 90): <span className="font-bold text-navy-blue">{data.rawVal.toFixed(2)}</span></p>
-        <p>Score: <span className="font-bold text-green-600">{Math.round(data.score)} / 100</span></p>
+        <p>Valor (por 90): <span className="font-bold text-navy-blue">{data.rawVal.toFixed(2)}</span></p>
+        <p>Puntaje: <span className="font-bold text-green-600">{Math.round(data.score)} / 100</span></p>
       </div>
     );
   }
@@ -80,6 +82,28 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
     const p90 = (val: number) => (val / seasonStats.minutes_played) * 90;
     const normalize = (val: number, max: number) => Math.min(100, Math.max(0, (val / max) * 100));
 
+    const s = seasonStats;
+    const getStat = (...keys: string[]) => {
+      for (const k of keys) {
+        if (s[k] !== undefined && s[k] !== null) return Number(s[k]);
+      }
+      return 0;
+    };
+
+    // Fallback mappings
+    const tackles = getStat('total_tackles', 'tackles');
+    const interceptions = getStat('total_interceptions', 'interceptions');
+    const clearances = getStat('total_clearances', 'clearances');
+    const aerials = getStat('aerial_duels_won', 'duels_won_aerial');
+    const passAcc = getStat('accurate_passes_percentage', 'pass_accuracy', 'accurate_passes');
+    const keyPasses = getStat('key_passes', 'total_key_passes');
+    const groundDuels = getStat('ground_duels_won', 'duels_won_ground');
+    const assists = getStat('assists', 'total_assists');
+    const dribbles = getStat('successful_dribbles', 'dribbles_succeeded', 'dribbles');
+    const goals = getStat('goals', 'total_goals');
+    const shotsOnTarget = getStat('shots_on_target', 'shots_on_goal');
+    const totalShots = getStat('shots_total', 'total_shots', 'shots');
+
     const pos = (profile.position_group || '').toUpperCase();
     
     let dataset1: any[] = [];
@@ -88,45 +112,45 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
     let title2 = '';
 
     if (pos.includes('DEFENDER') || pos === 'D') {
-      title1 = "Defending";
+      title1 = "DEFENSA";
       dataset1 = [
-        { name: 'Tackles', rawVal: p90(seasonStats.tackles || 0), score: normalize(p90(seasonStats.tackles || 0), 4), fill: '#3b82f6' }, // blue-500
-        { name: 'Interceptions', rawVal: p90(seasonStats.interceptions || 0), score: normalize(p90(seasonStats.interceptions || 0), 3), fill: '#2563eb' }, // blue-600
-        { name: 'Clearances', rawVal: p90(seasonStats.clearances || 0), score: normalize(p90(seasonStats.clearances || 0), 6), fill: '#1d4ed8' }, // blue-700
-        { name: 'Aerials Won', rawVal: p90(seasonStats.aerial_duels_won || 0), score: normalize(p90(seasonStats.aerial_duels_won || 0), 4), fill: '#1e40af' }, // blue-800
+        { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 4), fill: '#3b82f6' },
+        { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#2563eb' },
+        { name: 'Despejes', rawVal: p90(clearances), score: normalize(p90(clearances), 6), fill: '#1d4ed8' },
+        { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 4), fill: '#1e40af' },
       ];
-      title2 = "On The Ball";
+      title2 = "CON EL BALÓN";
       dataset2 = [
-        { name: 'Pass Acc %', rawVal: seasonStats.accurate_passes_percentage || 0, score: normalize(seasonStats.accurate_passes_percentage || 0, 100), fill: '#10b981' }, // emerald-500
-        { name: 'Key Passes', rawVal: p90(seasonStats.key_passes || 0), score: normalize(p90(seasonStats.key_passes || 0), 1.5), fill: '#059669' }, // emerald-600
-        { name: 'Ground Duels', rawVal: p90(seasonStats.ground_duels_won || 0), score: normalize(p90(seasonStats.ground_duels_won || 0), 5), fill: '#047857' }, // emerald-700
+        { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#10b981' },
+        { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 1.5), fill: '#059669' },
+        { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#047857' },
       ];
     } else if (pos.includes('MIDFIELDER') || pos === 'M') {
-      title1 = "Creation";
+      title1 = "CREACIÓN";
       dataset1 = [
-        { name: 'Pass Acc %', rawVal: seasonStats.accurate_passes_percentage || 0, score: normalize(seasonStats.accurate_passes_percentage || 0, 100), fill: '#10b981' },
-        { name: 'Key Passes', rawVal: p90(seasonStats.key_passes || 0), score: normalize(p90(seasonStats.key_passes || 0), 3), fill: '#059669' },
-        { name: 'Assists', rawVal: p90(seasonStats.assists || 0), score: normalize(p90(seasonStats.assists || 0), 0.5), fill: '#047857' },
+        { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#10b981' },
+        { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 3), fill: '#059669' },
+        { name: 'Asistencias', rawVal: p90(assists), score: normalize(p90(assists), 0.5), fill: '#047857' },
       ];
-      title2 = "Work Rate";
+      title2 = "DESPLIEGUE FÍSICO";
       dataset2 = [
-        { name: 'Tackles', rawVal: p90(seasonStats.tackles || 0), score: normalize(p90(seasonStats.tackles || 0), 4), fill: '#8b5cf6' }, // violet-500
-        { name: 'Interceptions', rawVal: p90(seasonStats.interceptions || 0), score: normalize(p90(seasonStats.interceptions || 0), 3), fill: '#7c3aed' }, // violet-600
-        { name: 'Succ. Dribbles', rawVal: p90(seasonStats.successful_dribbles || seasonStats.dribbles_succeeded || 0), score: normalize(p90(seasonStats.successful_dribbles || seasonStats.dribbles_succeeded || 0), 3), fill: '#6d28d9' }, // violet-700
+        { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 4), fill: '#8b5cf6' },
+        { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#7c3aed' },
+        { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#6d28d9' },
       ];
     } else {
       // Attackers
-      title1 = "Goal Threat";
+      title1 = "AMENAZA DE GOL";
       dataset1 = [
-        { name: 'Goals', rawVal: p90(seasonStats.goals || 0), score: normalize(p90(seasonStats.goals || 0), 0.8), fill: '#ef4444' }, // red-500
-        { name: 'Shots on Target', rawVal: p90(seasonStats.shots_on_target || 0), score: normalize(p90(seasonStats.shots_on_target || 0), 2.5), fill: '#dc2626' }, // red-600
-        { name: 'Total Shots', rawVal: p90(seasonStats.shots_total || seasonStats.shots_on_target || 0), score: normalize(p90(seasonStats.shots_total || seasonStats.shots_on_target || 0), 4), fill: '#b91c1c' }, // red-700
+        { name: 'Goles', rawVal: p90(goals), score: normalize(p90(goals), 0.8), fill: '#ef4444' },
+        { name: 'Tiros a puerta', rawVal: p90(shotsOnTarget), score: normalize(p90(shotsOnTarget), 2.5), fill: '#dc2626' },
+        { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 4), fill: '#b91c1c' },
       ];
-      title2 = "Impact";
+      title2 = "IMPACTO";
       dataset2 = [
-        { name: 'Key Passes', rawVal: p90(seasonStats.key_passes || 0), score: normalize(p90(seasonStats.key_passes || 0), 2), fill: '#f59e0b' }, // amber-500
-        { name: 'Succ. Dribbles', rawVal: p90(seasonStats.successful_dribbles || seasonStats.dribbles_succeeded || 0), score: normalize(p90(seasonStats.successful_dribbles || seasonStats.dribbles_succeeded || 0), 3), fill: '#d97706' }, // amber-600
-        { name: 'Ground Duels', rawVal: p90(seasonStats.ground_duels_won || 0), score: normalize(p90(seasonStats.ground_duels_won || 0), 5), fill: '#b45309' }, // amber-700
+        { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 2), fill: '#f59e0b' },
+        { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#d97706' },
+        { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#b45309' },
       ];
     }
 
@@ -139,11 +163,11 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
 
   return (
     <div className="bg-card border border-border p-6 rounded-lg shadow-sm h-full">
-      <h3 className="text-xl font-display text-navy mb-1 uppercase">Key Strengths</h3>
-      <p className="text-xs text-gray-500 mb-6">Normalized tactical metrics (per 90)</p>
+      <h3 className="text-xl font-display text-navy mb-1 uppercase">FORTALEZAS CLAVE</h3>
+      <p className="text-xs text-gray-500 mb-6">Métricas tácticas normalizadas (por 90)</p>
       
       {!chartData ? (
-        <div className="h-64 flex items-center justify-center text-sm text-gray-500">No data available</div>
+        <div className="h-64 flex items-center justify-center text-sm text-gray-500">No hay datos disponibles</div>
       ) : (
         <div className="flex flex-col xl:flex-row h-auto xl:h-[280px] gap-6">
           {/* Chart 1 */}
