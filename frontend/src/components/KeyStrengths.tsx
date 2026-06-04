@@ -7,7 +7,6 @@ interface KeyStrengthsProps {
   seasonStats: any;
 }
 
-// Consolidate the Shape Function
 const renderPolarSlice = (props: any, hoveredIndex: number | null) => {
   const { cx, cy, startAngle, endAngle, fill, outerRadius, payload, index } = props;
   const dataItem = payload?.payload || payload || props;
@@ -52,93 +51,238 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
+interface ChartConfig {
+  title: string;
+  dataset: { name: string, rawVal: number, score: number, fill: string, angleVal: number }[];
+}
+
+const extractMetric = (obj: any, baseKey: string) => {
+  if (!obj) return 0;
+  const fallbacks: Record<string, string[]> = {
+    'tackles': ['tackles', 'total_tackles', 'totalTackles'],
+    'interceptions': ['interceptions', 'total_interceptions', 'totalInterceptions'],
+    'clearances': ['clearances', 'total_clearances', 'totalClearances'],
+    'aerial_duels_won': ['aerial_duels_won', 'duels_won_aerial', 'aerialDuelsWon'],
+    'crosses': ['crosses', 'total_crosses', 'totalCrosses', 'accurate_crosses'],
+    'key_passes': ['key_passes', 'total_key_passes', 'keyPasses'],
+    'assists': ['assists', 'total_assists', 'totalAssists'],
+    'accurate_passes_percentage': ['accurate_passes_percentage', 'pass_accuracy', 'accuratePassesPercentage', 'passAccuracy'],
+    'successful_dribbles': ['successful_dribbles', 'dribbles_succeeded', 'successfulDribbles', 'dribbles'],
+    'ground_duels_won': ['ground_duels_won', 'duels_won_ground', 'groundDuelsWon'],
+    'total_shots': ['total_shots', 'shots_total', 'totalShots', 'shots'],
+    'goals': ['goals', 'total_goals', 'totalGoals'],
+    'shots_on_target': ['shots_on_target', 'shots_on_goal', 'shotsOnTarget']
+  };
+  
+  const keys = fallbacks[baseKey] || [baseKey];
+  for (const k of keys) {
+    if (obj[k] !== undefined && obj[k] !== null) return Number(obj[k]);
+  }
+  return 0;
+};
+
 const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => {
+  const [hoverIndex0, setHoverIndex0] = useState<number | null>(null);
   const [hoverIndex1, setHoverIndex1] = useState<number | null>(null);
   const [hoverIndex2, setHoverIndex2] = useState<number | null>(null);
+  const hoverStates = [hoverIndex0, hoverIndex1, hoverIndex2];
+  const setHoverStates = [setHoverIndex0, setHoverIndex1, setHoverIndex2];
 
-  const chartData = useMemo(() => {
+  const chartsData = useMemo(() => {
     if (!seasonStats || !seasonStats.minutes_played) return null;
     
     const p90 = (val: number) => (val / seasonStats.minutes_played) * 90;
     const normalize = (val: number, max: number) => Math.min(100, Math.max(0, (val / max) * 100));
 
     const s = seasonStats;
-    // 2. BUSCADOR AGRESIVO: Busca en camelCase y snake_case para que nunca devuelva 0 por error de sintaxis
-    const getStat = (...keys: string[]) => {
-      for (const k of keys) {
-        if (s[k] !== undefined && s[k] !== null) return Number(s[k]);
-      }
-      return 0;
-    };
+    const tackles = extractMetric(s, 'tackles');
+    const interceptions = extractMetric(s, 'interceptions');
+    const clearances = extractMetric(s, 'clearances');
+    const aerials = extractMetric(s, 'aerial_duels_won');
+    const crosses = extractMetric(s, 'crosses');
+    const keyPasses = extractMetric(s, 'key_passes');
+    const assists = extractMetric(s, 'assists');
+    const passAcc = extractMetric(s, 'accurate_passes_percentage');
+    const dribbles = extractMetric(s, 'successful_dribbles');
+    const groundDuels = extractMetric(s, 'ground_duels_won');
+    const totalShots = extractMetric(s, 'total_shots');
+    const goals = extractMetric(s, 'goals');
+    const shotsOnTarget = extractMetric(s, 'shots_on_target');
 
-    // Mapeo exhaustivo de variables
-    const tackles = getStat('totalTackles', 'total_tackles', 'tackles');
-    const interceptions = getStat('interceptions', 'total_interceptions', 'totalInterceptions');
-    const clearances = getStat('totalClearances', 'total_clearances', 'clearances');
-    const aerials = getStat('aerialDuelsWon', 'aerial_duels_won', 'duels_won_aerial');
-    const passAcc = getStat('accuratePassesPercentage', 'accurate_passes_percentage', 'pass_accuracy');
-    const keyPasses = getStat('keyPasses', 'key_passes', 'total_key_passes');
-    const groundDuels = getStat('groundDuelsWon', 'ground_duels_won', 'duels_won_ground');
-    const assists = getStat('assists', 'total_assists', 'totalAssists');
-    const dribbles = getStat('successfulDribbles', 'successful_dribbles', 'dribbles_succeeded', 'dribbles');
-    const goals = getStat('goals', 'total_goals', 'totalGoals');
-    const shotsOnTarget = getStat('shotsOnTarget', 'shots_on_target', 'shots_on_goal');
-    const totalShots = getStat('totalShots', 'shots_total', 'total_shots', 'shots');
-
-    const pos = (profile.position_group || '').toUpperCase();
+    const pos = (profile.position || '').toUpperCase();
     
-    let dataset1: any[] = [];
-    let dataset2: any[] = [];
-    let title1 = '';
-    let title2 = '';
+    let charts: ChartConfig[] = [];
 
-    // Lógica dinámica por posiciones totalmente en español
-    if (pos.includes('DEFENDER') || pos === 'D') {
-      title1 = "DEFENSA";
-      dataset1 = [
-        { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 4), fill: '#3b82f6' },
-        { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#2563eb' },
-        { name: 'Despejes', rawVal: p90(clearances), score: normalize(p90(clearances), 6), fill: '#1d4ed8' },
-        { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 4), fill: '#1e40af' },
+    if (['RB', 'LB', 'RWB', 'LWB'].includes(pos)) {
+      charts = [
+        {
+          title: "Labor Defensiva",
+          dataset: [
+            { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 4), fill: '#3b82f6', angleVal: 1 },
+            { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#2563eb', angleVal: 1 },
+            { name: 'Despejes', rawVal: p90(clearances), score: normalize(p90(clearances), 6), fill: '#1d4ed8', angleVal: 1 },
+            { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 4), fill: '#1e40af', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Creación",
+          dataset: [
+            { name: 'Centros', rawVal: p90(crosses), score: normalize(p90(crosses), 4), fill: '#10b981', angleVal: 1 },
+            { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 2), fill: '#059669', angleVal: 1 },
+            { name: 'Asistencias', rawVal: p90(assists), score: normalize(p90(assists), 0.5), fill: '#047857', angleVal: 1 },
+            { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#064e3b', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Despliegue Físico",
+          dataset: [
+            { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#f59e0b', angleVal: 1 },
+            { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#d97706', angleVal: 1 },
+            { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 2), fill: '#b45309', angleVal: 1 },
+            { name: 'Goles', rawVal: p90(goals), score: normalize(p90(goals), 0.3), fill: '#78350f', angleVal: 1 },
+          ]
+        }
       ];
-      title2 = "CON EL BALÓN";
-      dataset2 = [
-        { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#10b981' },
-        { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 1.5), fill: '#059669' },
-        { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#047857' },
+    } else if (pos === 'CDM') {
+      charts = [
+        {
+          title: "Recuperación",
+          dataset: [
+            { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 4), fill: '#3b82f6', angleVal: 1 },
+            { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#2563eb', angleVal: 1 },
+            { name: 'Despejes', rawVal: p90(clearances), score: normalize(p90(clearances), 4), fill: '#1d4ed8', angleVal: 1 },
+            { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 4), fill: '#1e40af', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Distribución",
+          dataset: [
+            { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#10b981', angleVal: 1 },
+            { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 2), fill: '#059669', angleVal: 1 },
+            { name: 'Asistencias', rawVal: p90(assists), score: normalize(p90(assists), 0.5), fill: '#047857', angleVal: 1 },
+            { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 2), fill: '#064e3b', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Impacto",
+          dataset: [
+            { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#8b5cf6', angleVal: 1 },
+            { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 2), fill: '#7c3aed', angleVal: 1 },
+            { name: 'Tiros a puerta', rawVal: p90(shotsOnTarget), score: normalize(p90(shotsOnTarget), 1), fill: '#6d28d9', angleVal: 1 },
+            { name: 'Goles', rawVal: p90(goals), score: normalize(p90(goals), 0.5), fill: '#4c1d95', angleVal: 1 },
+          ]
+        }
       ];
-    } else if (pos.includes('MIDFIELDER') || pos === 'M') {
-      title1 = "CREACIÓN";
-      dataset1 = [
-        { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#10b981' },
-        { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 3), fill: '#059669' },
-        { name: 'Asistencias', rawVal: p90(assists), score: normalize(p90(assists), 0.5), fill: '#047857' },
+    } else if (pos === 'CB') {
+      charts = [
+        {
+          title: "Defensa de Área",
+          dataset: [
+            { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 3), fill: '#3b82f6', angleVal: 1 },
+            { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#2563eb', angleVal: 1 },
+            { name: 'Despejes', rawVal: p90(clearances), score: normalize(p90(clearances), 8), fill: '#1d4ed8', angleVal: 1 },
+            { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 5), fill: '#1e40af', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Salida de Balón",
+          dataset: [
+            { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#10b981', angleVal: 1 },
+            { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 1.5), fill: '#059669', angleVal: 1 },
+            { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 4), fill: '#047857', angleVal: 1 },
+            { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 1), fill: '#064e3b', angleVal: 1 },
+          ]
+        }
       ];
-      title2 = "DESPLIEGUE FÍSICO";
-      dataset2 = [
-        { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 4), fill: '#8b5cf6' },
-        { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#7c3aed' },
-        { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#6d28d9' },
+    } else if (['CAM', 'RM', 'LM', 'RW', 'LW'].includes(pos)) {
+      charts = [
+        {
+          title: "Creación y Desequilibrio",
+          dataset: [
+            { name: 'Centros', rawVal: p90(crosses), score: normalize(p90(crosses), 4), fill: '#10b981', angleVal: 1 },
+            { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 3), fill: '#059669', angleVal: 1 },
+            { name: 'Asistencias', rawVal: p90(assists), score: normalize(p90(assists), 0.8), fill: '#047857', angleVal: 1 },
+            { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#064e3b', angleVal: 1 },
+            { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 4), fill: '#065f46', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Amenaza Ofensiva",
+          dataset: [
+            { name: 'Goles', rawVal: p90(goals), score: normalize(p90(goals), 0.8), fill: '#ef4444', angleVal: 1 },
+            { name: 'Tiros a puerta', rawVal: p90(shotsOnTarget), score: normalize(p90(shotsOnTarget), 2.5), fill: '#dc2626', angleVal: 1 },
+            { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 4), fill: '#b91c1c', angleVal: 1 },
+            { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#991b1b', angleVal: 1 },
+            { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 3), fill: '#7f1d1d', angleVal: 1 },
+          ]
+        }
+      ];
+    } else if (pos === 'CM') {
+      charts = [
+        {
+          title: "Motor y Recuperación",
+          dataset: [
+            { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 4), fill: '#3b82f6', angleVal: 1 },
+            { name: 'Intercepciones', rawVal: p90(interceptions), score: normalize(p90(interceptions), 3), fill: '#2563eb', angleVal: 1 },
+            { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 6), fill: '#1d4ed8', angleVal: 1 },
+            { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 3), fill: '#1e40af', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Distribución y Llegada",
+          dataset: [
+            { name: 'Precisión Pases %', rawVal: passAcc, score: normalize(passAcc, 100), fill: '#10b981', angleVal: 1 },
+            { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 3), fill: '#059669', angleVal: 1 },
+            { name: 'Asistencias', rawVal: p90(assists), score: normalize(p90(assists), 0.6), fill: '#047857', angleVal: 1 },
+            { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#064e3b', angleVal: 1 },
+            { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 3), fill: '#065f46', angleVal: 1 },
+          ]
+        }
+      ];
+    } else if (['ST', 'CF'].includes(pos)) {
+      charts = [
+        {
+          title: "Finalización",
+          dataset: [
+            { name: 'Goles', rawVal: p90(goals), score: normalize(p90(goals), 1.0), fill: '#ef4444', angleVal: 1 },
+            { name: 'Tiros a puerta', rawVal: p90(shotsOnTarget), score: normalize(p90(shotsOnTarget), 3), fill: '#dc2626', angleVal: 1 },
+            { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 5), fill: '#b91c1c', angleVal: 1 },
+            { name: 'Asistencias', rawVal: p90(assists), score: normalize(p90(assists), 0.5), fill: '#991b1b', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Presencia en Área",
+          dataset: [
+            { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 5), fill: '#f59e0b', angleVal: 1 },
+            { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#d97706', angleVal: 1 },
+            { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#b45309', angleVal: 1 },
+            { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 2), fill: '#78350f', angleVal: 1 },
+          ]
+        }
       ];
     } else {
-      title1 = "AMENAZA DE GOL";
-      dataset1 = [
-        { name: 'Goles', rawVal: p90(goals), score: normalize(p90(goals), 0.8), fill: '#ef4444' },
-        { name: 'Tiros a puerta', rawVal: p90(shotsOnTarget), score: normalize(p90(shotsOnTarget), 2.5), fill: '#dc2626' },
-        { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 4), fill: '#b91c1c' },
-      ];
-      title2 = "IMPACTO";
-      dataset2 = [
-        { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 2), fill: '#f59e0b' },
-        { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#d97706' },
-        { name: 'Duelos Suelo', rawVal: p90(groundDuels), score: normalize(p90(groundDuels), 5), fill: '#b45309' },
+      // Fallback
+      charts = [
+        {
+          title: "Labor Defensiva",
+          dataset: [
+            { name: 'Entradas', rawVal: p90(tackles), score: normalize(p90(tackles), 3), fill: '#3b82f6', angleVal: 1 },
+            { name: 'Despejes', rawVal: p90(clearances), score: normalize(p90(clearances), 4), fill: '#1d4ed8', angleVal: 1 },
+            { name: 'Duelos Aéreos', rawVal: p90(aerials), score: normalize(p90(aerials), 4), fill: '#1e40af', angleVal: 1 },
+          ]
+        },
+        {
+          title: "Creación",
+          dataset: [
+            { name: 'Pases Clave', rawVal: p90(keyPasses), score: normalize(p90(keyPasses), 2), fill: '#10b981', angleVal: 1 },
+            { name: 'Regates', rawVal: p90(dribbles), score: normalize(p90(dribbles), 3), fill: '#059669', angleVal: 1 },
+            { name: 'Tiros Totales', rawVal: p90(totalShots), score: normalize(p90(totalShots), 3), fill: '#ef4444', angleVal: 1 },
+          ]
+        }
       ];
     }
 
-    dataset1 = dataset1.map(d => ({ ...d, angleVal: 1 }));
-    dataset2 = dataset2.map(d => ({ ...d, angleVal: 1 }));
-
-    return { title1, dataset1, title2, dataset2 };
+    return charts;
   }, [profile, seasonStats]);
 
   return (
@@ -146,88 +290,55 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats }) => 
       <h3 className="text-xl font-bold text-slate-800 mb-1 uppercase">FORTALEZAS CLAVE</h3>
       <p className="text-xs text-gray-500 mb-6">Métricas tácticas normalizadas (por 90)</p>
       
-      {!chartData ? (
+      {!chartsData ? (
         <div className="h-64 flex items-center justify-center text-sm text-gray-500">No hay datos disponibles</div>
       ) : (
         <div className="flex flex-col xl:flex-row h-auto xl:h-[280px] gap-6">
-          {/* Chart 1 */}
-          <div className="flex-1 flex flex-col items-center">
-            <h4 className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">{chartData.title1}</h4>
-            <div className="w-full h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Tooltip content={<CustomTooltip />} />
-                  {/* 3. AQUI ESTÁ LA MAGIA: outerRadius={80} obliga a React a no adivinar el tamaño */}
-                  <Pie
-                    data={chartData.dataset1}
-                    dataKey="angleVal"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80} 
-                    activeIndex={chartData.dataset1.map((_, i) => i)}
-                    activeShape={(props: any) => renderPolarSlice(props, hoverIndex1)}
-                    isAnimationActive={false}
-                    onMouseEnter={(_, index) => setHoverIndex1(index)}
-                    onMouseLeave={() => setHoverIndex1(null)}
-                  >
-                    {chartData.dataset1.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
-              {chartData.dataset1.map(d => (
-                <div key={d.name} className="flex items-center gap-1 text-[10px] font-semibold text-gray-500">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.fill }}></span>
-                  {d.name}
+          {chartsData.map((chart, chartIndex) => (
+            <React.Fragment key={chart.title}>
+              {/* Divider (except for first item) */}
+              {chartIndex > 0 && (
+                <div className="hidden xl:block w-px bg-gray-100 my-4"></div>
+              )}
+              
+              {/* Chart */}
+              <div className="flex-1 flex flex-col items-center">
+                <h4 className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">{chart.title}</h4>
+                <div className="w-full h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Pie
+                        data={chart.dataset}
+                        dataKey="angleVal"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80} 
+                        activeIndex={chart.dataset.map((_, i) => i)}
+                        activeShape={(props: any) => renderPolarSlice(props, hoverStates[chartIndex])}
+                        isAnimationActive={false}
+                        onMouseEnter={(_, index) => setHoverStates[chartIndex](index)}
+                        onMouseLeave={() => setHoverStates[chartIndex](null)}
+                      >
+                        {chart.dataset.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="hidden xl:block w-px bg-gray-100 my-4"></div>
-
-          {/* Chart 2 */}
-          <div className="flex-1 flex flex-col items-center">
-            <h4 className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">{chartData.title2}</h4>
-            <div className="w-full h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Tooltip content={<CustomTooltip />} />
-                  {/* Forzamos outerRadius aquí también */}
-                  <Pie
-                    data={chartData.dataset2}
-                    dataKey="angleVal"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    activeIndex={chartData.dataset2.map((_, i) => i)}
-                    activeShape={(props: any) => renderPolarSlice(props, hoverIndex2)}
-                    isAnimationActive={false}
-                    onMouseEnter={(_, index) => setHoverIndex2(index)}
-                    onMouseLeave={() => setHoverIndex2(null)}
-                  >
-                    {chartData.dataset2.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
-              {chartData.dataset2.map(d => (
-                <div key={d.name} className="flex items-center gap-1 text-[10px] font-semibold text-gray-500">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.fill }}></span>
-                  {d.name}
+                {/* Legend */}
+                <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
+                  {chart.dataset.map(d => (
+                    <div key={d.name} className="flex items-center gap-1 text-[10px] font-semibold text-gray-500">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.fill }}></span>
+                      {d.name}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       )}
     </div>
