@@ -169,7 +169,7 @@ const PlayerDashboard: React.FC = () => {
                 playerName={profile.name} 
                 playerStats={seasonStats} 
                 positionGroup={profile.position_group}
-                position={profile.position}
+                position={mainPosition || profile.position}
               />
             )}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -177,7 +177,7 @@ const PlayerDashboard: React.FC = () => {
                 <SeasonHeatmap playerId={playerId} />
               </div>
               <div className="lg:col-span-5">
-                <KeyStrengths profile={profile} seasonStats={seasonStats} />
+                <KeyStrengths profile={profile} seasonStats={seasonStats} mainPosition={mainPosition || profile.position} />
               </div>
             </div>
           </div>
