@@ -8,16 +8,68 @@ interface ScatterPlotsProps {
   playerName: string;
   playerStats: any;
   positionGroup?: string | null;
+  position?: string | null;
 }
 
-type TabKey = 'Defense' | 'Possession' | 'Creation' | 'Attack' | 'Duels';
+interface TabConfig {
+  name: string;
+  x: string;
+  y: string;
+  xLabel: string;
+  yLabel: string;
+  xPer90: boolean;
+  yPer90: boolean;
+}
 
-const TABS: Record<TabKey, { x: string, y: string, xLabel: string, yLabel: string, xPer90: boolean, yPer90: boolean }> = {
-  Defense: { x: 'tackles', y: 'interceptions', xLabel: 'Tackles per 90', yLabel: 'Interceptions per 90', xPer90: true, yPer90: true },
-  Possession: { x: 'accurate_passes_percentage', y: 'successful_dribbles', xLabel: 'Pass Accuracy %', yLabel: 'Succ. Dribbles per 90', xPer90: false, yPer90: true },
-  Creation: { x: 'key_passes', y: 'assists', xLabel: 'Key Passes per 90', yLabel: 'Assists per 90', xPer90: true, yPer90: true },
-  Attack: { x: 'goals', y: 'shots_on_target', xLabel: 'Goals per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true },
-  Duels: { x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true }
+const getTabsForPosition = (position: string | null): TabConfig[] => {
+  const pos = (position || '').toUpperCase();
+  
+  if (pos === 'CB') {
+    return [
+      { name: 'Defensa Proactiva', x: 'interceptions', y: 'tackles', xLabel: 'Interceptions per 90', yLabel: 'Tackles per 90', xPer90: true, yPer90: true },
+      { name: 'Duelos', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true },
+      { name: 'Salida', x: 'accurate_passes_percentage', y: 'successful_dribbles', xLabel: 'Pass Accuracy %', yLabel: 'Succ. Dribbles per 90', xPer90: false, yPer90: true }
+    ];
+  }
+  
+  if (['RB', 'LB', 'RWB', 'LWB'].includes(pos)) {
+    return [
+      { name: 'Defensa', x: 'interceptions', y: 'tackles', xLabel: 'Interceptions per 90', yLabel: 'Tackles per 90', xPer90: true, yPer90: true },
+      { name: 'Conducción', x: 'ground_duels_won', y: 'successful_dribbles', xLabel: 'Ground Duels Won per 90', yLabel: 'Succ. Dribbles per 90', xPer90: true, yPer90: true },
+      { name: 'Creación', x: 'key_passes', y: 'crosses', xLabel: 'Key Passes per 90', yLabel: 'Crosses per 90', xPer90: true, yPer90: true }
+    ];
+  }
+
+  if (['CDM', 'CM'].includes(pos)) {
+    return [
+      { name: 'Destrucción', x: 'interceptions', y: 'tackles', xLabel: 'Interceptions per 90', yLabel: 'Tackles per 90', xPer90: true, yPer90: true },
+      { name: 'Distribución', x: 'accurate_passes_percentage', y: 'key_passes', xLabel: 'Pass Accuracy %', yLabel: 'Key Passes per 90', xPer90: false, yPer90: true },
+      { name: 'Duelos', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true }
+    ];
+  }
+
+  if (['CAM', 'RM', 'LM', 'RW', 'LW'].includes(pos)) {
+    return [
+      { name: 'Creación', x: 'crosses', y: 'key_passes', xLabel: 'Crosses per 90', yLabel: 'Key Passes per 90', xPer90: true, yPer90: true },
+      { name: 'Desequilibrio', x: 'ground_duels_won', y: 'successful_dribbles', xLabel: 'Ground Duels Won per 90', yLabel: 'Succ. Dribbles per 90', xPer90: true, yPer90: true },
+      { name: 'Amenaza', x: 'total_shots', y: 'shots_on_target', xLabel: 'Total Shots per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true }
+    ];
+  }
+
+  if (['ST', 'CF'].includes(pos)) {
+    return [
+      { name: 'Amenaza de Gol', x: 'goals', y: 'shots_on_target', xLabel: 'Goals per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true },
+      { name: 'Asociación', x: 'accurate_passes_percentage', y: 'key_passes', xLabel: 'Pass Accuracy %', yLabel: 'Key Passes per 90', xPer90: false, yPer90: true },
+      { name: 'Imposición', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true }
+    ];
+  }
+
+  // Fallback
+  return [
+    { name: 'Distribución', x: 'accurate_passes_percentage', y: 'key_passes', xLabel: 'Pass Accuracy %', yLabel: 'Key Passes per 90', xPer90: false, yPer90: true },
+    { name: 'Duelos', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true },
+    { name: 'Amenaza', x: 'total_shots', y: 'shots_on_target', xLabel: 'Total Shots per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true }
+  ];
 };
 
 const extractMetric = (obj: any, baseKey: string) => {
@@ -31,39 +83,34 @@ const extractMetric = (obj: any, baseKey: string) => {
     'assists': ['assists', 'total_assists', 'totalAssists'],
     'goals': ['goals', 'total_goals', 'totalGoals'],
     'shots_on_target': ['shots_on_target', 'shots_on_goal', 'shotsOnTarget'],
+    'total_shots': ['total_shots', 'shots_total', 'totalShots', 'shots'],
     'aerial_duels_won': ['aerial_duels_won', 'duels_won_aerial', 'aerialDuelsWon'],
-    'ground_duels_won': ['ground_duels_won', 'duels_won_ground', 'groundDuelsWon']
+    'ground_duels_won': ['ground_duels_won', 'duels_won_ground', 'groundDuelsWon'],
+    'crosses': ['crosses', 'total_crosses', 'totalCrosses', 'accurate_crosses'],
+    'clearances': ['clearances', 'total_clearances', 'totalClearances']
   };
   
   const keys = fallbacks[baseKey] || [baseKey];
   for (const k of keys) {
     if (obj[k] !== undefined && obj[k] !== null) return Number(obj[k]);
   }
-  // API rankings return value
+  // API rankings return value directly in .value
   if (obj.value !== undefined && obj.value !== null) return Number(obj.value);
   return 0;
 };
 
-const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playerStats, positionGroup }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('Possession');
+const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playerStats, positionGroup, position }) => {
+  const availableTabs = useMemo(() => getTabsForPosition(position), [position]);
+  const [activeTabName, setActiveTabName] = useState<string>(availableTabs[0].name);
 
-  const pos = (positionGroup || '').toUpperCase();
-  let availableTabs: TabKey[] = ['Defense', 'Possession', 'Creation', 'Attack'];
-  if (pos.includes('DEFENDER') || pos === 'D') {
-    availableTabs = ['Defense', 'Possession', 'Duels'];
-  } else if (pos.includes('FORWARD') || pos === 'F' || pos.includes('ATTACKER') || pos === 'A') {
-    availableTabs = ['Possession', 'Creation', 'Attack'];
-  } else if (pos.includes('MIDFIELDER') || pos === 'M') {
-    availableTabs = ['Defense', 'Possession', 'Creation', 'Attack'];
-  }
-
+  // If position changes and active tab isn't valid for new position, reset it
   useEffect(() => {
-    if (!availableTabs.includes(activeTab)) {
-      setActiveTab(availableTabs[0]);
+    if (!availableTabs.some(t => t.name === activeTabName)) {
+      setActiveTabName(availableTabs[0].name);
     }
-  }, [positionGroup, activeTab, availableTabs]);
+  }, [availableTabs, activeTabName]);
 
-  const activeMetrics = TABS[activeTab];
+  const activeMetrics = availableTabs.find(t => t.name === activeTabName) || availableTabs[0];
   
   const { data: xRanking, isLoading: loadingX } = useLeagueRankings(activeMetrics.x, 300);
   const { data: yRanking, isLoading: loadingY } = useLeagueRankings(activeMetrics.y, 300);
@@ -90,7 +137,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
       return map.get(p.player_id);
     };
 
-    // 1. Process X API Ranking
+    // Process X API Ranking
     xRanking.forEach(x => {
       const p = ensurePlayer(x);
       if (p && (p.minutes_played >= 600 || p.isTarget)) {
@@ -103,7 +150,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
       }
     });
 
-    // 2. Process Y API Ranking
+    // Process Y API Ranking
     yRanking.forEach(y => {
       const p = ensurePlayer(y);
       if (p && (p.minutes_played >= 600 || p.isTarget)) {
@@ -116,7 +163,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
       }
     });
 
-    // 3. Inject Target Player Robustly (using full stats to avoid 0s if missing from top 300 rankings)
+    // Inject Target Player explicitly using full stats to avoid 0s if they missed the top 300
     if (playerStats) {
       const tp = ensurePlayer({
         player_id: playerId,
@@ -125,7 +172,6 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
         minutes_played: playerStats.minutes_played || 0
       });
       if (tp) {
-        // Only overwrite if it's currently 0 or we want to ensure accuracy from full stats
         const rawX = extractMetric(playerStats, activeMetrics.x);
         if (activeMetrics.xPer90 && tp.minutes_played > 0) {
           tp.xValue = parseFloat(((rawX / tp.minutes_played) * 90).toFixed(2));
@@ -142,7 +188,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
       }
     }
 
-    // Filter out players who don't meet mins and rigidly filter ALL 0s from either axis
+    // Filter out players who don't meet mins and strictly filter ANY 0 values to avoid clustering on the axes
     return Array.from(map.values()).filter(p => 
       (p.minutes_played >= 600 || p.isTarget) && 
       (p.xValue > 0 && p.yValue > 0)
@@ -152,6 +198,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
   const loading = loadingX || loadingY;
 
   const targetData = mergedData.filter(d => d.isTarget);
+  // Optional: Only show players in same generic position group (Defenders vs Midfielders) to keep the scatter plot relevant
   const otherData = mergedData.filter(d => 
     !d.isTarget && 
     (!positionGroup || d.position_group === positionGroup)
@@ -162,20 +209,20 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h3 className="text-xl font-display text-slate-800 mb-1 uppercase">League Distribution</h3>
-          <p className="text-xs text-gray-500">vs Liga 1 {positionGroup ? positionGroup + 's' : 'Players'} (min. 600 mins)</p>
+          <p className="text-xs text-gray-500">vs Liga 1 {position || positionGroup || 'Players'} (min. 600 mins)</p>
         </div>
         
         {/* Smart Tabs */}
         <div className="flex flex-wrap bg-gray-100 p-1 rounded-md border border-gray-200">
           {availableTabs.map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={tab.name}
+              onClick={() => setActiveTabName(tab.name)}
               className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${
-                activeTab === tab ? 'bg-cyan-500 text-white shadow-sm' : 'text-gray-500 hover:text-slate-800'
+                activeTabName === tab.name ? 'bg-cyan-500 text-white shadow-sm' : 'text-gray-500 hover:text-slate-800'
               }`}
             >
-              {tab}
+              {tab.name}
             </button>
           ))}
         </div>

@@ -169,6 +169,7 @@ const PlayerDashboard: React.FC = () => {
                 playerName={profile.name} 
                 playerStats={seasonStats} 
                 positionGroup={profile.position_group}
+                position={profile.position}
               />
             )}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
