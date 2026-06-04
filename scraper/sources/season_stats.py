@@ -82,6 +82,8 @@ def scrape_and_store_season_stats(conn, api_client) -> int:
                         'duels_won_aerial': 'aerial_duels_won',
                         'total_key_passes': 'key_passes',
                         'pass_accuracy': 'accurate_passes_percentage',
+                        'total_crosses': 'total_crosses',
+                        'accurate_crosses': 'accurate_crosses',
                     }
                     snake_k = field_fixes.get(snake_k, snake_k)
                     

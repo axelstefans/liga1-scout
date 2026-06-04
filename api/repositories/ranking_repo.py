@@ -18,6 +18,9 @@ ALLOWED_RANKING_STATS = {
     "key_passes": "pss.key_passes",
     "interceptions": "pss.interceptions",
     "clearances": "pss.clearances",
+    "crosses": "pss.total_crosses",
+    "total_crosses": "pss.total_crosses",
+    "accurate_crosses": "pss.accurate_crosses",
     "tackles": "pss.tackles",
     "saves": "pss.saves",
     "clean_sheets": "pss.clean_sheets"

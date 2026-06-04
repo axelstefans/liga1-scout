@@ -49,6 +49,8 @@ class PlayerSeasonStats(BaseModel):
     tackles: Optional[int] = None
     clearances: Optional[int] = None
     total_shots: Optional[int] = None
+    accurate_crosses: Optional[int] = None
+    total_crosses: Optional[int] = None
     saves: Optional[int] = None
     clean_sheets: Optional[int] = None
 
