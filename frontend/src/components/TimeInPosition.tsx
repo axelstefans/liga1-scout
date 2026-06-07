@@ -3,6 +3,7 @@ import { PlayerMatchStats } from '../services/api';
 
 interface TimeInPositionProps {
   matchStats: PlayerMatchStats[] | undefined;
+  themeColor?: string;
 }
 
 const POSITION_COORDS: Record<string, { x: number, y: number }> = {
@@ -57,7 +58,7 @@ const POSITION_ALIASES: Record<string, string> = {
   'G': 'GK'
 };
 
-const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
+const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats, themeColor }) => {
   const positionStats = useMemo(() => {
     if (!matchStats) return [];
     
@@ -136,7 +137,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
                           cx={coords.x}
                           cy={coords.y}
                           r={16}
-                          fill="#1e40af"
+                          fill={themeColor || "#1e40af"}
                           stroke="#ffffff"
                           strokeWidth="2"
                         />
@@ -168,7 +169,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
                         cx={coords.x}
                         cy={coords.y}
                         r={8}
-                        fill="#1e40af"
+                        fill={themeColor || "#1e40af"}
                         stroke="#ffffff"
                         strokeWidth="2"
                       />
@@ -184,7 +185,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats }) => {
             {positionStats.slice(0, 3).map(stat => (
               <div key={stat.pos} className="flex items-center justify-between p-2 bg-cream rounded-md border border-border">
                 <div className="flex items-center gap-3">
-                  <div className="min-w-[2.5rem] h-8 px-2 flex items-center justify-center rounded-full bg-blue-800 text-white text-xs font-bold shadow-sm border border-white">
+                  <div className="min-w-[2.5rem] h-8 px-2 flex items-center justify-center rounded-full text-white text-xs font-bold shadow-sm border border-white" style={{ backgroundColor: themeColor || '#1e40af' }}>
                     {stat.pos}
                   </div>
                   <span className="text-gray-500 text-sm font-medium">{stat.mins}&apos;</span>

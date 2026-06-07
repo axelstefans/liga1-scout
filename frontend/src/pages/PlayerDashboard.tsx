@@ -21,7 +21,14 @@ const PlayerDashboard: React.FC = () => {
 
   const { data: profile, isLoading: isProfileLoading } = usePlayerProfile(playerId);
   const teamId = profile?.team?.team_id;
-  const themeColor = profile?.team?.primary_color || '#0ea5e9';
+  
+  const COLOR_OVERRIDES: Record<string, string> = {
+    "Cusco FC": "#D4AF37",
+    "Cusco": "#D4AF37"
+  };
+  const teamName = profile?.team?.name || "";
+  const themeColor = COLOR_OVERRIDES[teamName] || profile?.team?.primary_color || '#0ea5e9';
+  
   const { data: nextMatch, isLoading: isNextMatchLoading } = useTeamNextMatch(teamId);
 
   const { data: seasonStats, isLoading: isSeasonStatsLoading } = usePlayerSeasonStats(playerId);
@@ -158,7 +165,7 @@ const PlayerDashboard: React.FC = () => {
 
             {/* Right Column: Time In Position */}
             <div className="lg:col-span-1">
-              <TimeInPosition matchStats={matchStats} />
+              <TimeInPosition matchStats={matchStats} themeColor={themeColor} />
             </div>
           </div>
 

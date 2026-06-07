@@ -127,12 +127,16 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition, them
       </div>
 
       {/* Right Column: Action Photo */}
-      <div className="lg:col-span-5 relative w-full h-64 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0" style={{ backgroundColor: themeColor || '#1e3a8a' }}>
+      <div className="lg:col-span-5 relative w-full h-64 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0 bg-slate-100">
         <img 
           src={`/player_images/${profile.player_id}.jpg`} 
           alt={profile.name}
-          className="w-full h-full object-cover grayscale mix-blend-luminosity opacity-70"
+          className="absolute inset-0 w-full h-full object-cover grayscale"
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        />
+        <div 
+          className="absolute inset-0 mix-blend-multiply opacity-60 transition-colors duration-500"
+          style={{ backgroundColor: themeColor || '#1e3a8a' }}
         />
       </div>
 
