@@ -6,6 +6,7 @@ interface KeyStrengthsProps {
   profile: PlayerProfile;
   seasonStats: any;
   mainPosition?: string | null;
+  themeColor?: string;
 }
 
 const renderPolarSlice = (props: any, hoveredIndex: number | null) => {
@@ -82,7 +83,7 @@ const extractMetric = (obj: any, baseKey: string) => {
   return 0;
 };
 
-const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainPosition }) => {
+const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainPosition, themeColor }) => {
   const [hoverIndex0, setHoverIndex0] = useState<number | null>(null);
   const [hoverIndex1, setHoverIndex1] = useState<number | null>(null);
   const [hoverIndex2, setHoverIndex2] = useState<number | null>(null);
@@ -329,8 +330,16 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
       }
     }
 
+    // Override all hardcoded slice colors with the dynamic themeColor
+    charts.forEach(chart => {
+      chart.dataset = chart.dataset.map(d => ({
+        ...d,
+        fill: themeColor || '#0ea5e9'
+      }));
+    });
+
     return charts;
-  }, [profile, seasonStats]);
+  }, [profile, seasonStats, mainPosition, themeColor]);
 
   return (
     <div className="bg-white border border-gray-200 p-6 rounded-lg shadow-sm h-full">

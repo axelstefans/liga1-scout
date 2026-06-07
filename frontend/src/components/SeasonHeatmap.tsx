@@ -3,9 +3,15 @@ import { usePlayerHeatmap } from '../hooks/usePlayer';
 
 interface SeasonHeatmapProps {
   playerId: number;
+  themeColor?: string;
 }
 
-const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#dc2626');
+  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '220, 38, 38';
+};
+
+const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId, themeColor }) => {
   const { data, isLoading, error } = usePlayerHeatmap(playerId);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -39,9 +45,10 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId }) => {
       const radius = 20;
 
       // Create radial gradient for the blob
+      const rgbColor = hexToRgb(themeColor || '#dc2626');
       const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      gradient.addColorStop(0, `rgba(220, 38, 38, ${0.2 * countNormalized})`);
-      gradient.addColorStop(1, 'rgba(220, 38, 38, 0)');
+      gradient.addColorStop(0, `rgba(${rgbColor}, ${0.2 * countNormalized})`);
+      gradient.addColorStop(1, `rgba(${rgbColor}, 0)`);
 
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);

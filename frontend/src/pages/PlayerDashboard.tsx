@@ -21,6 +21,7 @@ const PlayerDashboard: React.FC = () => {
 
   const { data: profile, isLoading: isProfileLoading } = usePlayerProfile(playerId);
   const teamId = profile?.team?.team_id;
+  const themeColor = profile?.team?.primary_color || '#0ea5e9';
   const { data: nextMatch, isLoading: isNextMatchLoading } = useTeamNextMatch(teamId);
 
   const { data: seasonStats, isLoading: isSeasonStatsLoading } = usePlayerSeasonStats(playerId);
@@ -170,14 +171,15 @@ const PlayerDashboard: React.FC = () => {
                 playerStats={seasonStats} 
                 positionGroup={profile.position_group}
                 position={mainPosition || profile.position}
+                themeColor={themeColor}
               />
             )}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-7">
-                <SeasonHeatmap playerId={playerId} />
+                <SeasonHeatmap playerId={playerId} themeColor={themeColor} />
               </div>
               <div className="lg:col-span-5">
-                <KeyStrengths profile={profile} seasonStats={seasonStats} mainPosition={mainPosition || profile.position} />
+                <KeyStrengths profile={profile} seasonStats={seasonStats} mainPosition={mainPosition || profile.position} themeColor={themeColor} />
               </div>
             </div>
           </div>

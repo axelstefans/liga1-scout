@@ -9,6 +9,7 @@ interface ScatterPlotsProps {
   playerStats: any;
   positionGroup?: string | null;
   position?: string | null;
+  themeColor?: string;
 }
 
 interface TabConfig {
@@ -99,7 +100,7 @@ const extractMetric = (obj: any, baseKey: string) => {
   return 0;
 };
 
-const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playerStats, positionGroup, position }) => {
+const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playerStats, positionGroup, position, themeColor }) => {
   const availableTabs = useMemo(() => getTabsForPosition(position), [position]);
   const [activeTabName, setActiveTabName] = useState<string>(availableTabs[0].name);
 
@@ -219,8 +220,9 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
               key={tab.name}
               onClick={() => setActiveTabName(tab.name)}
               className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${
-                activeTabName === tab.name ? 'bg-cyan-500 text-white shadow-sm' : 'text-gray-500 hover:text-slate-800'
+                activeTabName === tab.name ? 'shadow-sm' : 'text-gray-500 hover:text-slate-800'
               }`}
+              style={activeTabName === tab.name ? { backgroundColor: themeColor || '#0ea5e9', color: '#fff' } : {}}
             >
               {tab.name}
             </button>
@@ -287,8 +289,8 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
               
               {/* Target Player */}
               {targetData.length > 0 && (
-                <Scatter data={targetData} fill="#06b6d4" fillOpacity={1.0}>
-                  <LabelList dataKey="name" position="top" fill="#06b6d4" fontSize={12} fontWeight="bold" />
+                <Scatter data={targetData} fill={themeColor || '#0ea5e9'} fillOpacity={1.0}>
+                  <LabelList dataKey="name" position="top" fill={themeColor || '#0ea5e9'} fontSize={12} fontWeight="bold" />
                 </Scatter>
               )}
             </ScatterChart>
