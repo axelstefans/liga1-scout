@@ -23,8 +23,10 @@ const PlayerDashboard: React.FC = () => {
   const teamId = profile?.team?.team_id;
   
   const COLOR_OVERRIDES: Record<string, string> = {
-    "Cusco FC": "#D4AF37",
-    "Cusco": "#D4AF37"
+    "Cusco FC": "#D4AF37", // Gold
+    "Cusco": "#D4AF37",
+    "Comerciantes Unidos": "#5B2C6F", // Purple
+    // Add future manual overrides here if the API is outdated
   };
   const teamName = profile?.team?.name || "";
   const themeColor = COLOR_OVERRIDES[teamName] || profile?.team?.primary_color || '#0ea5e9';
