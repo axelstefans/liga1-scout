@@ -7,7 +7,7 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
         SELECT 
             p.player_id, p.name, p.date_of_birth, p.nationality,
             p.position, p.position_group, p.shirt_number, p.height, p.preferred_foot,
-            t.team_id, t.name as team_name, t.short_name as team_short_name, t.logo_url as team_logo_url,
+            t.team_id, t.name as team_name, t.short_name as team_short_name, t.logo_url as team_logo_url, t.primary_color as team_primary_color,
             pmv.market_value_eur, pmv.market_value_str
         FROM players p
         LEFT JOIN teams t ON p.team_id = t.team_id
@@ -40,7 +40,8 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
             "team_id": data["team_id"],
             "name": data["team_name"],
             "short_name": data["team_short_name"],
-            "logo_url": data["team_logo_url"]
+            "logo_url": data["team_logo_url"],
+            "primary_color": data["team_primary_color"]
         }
         
     return profile

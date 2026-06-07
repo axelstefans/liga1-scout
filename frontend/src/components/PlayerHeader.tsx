@@ -4,6 +4,7 @@ import { PlayerProfile } from '../services/api';
 interface PlayerHeaderProps {
   profile: PlayerProfile;
   mainPosition?: string;
+  themeColor?: string;
 }
 
 const calculateAge = (dobString?: string) => {
@@ -38,7 +39,7 @@ const getCountryCode = (country?: string) => {
   return map[country.toLowerCase()] || 'xx';
 };
 
-const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition }) => {
+const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition, themeColor }) => {
   const parts = profile.name.trim().split(' ');
   const lastName = parts.length > 1 ? parts.pop() : profile.name;
   const firstName = parts.length > 0 ? parts.join(' ') : '';
@@ -126,7 +127,7 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition }) =>
       </div>
 
       {/* Right Column: Action Photo */}
-      <div className="lg:col-span-5 relative w-full h-64 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0 bg-[#1e3a8a]">
+      <div className="lg:col-span-5 relative w-full h-64 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0" style={{ backgroundColor: themeColor || '#1e3a8a' }}>
         <img 
           src={`/player_images/${profile.player_id}.jpg`} 
           alt={profile.name}

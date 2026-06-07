@@ -55,7 +55,7 @@ const PlayerDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Top Header */}
-      <PlayerHeader profile={profile} mainPosition={mainPosition} />
+      <PlayerHeader profile={profile} mainPosition={mainPosition} themeColor={themeColor} />
 
       {/* Tabs */}
       <div className="border-b border-border flex space-x-8 px-2">
@@ -92,7 +92,7 @@ const PlayerDashboard: React.FC = () => {
               <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
                 <h3 className="text-xl font-display mb-4 text-navy">Attribute Profile</h3>
                 {seasonStats ? (
-                   <AttributeRadar stats={seasonStats} positionGroup={profile.position_group} />
+                   <AttributeRadar stats={seasonStats} positionGroup={profile.position_group} themeColor={themeColor} />
                 ) : (
                    <p className="text-sm text-gray-500">No season stats available for radar.</p>
                 )}
@@ -150,7 +150,7 @@ const PlayerDashboard: React.FC = () => {
             <div className="bg-card border border-border p-6 rounded-lg shadow-sm lg:col-span-1">
               <h3 className="text-xl font-display mb-4 text-navy">League Percentiles</h3>
               {seasonStats ? (
-                <PercentileBars stats={seasonStats} positionGroup={profile.position_group} />
+                <PercentileBars stats={seasonStats} positionGroup={profile.position_group} themeColor={themeColor} />
               ) : (
                 <p className="text-sm text-gray-500">No season stats available.</p>
               )}

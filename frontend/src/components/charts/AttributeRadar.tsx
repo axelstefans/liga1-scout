@@ -5,6 +5,7 @@ import { PlayerSeasonStats } from '../../services/api';
 interface AttributeRadarProps {
   stats: PlayerSeasonStats;
   positionGroup: string | null;
+  themeColor?: string;
 }
 
 // Very rough normalization function to generate 0-100 scores based on raw values.
@@ -14,7 +15,7 @@ const normalize = (value: number | null, max: number) => {
   return Math.min(Math.round((value / max) * 100), 100);
 };
 
-const AttributeRadar: React.FC<AttributeRadarProps> = ({ stats, positionGroup }) => {
+const AttributeRadar: React.FC<AttributeRadarProps> = ({ stats, positionGroup, themeColor }) => {
   
   const data = useMemo(() => {
     // Generate scores (these max values are arbitrary approximations for Liga 1 per season)
@@ -49,8 +50,8 @@ const AttributeRadar: React.FC<AttributeRadarProps> = ({ stats, positionGroup })
           <Radar
             name="Score"
             dataKey="A"
-            stroke="#1B4F8A"
-            fill="#1B4F8A"
+            stroke={themeColor || "#1B4F8A"}
+            fill={themeColor || "#1B4F8A"}
             fillOpacity={0.4}
           />
         </RadarChart>
