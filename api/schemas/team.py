@@ -7,6 +7,7 @@ class TeamProfile(BaseModel):
     short_name: Optional[str] = None
     country: Optional[str] = None
     logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
 
 class RosterPlayer(BaseModel):
     player_id: int

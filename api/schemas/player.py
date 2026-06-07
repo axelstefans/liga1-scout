@@ -6,6 +6,7 @@ class TeamBase(BaseModel):
     name: str
     short_name: Optional[str] = None
     logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
 
 class PlayerProfile(BaseModel):
     player_id: int
