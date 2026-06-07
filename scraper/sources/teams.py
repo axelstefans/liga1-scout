@@ -1,25 +1,10 @@
 import logging
-import io
-import requests
 from datetime import datetime
-from colorthief import ColorThief
 from ..db import is_cached, log_scrape
 from .. import config
 
 logger = logging.getLogger(__name__)
 
-def get_dominant_color(url: str, fallback: str = "#0ea5e9") -> str:
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        f = io.BytesIO(response.content)
-        color_thief = ColorThief(f)
-        # get_color returns (r, g, b)
-        dominant_color = color_thief.get_color(quality=1)
-        return "#{:02x}{:02x}{:02x}".format(*dominant_color).upper()
-    except Exception as e:
-        logger.warning(f"Failed to extract color from {url}: {e}")
-        return fallback
 
 def scrape_and_store_teams(conn, api_client) -> list[dict]:
     """Fetch all teams from SofaScore and store in teams table."""
@@ -52,7 +37,7 @@ def scrape_and_store_teams(conn, api_client) -> list[dict]:
             country = team.get('country', {}).get('name')
             logo_url = f"https://api.sofascore.app/api/v1/team/{team_id}/image"
             tm_team_id = config.TM_TEAM_MAP.get(slug)
-            primary_color = get_dominant_color(logo_url)
+            primary_color = team.get('teamColors', {}).get('primary', '#0ea5e9')
             
             records.append((
                 team_id, name, short_name, country, logo_url,
