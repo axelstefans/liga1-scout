@@ -65,7 +65,7 @@ const extractMetric = (obj: any, baseKey: string) => {
     'interceptions': ['interceptions', 'total_interceptions', 'totalInterceptions'],
     'clearances': ['clearances', 'total_clearances', 'totalClearances'],
     'aerial_duels_won': ['aerial_duels_won', 'duels_won_aerial', 'aerialDuelsWon'],
-    'crosses': ['crosses', 'total_crosses', 'totalCrosses', 'accurate_crosses'],
+    'crosses': ['accurate_crosses', 'accurateCrosses', 'total_crosses', 'totalCrosses', 'crosses'],
     'key_passes': ['key_passes', 'total_key_passes', 'keyPasses'],
     'assists': ['assists', 'total_assists', 'totalAssists'],
     'accurate_passes_percentage': ['accurate_passes_percentage', 'pass_accuracy', 'accuratePassesPercentage', 'passAccuracy'],
