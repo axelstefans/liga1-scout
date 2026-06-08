@@ -259,7 +259,8 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
                 type="number" 
                 dataKey="xValue" 
                 name={activeMetrics.xLabel}
-                domain={['dataMin - 2', 'dataMax + 2']}
+                domain={[(dataMin: number) => Math.max(0, dataMin * 0.9), (dataMax: number) => dataMax * 1.1]}
+                tickFormatter={(value) => Number(value).toFixed(1)}
                 tick={{fontSize: 10, fill: '#64748b'}} 
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}
@@ -269,7 +270,8 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
                 type="number" 
                 dataKey="yValue" 
                 name={activeMetrics.yLabel} 
-                domain={['dataMin - 2', 'dataMax + 2']}
+                domain={[(dataMin: number) => Math.max(0, dataMin * 0.9), (dataMax: number) => dataMax * 1.1]}
+                tickFormatter={(value) => Number(value).toFixed(1)}
                 tick={{fontSize: 10, fill: '#64748b'}}
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}
