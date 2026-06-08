@@ -11,3 +11,4 @@ class PlayerRankingEntry(BaseModel):
     position: Optional[str] = None
     minutes_played: Optional[int] = None
     value: Any  # The value of the stat being ranked (could be int or float)
+    accurate_passes_percentage: Optional[float] = None

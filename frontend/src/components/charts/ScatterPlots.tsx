@@ -121,7 +121,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
 
     const map = new Map<number, any>();
 
-    const ensurePlayer = (p: Partial<PlayerRankingEntry>) => {
+    const ensurePlayer = (p: any) => {
       if (!p.player_id) return null;
       if (!map.has(p.player_id)) {
         map.set(p.player_id, {
@@ -131,9 +131,15 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
           minutes_played: p.minutes_played || 0,
           xValue: 0,
           yValue: 0,
+          accurate_passes_percentage: p.accurate_passes_percentage,
           isTarget: p.player_id === playerId,
           z: p.player_id === playerId ? 200 : 50,
         });
+      } else {
+        const existing = map.get(p.player_id);
+        if (p.accurate_passes_percentage !== undefined && p.accurate_passes_percentage !== null) {
+          existing.accurate_passes_percentage = p.accurate_passes_percentage;
+        }
       }
       return map.get(p.player_id);
     };
@@ -148,6 +154,11 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
         } else {
           p.xValue = parseFloat(rawX.toFixed(2));
         }
+
+        // Safety cross-check: if Y is pass accuracy, grab it from this X payload
+        if (activeMetrics.y === 'accurate_passes_percentage' && p.yValue === 0) {
+          p.yValue = x.accurate_passes_percentage ?? 0;
+        }
       }
     });
 
@@ -160,6 +171,11 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
           p.yValue = parseFloat(((rawY / p.minutes_played) * 90).toFixed(2));
         } else {
           p.yValue = parseFloat(rawY.toFixed(2));
+        }
+
+        // Safety cross-check: if X is pass accuracy, grab it from this Y payload
+        if (activeMetrics.x === 'accurate_passes_percentage' && p.xValue === 0) {
+          p.xValue = y.accurate_passes_percentage ?? 0;
         }
       }
     });
@@ -243,7 +259,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
                 type="number" 
                 dataKey="xValue" 
                 name={activeMetrics.xLabel}
-                domain={['auto', 'auto']}
+                domain={['dataMin - 2', 'dataMax + 2']}
                 tick={{fontSize: 10, fill: '#64748b'}} 
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}
@@ -253,7 +269,7 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
                 type="number" 
                 dataKey="yValue" 
                 name={activeMetrics.yLabel} 
-                domain={['auto', 'auto']}
+                domain={['dataMin - 2', 'dataMax + 2']}
                 tick={{fontSize: 10, fill: '#64748b'}}
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}

@@ -46,6 +46,7 @@ def get_player_rankings(db: sqlite3.Connection, stat: str, limit: int = 10) -> L
             p.position_group,
             p.position,
             pss.minutes_played,
+            pss.accurate_passes_percentage,
             {order_column} as value
         FROM player_season_stats pss
         JOIN players p ON pss.player_id = p.player_id
