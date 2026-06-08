@@ -9,19 +9,15 @@ interface KeyStrengthsProps {
   themeColor?: string;
 }
 
-const renderPolarSlice = (props: any, hoveredIndex: number | null) => {
-  const { cx, cy, startAngle, endAngle, fill, outerRadius, payload, index } = props;
+const renderPolarSlice = (props: any) => {
+  const { cx, cy, startAngle, endAngle, fill, outerRadius, payload } = props;
   const dataItem = payload?.payload || payload || props;
   const score = dataItem?.score || 0;
   const maxRadius = outerRadius || 80;
   const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
-  const isHovered = index === hoveredIndex;
-  
-  // Opacity Fade Logic: If nothing hovered, 1. If hovered, 1. Else, fade to 0.3.
-  const currentOpacity = hoveredIndex === null ? 1 : (isHovered ? 1 : 0.3);
 
   return (
-    <g style={{ transition: 'opacity 300ms ease', opacity: currentOpacity }}>
+    <g>
       {/* Base slice (NO radius inflation on hover) */}
       <Sector 
         cx={cx} cy={cy} innerRadius={10} 
@@ -79,12 +75,6 @@ const extractMetric = (obj: any, baseKey: string) => {
 };
 
 const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainPosition, themeColor }) => {
-  const [hoverIndex0, setHoverIndex0] = useState<number | null>(null);
-  const [hoverIndex1, setHoverIndex1] = useState<number | null>(null);
-  const [hoverIndex2, setHoverIndex2] = useState<number | null>(null);
-  const hoverStates = [hoverIndex0, hoverIndex1, hoverIndex2];
-  const setHoverStates = [setHoverIndex0, setHoverIndex1, setHoverIndex2];
-
   const chartsData = useMemo(() => {
     if (!seasonStats || !seasonStats.minutes_played) return null;
     
@@ -404,11 +394,8 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
                         cx="50%"
                         cy="50%"
                         outerRadius={80} 
-                        activeIndex={chart.dataset.map((_, i) => i)}
-                        activeShape={(props: any) => renderPolarSlice(props, hoverStates[chartIndex])}
+                        activeShape={(props: any) => renderPolarSlice(props)}
                         isAnimationActive={false}
-                        onMouseEnter={(_, index) => setHoverStates[chartIndex](index)}
-                        onMouseLeave={() => setHoverStates[chartIndex](null)}
                       >
                         {chart.dataset.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.fill} />
