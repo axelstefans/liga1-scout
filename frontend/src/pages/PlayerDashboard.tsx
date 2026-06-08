@@ -23,13 +23,50 @@ const PlayerDashboard: React.FC = () => {
   const teamId = profile?.team?.team_id;
   
   const COLOR_OVERRIDES: Record<string, string> = {
-    "Cusco FC": "#D4AF37", // Gold
+    // Existing & fixed
+    "Cusco FC": "#D4AF37",
     "Cusco": "#D4AF37",
-    "Comerciantes Unidos": "#5B2C6F", // Purple
-    // Add future manual overrides here if the API is outdated
+    "Comerciantes Unidos": "#5B2C6F",
+    "Melgar": "#E30613",
+    "FBC Melgar": "#E30613",
+    "Alianza Atlético": "#004797",
+    "Alianza Atletico de Sullana": "#004797",
+    "UTC": "#E8C32E",
+    "UTC Cajamarca": "#E8C32E",
+    "Universidad Técnica de Cajamarca": "#E8C32E",
+
+    // Big teams
+    "Alianza Lima": "#000080",
+    "Universitario": "#A67C52",
+    "Universitario de Deportes": "#A67C52",
+    "Sporting Cristal": "#00AEEF",
+    "Club Sporting Cristal": "#00AEEF",
+
+    // Rest of Liga 1 2026
+    "Los Chankas": "#F5A623",
+    "CD Los Chankas": "#F5A623",
+    "Cienciano": "#CC0000",
+    "Deportivo Garcilaso": "#006400",
+    "ADT": "#FF6600",
+    "AD Tarma": "#FF6600",
+    "Sport Boys": "#FF69B4",
+    "Sport Boys Association": "#FF69B4",
+    "Atlético Grau": "#FFCC00",
+    "Sport Huancayo": "#CC0000",
+    "CSD Sport Huancayo": "#CC0000",
+    "Juan Pablo II College": "#FFD700",
+    "ADC Juan Pablo II College": "#FFD700",
+    "FC Cajamarca": "#1A5276",
+    "CD Moquegua": "#006400",
+    "Deportivo Moquegua": "#006400",
   };
   const teamName = profile?.team?.name || "";
-  const themeColor = COLOR_OVERRIDES[teamName] || profile?.team?.primary_color || '#0ea5e9';
+  let resolvedColor = COLOR_OVERRIDES[teamName] || profile?.team?.primary_color || '#0ea5e9';
+  
+  if (resolvedColor.toLowerCase() === '#ffffff' || resolvedColor.toLowerCase() === '#fff') {
+    resolvedColor = '#0ea5e9';
+  }
+  const themeColor = resolvedColor;
   
   const { data: nextMatch, isLoading: isNextMatchLoading } = useTeamNextMatch(teamId);
 
