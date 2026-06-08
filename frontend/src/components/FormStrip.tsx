@@ -48,7 +48,6 @@ const FormStrip: React.FC<FormStripProps> = ({ matches }) => {
                 src={match.opponent_logo_url}
                 alt={match.opponent_name}
                 className="w-6 h-6 object-contain rounded-sm"
-                style={{ filter: 'brightness(0) invert(1) opacity(0.85)' }}
               />
             ) : (
               <span className="text-[9px] font-bold opacity-70 leading-tight uppercase tracking-wide">

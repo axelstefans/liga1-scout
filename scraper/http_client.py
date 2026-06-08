@@ -46,7 +46,8 @@ class SofaScoreAPIClient:
         return data.get('players', [])
 
     def get_season_stats_page(self, league_id: int, season_id: int, offset: int = 0) -> dict:
-        endpoint = f"api/v1/unique-tournament/{league_id}/season/{season_id}/statistics?limit=100&offset={offset}&order=-rating&accumulation=total"
+        fields = "goals,yellowCards,redCards,groundDuelsWon,groundDuelsWonPercentage,aerialDuelsWon,aerialDuelsWonPercentage,successfulDribbles,successfulDribblesPercentage,tackles,assists,accuratePassesPercentage,totalDuelsWon,totalDuelsWonPercentage,minutesPlayed,wasFouled,fouls,dispossessed,possesionLost,appearances,started,saves,cleanSheets,savedShotsFromInsideTheBox,savedShotsFromOutsideTheBox,goalsConcededInsideTheBox,goalsConcededOutsideTheBox,highClaims,successfulRunsOut,punches,runsOut,accurateFinalThirdPasses,bigChancesCreated,accuratePasses,keyPasses,accurateCrosses,accurateCrossesPercentage,accurateLongBalls,accurateLongBallsPercentage,interceptions,clearances,dribbledPast,bigChancesMissed,totalShots,shotsOnTarget,blockedShots,goalConversionPercentage,hitWoodwork,offsides,expectedGoals,errorLeadToGoal,errorLeadToShot,passToAssist,rating"
+        endpoint = f"api/v1/unique-tournament/{league_id}/season/{season_id}/statistics?limit=100&offset={offset}&order=-rating&accumulation=total&fields={fields}"
         return self._polite_get(endpoint)
 
     def get_matches_by_round(self, league_id: int, season_id: int, round_num: int, prefix: str = 'Apertura') -> list[dict]:

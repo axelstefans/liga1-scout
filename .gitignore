@@ -1,5 +1,10 @@
 # DB & Environment
 liga1.db
+liga1.db-shm
+liga1.db-wal
+*.db
+*.sqlite
+*.sqlite3
 .env
 
 # Python
@@ -34,3 +39,13 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend
+node_modules/
+frontend/node_modules/
+
+# Editor y Agentes IA
+.vscode/
+.agents/
+.gemini/
+.specify/
