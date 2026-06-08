@@ -372,8 +372,9 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
                           strokeWidth={1}
                           isAnimationActive={false}
                           style={{ pointerEvents: 'none' }}
-                          activeShape={null}
+                          activeShape={() => <g />}
                           activeIndex={-1}
+                          tooltipType="none"
                         />
                       ))}
                       
@@ -390,8 +391,9 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
                         strokeWidth={1}
                         isAnimationActive={false}
                         style={{ pointerEvents: 'none' }}
-                        activeShape={null}
+                        activeShape={() => <g />}
                         activeIndex={-1}
+                        tooltipType="none"
                       />
 
                       {/* 3. Data Segments */}
