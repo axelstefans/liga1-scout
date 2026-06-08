@@ -394,8 +394,9 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
                         cx="50%"
                         cy="50%"
                         outerRadius={80} 
-                        activeIndex={chart.dataset.map((_, i) => i)}
+                        shape={renderPolarSlice}
                         activeShape={renderPolarSlice}
+                        activeIndex={[]}
                         isAnimationActive={false}
                       >
                         {chart.dataset.map((entry, index) => (
