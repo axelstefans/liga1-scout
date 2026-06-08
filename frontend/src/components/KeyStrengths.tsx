@@ -16,25 +16,19 @@ const renderPolarSlice = (props: any, hoveredIndex: number | null) => {
   const maxRadius = outerRadius || 80;
   const dynamicRadius = Math.max(maxRadius * 0.15, (score / 100) * maxRadius); 
   const isHovered = index === hoveredIndex;
+  
+  // Opacity Fade Logic: If nothing hovered, 1. If hovered, 1. Else, fade to 0.3.
+  const currentOpacity = hoveredIndex === null ? 1 : (isHovered ? 1 : 0.3);
 
   return (
-    <g>
-      {/* Base slice */}
+    <g style={{ transition: 'opacity 300ms ease', opacity: currentOpacity }}>
+      {/* Base slice (NO radius inflation on hover) */}
       <Sector 
         cx={cx} cy={cy} innerRadius={10} 
-        outerRadius={isHovered ? dynamicRadius + 5 : dynamicRadius} 
+        outerRadius={dynamicRadius} 
         startAngle={startAngle} endAngle={endAngle} 
         fill={fill} stroke="#fff" strokeWidth={2} 
       />
-      {/* Ghost shadow only if hovered */}
-      {isHovered && (
-        <Sector 
-          cx={cx} cy={cy} innerRadius={10} 
-          outerRadius={dynamicRadius + 15} 
-          startAngle={startAngle} endAngle={endAngle} 
-          fill={fill} opacity={0.3} 
-        />
-      )}
     </g>
   );
 };
