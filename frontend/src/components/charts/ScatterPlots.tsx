@@ -87,7 +87,7 @@ const extractMetric = (obj: any, baseKey: string) => {
     'total_shots': ['total_shots', 'shots_total', 'totalShots', 'shots'],
     'aerial_duels_won': ['aerial_duels_won', 'duels_won_aerial', 'aerialDuelsWon'],
     'ground_duels_won': ['ground_duels_won', 'duels_won_ground', 'groundDuelsWon'],
-    'crosses': ['crosses', 'total_crosses', 'totalCrosses', 'accurate_crosses'],
+    'crosses': ['total_crosses', 'totalCrosses', 'accurate_crosses', 'crosses'],
     'clearances': ['clearances', 'total_clearances', 'totalClearances']
   };
   
@@ -189,10 +189,10 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
       }
     }
 
-    // Filter out players who don't meet mins and strictly filter ANY 0 values to avoid clustering on the axes
+    // Filter out players who don't meet mins and filter completely null records, but allow 0s
     return Array.from(map.values()).filter(p => 
       (p.minutes_played >= 600 || p.isTarget) && 
-      (p.xValue > 0 && p.yValue > 0)
+      (p.xValue != null && p.yValue != null && !isNaN(p.xValue) && !isNaN(p.yValue))
     );
   }, [xRanking, yRanking, playerId, activeMetrics, playerName, playerStats, positionGroup]);
 
