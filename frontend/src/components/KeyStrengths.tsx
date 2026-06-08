@@ -42,6 +42,7 @@ const renderPolarSlice = (props: any, hoveredIndex: number | null) => {
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    if (data.name === undefined || data.rawVal === undefined) return null;
     return (
       <div className="bg-white border border-gray-200 p-2 rounded shadow text-xs z-50">
         <p className="font-bold text-slate-800">{data.name}</p>
@@ -376,6 +377,8 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
                           stroke="#e5e7eb"
                           strokeWidth={1}
                           isAnimationActive={false}
+                          pointerEvents="none"
+                          activeShape={undefined}
                         />
                       ))}
                       
@@ -391,6 +394,8 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
                         stroke="#e5e7eb"
                         strokeWidth={1}
                         isAnimationActive={false}
+                        pointerEvents="none"
+                        activeShape={undefined}
                       />
 
                       {/* 3. Data Segments */}
