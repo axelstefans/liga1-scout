@@ -363,6 +363,37 @@ const KeyStrengths: React.FC<KeyStrengthsProps> = ({ profile, seasonStats, mainP
                 <div className="w-full h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
+                      {/* 1. Concentric Circular Grid (Margins) */}
+                      {[16, 32, 48, 64, 80].map((r, i) => (
+                        <Pie
+                          key={`grid-${i}`}
+                          data={[{ angleVal: 1 }]}
+                          dataKey="angleVal"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={r}
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth={1}
+                          isAnimationActive={false}
+                        />
+                      ))}
+                      
+                      {/* 2. Radial Separators (Spokes) */}
+                      <Pie
+                        data={chart.dataset.map(() => ({ angleVal: 1 }))}
+                        dataKey="angleVal"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        innerRadius={0}
+                        fill="none"
+                        stroke="#e5e7eb"
+                        strokeWidth={1}
+                        isAnimationActive={false}
+                      />
+
+                      {/* 3. Data Segments */}
                       <Tooltip content={<CustomTooltip />} />
                       <Pie
                         data={chart.dataset}
