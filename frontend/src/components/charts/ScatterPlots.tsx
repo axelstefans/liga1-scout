@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis, LabelList } from 'recharts';
 import { useLeagueRankings } from '../../hooks/usePlayer';
-import { PlayerRankingEntry } from '../../services/api';
 
 interface ScatterPlotsProps {
   playerId: number;
@@ -12,109 +11,59 @@ interface ScatterPlotsProps {
   themeColor?: string;
 }
 
-interface TabConfig {
-  name: string;
-  x: string;
-  y: string;
-  xLabel: string;
-  yLabel: string;
-  xPer90: boolean;
-  yPer90: boolean;
-}
-
-const getTabsForPosition = (position: string | null): TabConfig[] => {
-  const pos = (position || '').toUpperCase();
-  
-  if (pos === 'CB') {
-    return [
-      { name: 'Defensa Proactiva', x: 'interceptions', y: 'tackles', xLabel: 'Interceptions per 90', yLabel: 'Tackles per 90', xPer90: true, yPer90: true },
-      { name: 'Duelos', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true },
-      { name: 'Salida', x: 'accurate_passes_percentage', y: 'successful_dribbles', xLabel: 'Pass Accuracy %', yLabel: 'Succ. Dribbles per 90', xPer90: false, yPer90: true }
-    ];
-  }
-  
-  if (['RB', 'LB', 'RWB', 'LWB'].includes(pos)) {
-    return [
-      { name: 'Defensa', x: 'interceptions', y: 'tackles', xLabel: 'Interceptions per 90', yLabel: 'Tackles per 90', xPer90: true, yPer90: true },
-      { name: 'Conducción', x: 'ground_duels_won', y: 'successful_dribbles', xLabel: 'Ground Duels Won per 90', yLabel: 'Succ. Dribbles per 90', xPer90: true, yPer90: true },
-      { name: 'Creación', x: 'key_passes', y: 'crosses', xLabel: 'Key Passes per 90', yLabel: 'Crosses per 90', xPer90: true, yPer90: true }
-    ];
-  }
-
-  if (['CDM', 'CM'].includes(pos)) {
-    return [
-      { name: 'Destrucción', x: 'interceptions', y: 'tackles', xLabel: 'Interceptions per 90', yLabel: 'Tackles per 90', xPer90: true, yPer90: true },
-      { name: 'Distribución', x: 'accurate_passes_percentage', y: 'key_passes', xLabel: 'Pass Accuracy %', yLabel: 'Key Passes per 90', xPer90: false, yPer90: true },
-      { name: 'Duelos', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true }
-    ];
-  }
-
-  if (['CAM', 'RM', 'LM', 'RW', 'LW'].includes(pos)) {
-    return [
-      { name: 'Creación', x: 'crosses', y: 'key_passes', xLabel: 'Crosses per 90', yLabel: 'Key Passes per 90', xPer90: true, yPer90: true },
-      { name: 'Desequilibrio', x: 'ground_duels_won', y: 'successful_dribbles', xLabel: 'Ground Duels Won per 90', yLabel: 'Succ. Dribbles per 90', xPer90: true, yPer90: true },
-      { name: 'Amenaza', x: 'total_shots', y: 'shots_on_target', xLabel: 'Total Shots per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true }
-    ];
-  }
-
-  if (['ST', 'CF'].includes(pos)) {
-    return [
-      { name: 'Amenaza de Gol', x: 'goals', y: 'shots_on_target', xLabel: 'Goals per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true },
-      { name: 'Asociación', x: 'accurate_passes_percentage', y: 'key_passes', xLabel: 'Pass Accuracy %', yLabel: 'Key Passes per 90', xPer90: false, yPer90: true },
-      { name: 'Imposición', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true }
-    ];
-  }
-
-  // Fallback
-  return [
-    { name: 'Distribución', x: 'accurate_passes_percentage', y: 'key_passes', xLabel: 'Pass Accuracy %', yLabel: 'Key Passes per 90', xPer90: false, yPer90: true },
-    { name: 'Duelos', x: 'aerial_duels_won', y: 'ground_duels_won', xLabel: 'Aerial Duels Won per 90', yLabel: 'Ground Duels Won per 90', xPer90: true, yPer90: true },
-    { name: 'Amenaza', x: 'total_shots', y: 'shots_on_target', xLabel: 'Total Shots per 90', yLabel: 'Shots on Target per 90', xPer90: true, yPer90: true }
-  ];
-};
+const METRIC_GROUPS = [
+  { group: "Attacking", metrics: [
+    { label: "Goals", key: "goals" }, { label: "Assists", key: "assists" }, { label: "Shots Total", key: "total_shots" }, { label: "Shots On Target", key: "shots_on_target" }, { label: "Big Chances Missed", key: "big_chances_missed" }
+  ]},
+  { group: "Passing", metrics: [
+    { label: "Key Passes", key: "key_passes" }, { label: "Crosses Accurate", key: "accurate_crosses" }, { label: "Pass Accuracy %", key: "accurate_passes_percentage", isPercentage: true }, { label: "Passes in Final Third", key: "accurate_final_third_passes" }, { label: "Long Balls", key: "accurate_long_balls" }
+  ]},
+  { group: "Dribbling", metrics: [
+    { label: "Dribbles Completed", key: "successful_dribbles" }, { label: "Dribble Success %", key: "successful_dribbles_percentage", isPercentage: true }
+  ]},
+  { group: "Defensive", metrics: [
+    { label: "Tackles", key: "tackles" }, { label: "Interceptions", key: "interceptions" }, { label: "Clearances", key: "clearances" }, { label: "Duels Won", key: "total_duels_won" }, { label: "Duels Won %", key: "total_duels_won_percentage", isPercentage: true }, { label: "Aerials Won", key: "aerial_duels_won" }
+  ]},
+  { group: "Creative", metrics: [
+    { label: "Big Chances Created", key: "big_chances_created" }
+  ]},
+  { group: "Other", metrics: [
+    { label: "Fouls Drawn", key: "was_fouled" }, { label: "Fouls Committed", key: "fouls" }, { label: "Rating", key: "rating", isPercentage: true }
+  ]}
+];
 
 const extractMetric = (obj: any, baseKey: string) => {
   if (!obj) return 0;
+  // Ranking API standard
+  if (obj.value !== undefined && obj.value !== null) return Number(obj.value);
+  // Direct key lookup
+  if (obj[baseKey] !== undefined && obj[baseKey] !== null) return Number(obj[baseKey]);
+  // Fallbacks for common variations just in case
   const fallbacks: Record<string, string[]> = {
-    'tackles': ['tackles', 'total_tackles', 'totalTackles'],
-    'interceptions': ['interceptions', 'total_interceptions', 'totalInterceptions'],
-    'accurate_passes_percentage': ['accurate_passes_percentage', 'pass_accuracy', 'accuratePassesPercentage', 'passAccuracy'],
-    'successful_dribbles': ['successful_dribbles', 'dribbles_succeeded', 'successfulDribbles', 'dribbles'],
-    'key_passes': ['key_passes', 'total_key_passes', 'keyPasses'],
-    'assists': ['assists', 'total_assists', 'totalAssists'],
-    'goals': ['goals', 'total_goals', 'totalGoals'],
-    'shots_on_target': ['shots_on_target', 'shots_on_goal', 'shotsOnTarget'],
-    'total_shots': ['total_shots', 'shots_total', 'totalShots', 'shots'],
-    'aerial_duels_won': ['aerial_duels_won', 'duels_won_aerial', 'aerialDuelsWon'],
-    'ground_duels_won': ['ground_duels_won', 'duels_won_ground', 'groundDuelsWon'],
-    'crosses': ['accurate_crosses', 'accurateCrosses', 'total_crosses', 'totalCrosses', 'crosses'],
-    'clearances': ['clearances', 'total_clearances', 'totalClearances']
+    'total_shots': ['shots_total', 'shots'],
+    'accurate_crosses': ['total_crosses', 'crosses'],
+    'successful_dribbles': ['dribbles_succeeded', 'dribbles'],
+    'accurate_passes_percentage': ['pass_accuracy']
   };
-  
-  const keys = fallbacks[baseKey] || [baseKey];
+  const keys = fallbacks[baseKey] || [];
   for (const k of keys) {
     if (obj[k] !== undefined && obj[k] !== null) return Number(obj[k]);
   }
-  // API rankings return value directly in .value
-  if (obj.value !== undefined && obj.value !== null) return Number(obj.value);
   return 0;
 };
 
 const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playerStats, positionGroup, position, themeColor }) => {
-  const availableTabs = useMemo(() => getTabsForPosition(position), [position]);
-  const [activeTabName, setActiveTabName] = useState<string>(availableTabs[0].name);
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [xAxisKey, setXAxisKey] = useState("key_passes");
+  const [yAxisKey, setYAxisKey] = useState("big_chances_created");
+  const [minMinutes, setMinMinutes] = useState(300);
 
-  // If position changes and active tab isn't valid for new position, reset it
-  useEffect(() => {
-    if (!availableTabs.some(t => t.name === activeTabName)) {
-      setActiveTabName(availableTabs[0].name);
-    }
-  }, [availableTabs, activeTabName]);
+  const allMetrics = useMemo(() => METRIC_GROUPS.flatMap(g => g.metrics), []);
+  const xAxisMetric = allMetrics.find(m => m.key === xAxisKey) || allMetrics[0];
+  const yAxisMetric = allMetrics.find(m => m.key === yAxisKey) || allMetrics[1];
 
-  const activeMetrics = availableTabs.find(t => t.name === activeTabName) || availableTabs[0];
-  
-  const { data: xRanking, isLoading: loadingX } = useLeagueRankings(activeMetrics.x, 300);
-  const { data: yRanking, isLoading: loadingY } = useLeagueRankings(activeMetrics.y, 300);
+  const { data: xRanking, isLoading: loadingX } = useLeagueRankings(xAxisMetric.key, 300);
+  const { data: yRanking, isLoading: loadingY } = useLeagueRankings(yAxisMetric.key, 300);
 
   const mergedData = useMemo(() => {
     if (!xRanking || !yRanking) return [];
@@ -131,15 +80,9 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
           minutes_played: p.minutes_played || 0,
           xValue: 0,
           yValue: 0,
-          accurate_passes_percentage: p.accurate_passes_percentage,
           isTarget: p.player_id === playerId,
           z: p.player_id === playerId ? 200 : 50,
         });
-      } else {
-        const existing = map.get(p.player_id);
-        if (p.accurate_passes_percentage !== undefined && p.accurate_passes_percentage !== null) {
-          existing.accurate_passes_percentage = p.accurate_passes_percentage;
-        }
       }
       return map.get(p.player_id);
     };
@@ -147,17 +90,12 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
     // Process X API Ranking
     xRanking.forEach(x => {
       const p = ensurePlayer(x);
-      if (p && (p.minutes_played >= 600 || p.isTarget)) {
-        const rawX = extractMetric(x, activeMetrics.x);
-        if (activeMetrics.xPer90 && p.minutes_played > 0) {
+      if (p) {
+        const rawX = extractMetric(x, xAxisMetric.key);
+        if (!xAxisMetric.isPercentage && p.minutes_played > 0) {
           p.xValue = parseFloat(((rawX / p.minutes_played) * 90).toFixed(2));
         } else {
           p.xValue = parseFloat(rawX.toFixed(2));
-        }
-
-        // Safety cross-check: if Y is pass accuracy, grab it from this X payload
-        if (activeMetrics.y === 'accurate_passes_percentage' && p.yValue === 0) {
-          p.yValue = x.accurate_passes_percentage ?? 0;
         }
       }
     });
@@ -165,22 +103,17 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
     // Process Y API Ranking
     yRanking.forEach(y => {
       const p = ensurePlayer(y);
-      if (p && (p.minutes_played >= 600 || p.isTarget)) {
-        const rawY = extractMetric(y, activeMetrics.y);
-        if (activeMetrics.yPer90 && p.minutes_played > 0) {
+      if (p) {
+        const rawY = extractMetric(y, yAxisMetric.key);
+        if (!yAxisMetric.isPercentage && p.minutes_played > 0) {
           p.yValue = parseFloat(((rawY / p.minutes_played) * 90).toFixed(2));
         } else {
           p.yValue = parseFloat(rawY.toFixed(2));
         }
-
-        // Safety cross-check: if X is pass accuracy, grab it from this Y payload
-        if (activeMetrics.x === 'accurate_passes_percentage' && p.xValue === 0) {
-          p.xValue = y.accurate_passes_percentage ?? 0;
-        }
       }
     });
 
-    // Inject Target Player explicitly using full stats to avoid 0s if they missed the top 300
+    // Inject Target Player explicitly using full stats
     if (playerStats) {
       const tp = ensurePlayer({
         player_id: playerId,
@@ -189,15 +122,15 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
         minutes_played: playerStats.minutes_played || 0
       });
       if (tp) {
-        const rawX = extractMetric(playerStats, activeMetrics.x);
-        if (activeMetrics.xPer90 && tp.minutes_played > 0) {
+        const rawX = extractMetric(playerStats, xAxisMetric.key);
+        if (!xAxisMetric.isPercentage && tp.minutes_played > 0) {
           tp.xValue = parseFloat(((rawX / tp.minutes_played) * 90).toFixed(2));
         } else {
           tp.xValue = parseFloat(rawX.toFixed(2));
         }
 
-        const rawY = extractMetric(playerStats, activeMetrics.y);
-        if (activeMetrics.yPer90 && tp.minutes_played > 0) {
+        const rawY = extractMetric(playerStats, yAxisMetric.key);
+        if (!yAxisMetric.isPercentage && tp.minutes_played > 0) {
           tp.yValue = parseFloat(((rawY / tp.minutes_played) * 90).toFixed(2));
         } else {
           tp.yValue = parseFloat(rawY.toFixed(2));
@@ -207,44 +140,93 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
 
     // Filter out players who don't meet mins and filter completely null records, but allow 0s
     return Array.from(map.values()).filter(p => 
-      (p.minutes_played >= 600 || p.isTarget) && 
+      (p.minutes_played >= minMinutes || p.isTarget) && 
       (p.xValue != null && p.yValue != null && !isNaN(p.xValue) && !isNaN(p.yValue))
     );
-  }, [xRanking, yRanking, playerId, activeMetrics, playerName, playerStats, positionGroup]);
+  }, [xRanking, yRanking, playerId, xAxisMetric, yAxisMetric, playerName, playerStats, positionGroup, minMinutes]);
 
   const loading = loadingX || loadingY;
 
   const targetData = mergedData.filter(d => d.isTarget);
-  // Optional: Only show players in same generic position group (Defenders vs Midfielders) to keep the scatter plot relevant
+  // Optional: Only show players in same generic position group to keep the scatter plot relevant
   const otherData = mergedData.filter(d => 
     !d.isTarget && 
     (!positionGroup || d.position_group === positionGroup)
   );
+
+  const renderSelectOptions = () => (
+    METRIC_GROUPS.map(group => (
+      <optgroup key={group.group} label={group.group}>
+        {group.metrics.map(m => (
+          <option key={m.key} value={m.key}>{m.label}</option>
+        ))}
+      </optgroup>
+    ))
+  );
+
+  const formatAxisLabel = (metric: any) => {
+    return metric.isPercentage ? metric.label : `${metric.label} per 90`;
+  };
+
+  const xLabel = formatAxisLabel(xAxisMetric);
+  const yLabel = formatAxisLabel(yAxisMetric);
 
   return (
     <div className="bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h3 className="text-xl font-display text-slate-800 mb-1 uppercase">League Distribution</h3>
-          <p className="text-xs text-gray-500">vs Liga 1 {position || positionGroup || 'Players'} (min. 600 mins)</p>
+          <p className="text-xs text-gray-500">vs Liga 1 {position || positionGroup || 'Players'} (min. {minMinutes} mins)</p>
         </div>
         
-        {/* Smart Tabs */}
-        <div className="flex flex-wrap bg-gray-100 p-1 rounded-md border border-gray-200">
-          {availableTabs.map(tab => (
-            <button
-              key={tab.name}
-              onClick={() => setActiveTabName(tab.name)}
-              className={`px-4 py-1.5 text-xs font-bold rounded transition-colors ${
-                activeTabName === tab.name ? 'shadow-sm' : 'text-gray-500 hover:text-slate-800'
-              }`}
-              style={activeTabName === tab.name ? { backgroundColor: themeColor || '#0ea5e9', color: '#fff' } : {}}
-            >
-              {tab.name}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => setIsCustomizeOpen(!isCustomizeOpen)}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-100 hover:bg-gray-200 text-slate-700 rounded transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          Customize
+        </button>
       </div>
+
+      {isCustomizeOpen && (
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-wrap gap-6 items-end animate-in slide-in-from-top-2 duration-200">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+            <label className="text-xs font-bold text-gray-500 uppercase">X-Axis Metric</label>
+            <select 
+              value={xAxisKey}
+              onChange={(e) => setXAxisKey(e.target.value)}
+              className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-cyan-500 outline-none bg-white"
+            >
+              {renderSelectOptions()}
+            </select>
+          </div>
+          
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+            <label className="text-xs font-bold text-gray-500 uppercase">Y-Axis Metric</label>
+            <select 
+              value={yAxisKey}
+              onChange={(e) => setYAxisKey(e.target.value)}
+              className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-cyan-500 outline-none bg-white"
+            >
+              {renderSelectOptions()}
+            </select>
+          </div>
+          
+          <div className="flex flex-col gap-1.5 w-32">
+            <label className="text-xs font-bold text-gray-500 uppercase">Min Minutes</label>
+            <input 
+              type="number" 
+              value={minMinutes}
+              onChange={(e) => setMinMinutes(Number(e.target.value))}
+              className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-cyan-500 outline-none bg-white"
+              min="0"
+              step="100"
+            />
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="h-80 flex items-center justify-center text-sm text-gray-500">Loading analytics...</div>
@@ -258,24 +240,24 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
               <XAxis 
                 type="number" 
                 dataKey="xValue" 
-                name={activeMetrics.xLabel}
+                name={xLabel}
                 domain={[(dataMin: number) => Math.max(0, dataMin * 0.9), (dataMax: number) => dataMax * 1.1]}
                 tickFormatter={(value) => Number(value).toFixed(1)}
                 tick={{fontSize: 10, fill: '#64748b'}} 
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}
-                label={{ value: activeMetrics.xLabel, position: 'insideBottom', offset: -10, fontSize: 11, fill: '#64748b', fontWeight: 'bold' }} 
+                label={{ value: xLabel, position: 'insideBottom', offset: -10, fontSize: 11, fill: '#64748b', fontWeight: 'bold' }} 
               />
               <YAxis 
                 type="number" 
                 dataKey="yValue" 
-                name={activeMetrics.yLabel} 
+                name={yLabel} 
                 domain={[(dataMin: number) => Math.max(0, dataMin * 0.9), (dataMax: number) => dataMax * 1.1]}
                 tickFormatter={(value) => Number(value).toFixed(1)}
                 tick={{fontSize: 10, fill: '#64748b'}}
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickLine={{ stroke: '#e5e7eb' }}
-                label={{ value: activeMetrics.yLabel, angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' }, fontSize: 11, fill: '#64748b', fontWeight: 'bold' }}
+                label={{ value: yLabel, angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle' }, fontSize: 11, fill: '#64748b', fontWeight: 'bold' }}
               />
               <ZAxis type="number" dataKey="z" range={[50, 200]} />
               
@@ -288,11 +270,11 @@ const ScatterPlots: React.FC<ScatterPlotsProps> = ({ playerId, playerName, playe
                       <div className="bg-white border border-gray-200 p-3 rounded shadow-lg text-xs z-50">
                         <p className="font-bold text-slate-800 mb-2">{data.name}</p>
                         <div className="flex justify-between gap-4 mb-1">
-                          <span className="text-gray-500">{activeMetrics.xLabel}:</span>
+                          <span className="text-gray-500">{xLabel}:</span>
                           <span className="text-cyan-500 font-bold">{data.xValue}</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-500">{activeMetrics.yLabel}:</span>
+                          <span className="text-gray-500">{yLabel}:</span>
                           <span className="text-cyan-500 font-bold">{data.yValue}</span>
                         </div>
                       </div>
