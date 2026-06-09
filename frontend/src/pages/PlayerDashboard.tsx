@@ -36,7 +36,7 @@ const PlayerDashboard: React.FC = () => {
     "Universidad Técnica de Cajamarca": "#E8C32E",
 
     // Big teams
-    "Alianza Lima": "#000080",
+    "Alianza Lima": "#00306f",
     "Universitario": "#A67C52",
     "Universitario de Deportes": "#A67C52",
     "Sporting Cristal": "#00AEEF",
@@ -46,19 +46,19 @@ const PlayerDashboard: React.FC = () => {
     "Los Chankas": "#F5A623",
     "CD Los Chankas": "#F5A623",
     "Cienciano": "#CC0000",
-    "Deportivo Garcilaso": "#006400",
-    "ADT": "#FF6600",
-    "AD Tarma": "#FF6600",
+    "Deportivo Garcilaso": "#00a5d5",
+    "ADT": "#005bed",
+    "AD Tarma": "#005bed",
     "Sport Boys": "#FF69B4",
     "Sport Boys Association": "#FF69B4",
     "Atlético Grau": "#FFCC00",
     "Sport Huancayo": "#CC0000",
     "CSD Sport Huancayo": "#CC0000",
-    "Juan Pablo II College": "#FFD700",
-    "ADC Juan Pablo II College": "#FFD700",
-    "FC Cajamarca": "#1A5276",
-    "CD Moquegua": "#006400",
-    "Deportivo Moquegua": "#006400",
+    "Juan Pablo II College": "#ffd900d3",
+    "ADC Juan Pablo II College": "#ffd900d3",
+    "FC Cajamarca": "#0f3e5b",
+    "CD Moquegua": "#ffd900d3",
+    "Deportivo Moquegua": "#ffd900d3",
   };
   const teamName = profile?.team?.name || "";
   let resolvedColor = COLOR_OVERRIDES[teamName] || profile?.team?.primary_color || '#0ea5e9';

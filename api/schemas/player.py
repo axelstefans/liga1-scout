@@ -54,6 +54,17 @@ class PlayerSeasonStats(BaseModel):
     total_crosses: Optional[int] = None
     saves: Optional[int] = None
     clean_sheets: Optional[int] = None
+    
+    # --- NUEVAS MÉTRICAS DEL GRÁFICO INTERACTIVO ---
+    big_chances_missed: Optional[int] = None
+    accurate_final_third_passes: Optional[int] = None
+    accurate_long_balls: Optional[int] = None
+    successful_dribbles_percentage: Optional[float] = None
+    total_duels_won: Optional[int] = None
+    total_duels_won_percentage: Optional[float] = None
+    big_chances_created: Optional[int] = None
+    was_fouled: Optional[int] = None
+    fouls: Optional[int] = None
 
 class PlayerMatchStats(BaseModel):
     match_id: int

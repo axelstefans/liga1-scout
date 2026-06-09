@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 
 # Strict whitelist of allowed fields to sort by to prevent SQL injection
 ALLOWED_RANKING_STATS = {
+    # --- MÉTRICAS ORIGINALES ---
     "goals": "pss.goals",
     "assists": "pss.assists",
     "rating": "pss.rating",
@@ -23,7 +24,18 @@ ALLOWED_RANKING_STATS = {
     "accurate_crosses": "pss.accurate_crosses",
     "tackles": "pss.tackles",
     "saves": "pss.saves",
-    "clean_sheets": "pss.clean_sheets"
+    "clean_sheets": "pss.clean_sheets",
+    
+    # --- NUEVAS MÉTRICAS AGREGADAS PARA EL GRÁFICO INTERACTIVO ---
+    "big_chances_missed": "pss.big_chances_missed",
+    "accurate_final_third_passes": "pss.accurate_final_third_passes",
+    "accurate_long_balls": "pss.accurate_long_balls",
+    "successful_dribbles_percentage": "pss.successful_dribbles_percentage",
+    "total_duels_won": "pss.total_duels_won",
+    "total_duels_won_percentage": "pss.total_duels_won_percentage",
+    "big_chances_created": "pss.big_chances_created",
+    "was_fouled": "pss.was_fouled",
+    "fouls": "pss.fouls"
 }
 
 def get_player_rankings(db: sqlite3.Connection, stat: str, limit: int = 10) -> List[Dict[str, Any]]:
