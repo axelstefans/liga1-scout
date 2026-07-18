@@ -29,14 +29,15 @@ Scraping is a privilege, not a right. The scraper must be a good citizen:
 - Failures are logged and retried with exponential back-off; never silently swallowed
 
 ### IV. Readability Over Cleverness
-This project is a learning environment for SQLite and data analytics. Code must teach, not impress:
+This project is a learning environment for SQLite and data analytics. SQL must teach, not impress. Python and React code prioritize conciseness and efficiency instead — the learning focus of this project is the database layer, not general-purpose code style. 
 
-- SQL queries are written in full, multi-line format — never concatenated strings or one-liners
-- Python functions do one thing; if a docstring takes more than two sentences to explain a function, split the function
-- Variable names are explicit (`match_home_team_goals`, not `hg`; `cursor` not `c`)
-- Raw SQL is preferred over ORM magic for all queries so the developer can learn SQL directly
-- Every non-trivial SQL query has a comment explaining *why* it does what it does, not just *what*
-- No metaprogramming, decorators chains, or abstractions that hide SQL from the reader
+- SQL queries are written in full, multi-line format 
+— never concatenated strings or one-liners 
+- Every non-trivial SQL query has a comment explaining *why* it does what it does, not just *what* 
+- Python and React: no comments that restate the obvious; comment only where a decision is non-evident. No emojis. 
+- Variable names are explicit in all layers (`match_home_team_goals`, not `hg`; `cursor` not `c`) 
+- Raw SQL is preferred over ORM magic for all queries so the developer can learn SQL directly 
+- No metaprogramming, decorator chains, or abstractions that hide SQL from the reader
 
 ### V. Modular Python Backend
 The backend is a collection of small, focused modules — not a monolith:

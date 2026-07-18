@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 import LanusStats as ls
 
@@ -39,7 +39,7 @@ def get_player_match_stats(player_id: int, db: sqlite3.Connection = Depends(get_
     profile = player_repo.get_player_profile(db, player_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
-        
+
     return player_repo.get_player_match_stats(db, player_id)
 
 @router.get("/{player_id}/heatmap", response_model=List[Dict[str, Any]])
@@ -48,7 +48,7 @@ def get_player_heatmap(player_id: int):
     try:
         sofascore = ls.SofaScore()
         heatmap_data = sofascore.get_player_season_heatmap("Peru Liga 1", "2026", player_id)
-        
+
         if hasattr(heatmap_data, 'to_dict'):
             return heatmap_data.to_dict(orient='records')
         return heatmap_data
@@ -56,3 +56,14 @@ def get_player_heatmap(player_id: int):
         if "PlayerDoesntHaveInfo" in type(e).__name__ or "PlayerDoesntHaveInfo" in str(e):
             return []
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.get("/{player_id}/shotmap", response_model=List[Dict[str, Any]])
+def get_player_shotmap(player_id: int, season_id: Optional[int] = None, db: sqlite3.Connection = Depends(get_db)):
+    """Get player's shot map with coordinates and dynamically calculated expected goals (xG)."""
+    # Verificamos que el jugador exista primero
+    profile = player_repo.get_player_profile(db, player_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+
+    # Delegamos la tarea al repositorio donde está el modelo de IA
+    return player_repo.get_player_shotmap(db, player_id, season_id)

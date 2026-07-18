@@ -105,6 +105,18 @@ export interface HeatmapPoint {
   count: number;
 }
 
+export interface PlayerShot {
+  shot_id: string | number;
+  shot_type: string;
+  situation: string;
+  body_part: string;
+  distance_m: number;
+  angle_rad: number;
+  x: number;
+  y: number;
+  calculated_xg: number;
+}
+
 export const playersApi = {
   search: async (query: string): Promise<PlayerSearchResult[]> => {
     const response = await apiClient.get(`/players/search?q=${query}`);
@@ -124,6 +136,10 @@ export const playersApi = {
   },
   getHeatmap: async (id: number): Promise<HeatmapPoint[]> => {
     const response = await apiClient.get(`/players/${id}/heatmap`);
+    return response.data;
+  },
+  getShotmap: async (id: number): Promise<PlayerShot[]> => {
+    const response = await apiClient.get(`/players/${id}/shotmap`);
     return response.data;
   },
 };

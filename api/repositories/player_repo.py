@@ -1,10 +1,20 @@
 import sqlite3
 from typing import Optional, List, Dict, Any
+import pandas as pd
+import joblib
+
+# Cargar el modelo xG globalmente al iniciar el repositorio
+try:
+    xg_model = joblib.load('xg_model_pipeline.pkl')
+    print("✅ Modelo xG cargado correctamente en el repositorio.")
+except Exception as e:
+    print(f"⚠️ Advertencia: No se pudo cargar el modelo xG. Error: {e}")
+    xg_model = None
 
 def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[str, Any]]:
     """Fetch base player profile including team and market value."""
     query = """
-        SELECT 
+        SELECT
             p.player_id, p.name, p.date_of_birth, p.nationality,
             p.position, p.position_group, p.shirt_number, p.height, p.preferred_foot,
             t.team_id, t.name as team_name, t.short_name as team_short_name, t.logo_url as team_logo_url, t.primary_color as team_primary_color,
@@ -17,9 +27,9 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
     row = db.execute(query, (player_id,)).fetchone()
     if not row:
         return None
-        
+
     data = dict(row)
-    
+
     # Restructure into nested team object
     profile = {
         "player_id": data["player_id"],
@@ -34,7 +44,7 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
         "market_value_eur": data["market_value_eur"],
         "market_value_str": data["market_value_str"]
     }
-    
+
     if data["team_id"]:
         profile["team"] = {
             "team_id": data["team_id"],
@@ -43,13 +53,13 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
             "logo_url": data["team_logo_url"],
             "primary_color": data["team_primary_color"]
         }
-        
+
     return profile
 
 def search_players(db: sqlite3.Connection, query: str) -> List[Dict[str, Any]]:
     """Search for players by name."""
     sql = """
-        SELECT 
+        SELECT
             p.player_id, p.name, p.position_group,
             t.name as team_name, t.logo_url as team_logo_url
         FROM players p
@@ -74,7 +84,7 @@ def get_player_season_stats(db: sqlite3.Connection, player_id: int) -> Optional[
 def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[str, Any]]:
     """Fetch match-by-match stats for a player, including match details, opponent and W/D/L result."""
     query = """
-        SELECT 
+        SELECT
             pms.match_id,
             m.match_date,
             m.round,
@@ -104,17 +114,17 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
     """
 
     rows = db.execute(query, (player_id,)).fetchall()
-    
+
     results = []
     for row in rows:
         d = dict(row)
         is_home = bool(d['is_home'])
         d['is_home'] = is_home
-        
+
         # Compute W/D/L result from match scores
         home_score = d.pop('home_score', None)
         away_score = d.pop('away_score', None)
-        
+
         if home_score is not None and away_score is not None:
             if is_home:
                 player_goals = home_score
@@ -122,14 +132,14 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
             else:
                 player_goals = away_score
                 opponent_goals = home_score
-            
+
             if player_goals > opponent_goals:
                 d['result'] = 'W'
             elif player_goals == opponent_goals:
                 d['result'] = 'D'
             else:
                 d['result'] = 'L'
-            
+
             # Also store the score string for display e.g. "2-1"
             if is_home:
                 d['score'] = f"{home_score}-{away_score}"
@@ -138,7 +148,68 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
         else:
             d['result'] = None
             d['score'] = None
-        
+
         results.append(d)
-        
+
     return results
+
+def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Fetch all shots for a player and calculate xG dynamically with AI."""
+    
+    # 1. Obtenemos los tiros crudos de la base de datos excluyendo penales
+    query = """
+        SELECT
+            ps.shot_id,
+            ps.match_id,
+            ps.season_id,
+            ps.shot_type,
+            ps.situation,
+            ps.body_part,
+            ps.distance_m,
+            ps.angle_rad,
+            ps.coord_x as x,
+            ps.coord_y as y
+        FROM player_shots ps
+        WHERE ps.player_id = ? AND ps.situation != 'penalty'
+    """
+    params = [player_id]
+
+    if season_id:
+        query += " AND ps.season_id = ?"
+        params.append(season_id)
+
+    query += " ORDER BY ps.shot_id DESC"
+
+    rows = db.execute(query, tuple(params)).fetchall()
+    
+    if not rows:
+        return []
+        
+    # 2. Convertimos a DataFrame para procesarlo con nuestro modelo XGBoost
+    df = pd.DataFrame([dict(row) for row in rows])
+    
+    # 3. Aplicamos la Inteligencia Artificial si el modelo se cargó correctamente
+    if xg_model is not None:
+        # Replicamos la limpieza exacta que usamos en el entrenamiento
+        def group_situation(sit):
+            if sit == 'fast-break': return 'regular'
+            elif sit == 'throw-in-set-piece': return 'set-piece'
+            return sit
+        
+        df['situation_grouped'] = df['situation'].apply(group_situation)
+        
+        # Le damos los datos al modelo para predecir
+        X_pred = df[['distance_m', 'angle_rad', 'body_part', 'situation_grouped']]
+        df['calculated_xg'] = xg_model.predict_proba(X_pred)[:, 1]
+        
+        # Redondeamos a 3 decimales para la interfaz visual
+        df['calculated_xg'] = df['calculated_xg'].round(3)
+        
+        # Limpiamos las columnas temporales que no necesita el Frontend
+        df = df.drop(columns=['situation_grouped'])
+    else:
+        # Fallback de seguridad en caso de que el modelo no esté disponible
+        df['calculated_xg'] = 0.0
+        
+    # 4. Convertimos de vuelta a formato lista de diccionarios para enviar como JSON
+    return df.to_dict(orient='records')
