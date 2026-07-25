@@ -13,7 +13,7 @@ interface ScatterPlotsProps {
 
 const METRIC_GROUPS = [
   { group: "Attacking", metrics: [
-    { label: "Goals", key: "goals" }, { label: "Assists", key: "assists" }, { label: "Shots Total", key: "total_shots" }, { label: "Shots On Target", key: "shots_on_target" }, { label: "Big Chances Missed", key: "big_chances_missed" }
+    { label: "Goals", key: "goals" }, { label: "Expected Goals (xG)", key: "expected_goals" }, { label: "Assists", key: "assists" }, { label: "Shots Total", key: "total_shots" }, { label: "Shots On Target", key: "shots_on_target" }, { label: "Big Chances Missed", key: "big_chances_missed" }
   ]},
   { group: "Passing", metrics: [
     { label: "Key Passes", key: "key_passes" }, { label: "Crosses Accurate", key: "accurate_crosses" }, { label: "Pass Accuracy %", key: "accurate_passes_percentage", isPercentage: true }, { label: "Passes in Final Third", key: "accurate_final_third_passes" }, { label: "Long Balls", key: "accurate_long_balls" }

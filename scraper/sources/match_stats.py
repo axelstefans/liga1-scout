@@ -20,6 +20,8 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
     for match in matches:
         if match['status'] != 'played':
             continue
+        if match.get('season_id') != config.SEASON_ID:
+            continue
             
         match_id = match['match_id']
         match_url = match['match_url']
@@ -38,7 +40,7 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                 # NUEVO: Extraer Formaciones y Posiciones primero
                 # ==========================================
                 tactical_positions = {}
-                lineups_data = sofascore_lanus.sofascore_request(f'api/v1/event/{match_id}/lineups')
+                lineups_data = sofascore_lanus.sofascore_request(f'api/v1/event/{str(match_id)}/lineups')
                 
                 if lineups_data:
                     for side in ['home', 'away']:
@@ -150,6 +152,12 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                 break # Success, exit retry loop
                 
             except Exception as e:
+                if "doesn't have enough information" in str(e):
+                    logger.warning(f"Walkover/No data for {match_id}: {e}. Skipping permanently.")
+                    log_scrape(conn, resource_type, resource_key, 'failed', error_message=str(e))
+                    success = True
+                    break
+                    
                 backoff = 2 ** attempt
                 logger.warning(f"LanusStats failed for {match_id}: {e}. Retrying in {backoff}s (Attempt {attempt}/{config.MAX_RETRIES})")
                 time.sleep(backoff)

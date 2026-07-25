@@ -13,12 +13,13 @@ import TimeInPosition from '../components/TimeInPosition';
 import SeasonHeatmap from '../components/SeasonHeatmap';
 import KeyStrengths from '../components/KeyStrengths';
 import ShootingTab from '../components/ShootingTab';
+import PassingTab from '../components/PassingTab';
 
 const PlayerDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const playerId = id ? parseInt(id, 10) : 0;
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'match_log' | 'shooting'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'match_log' | 'shooting' | 'passing'>('overview');
 
   const { data: profile, isLoading: isProfileLoading } = usePlayerProfile(playerId);
   const teamId = profile?.team?.team_id;
@@ -135,6 +136,16 @@ const PlayerDashboard: React.FC = () => {
           }`}
         >
           Shooting
+        </button>
+        <button
+          onClick={() => setActiveTab('passing')}
+          className={`py-2 px-1 text-sm font-semibold transition-colors border-b-2 ${
+            activeTab === 'passing'
+              ? 'border-navy-blue text-navy'
+              : 'border-transparent text-gray-500 hover:text-navy'
+          }`}
+        >
+          Passing
         </button>
       </div>
 
@@ -281,6 +292,10 @@ const PlayerDashboard: React.FC = () => {
 
       {activeTab === 'shooting' && (
         <ShootingTab playerId={playerId} themeColor={themeColor} />
+      )}
+
+      {activeTab === 'passing' && (
+        <PassingTab playerId={playerId} themeColor={themeColor} />
       )}
 
     </div>

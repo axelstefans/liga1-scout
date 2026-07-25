@@ -213,3 +213,30 @@ def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Option
         
     # 4. Convertimos de vuelta a formato lista de diccionarios para enviar como JSON
     return df.to_dict(orient='records')
+
+def get_player_passes(db: sqlite3.Connection, player_id: int, match_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Fetch passes for a specific player."""
+    query = """
+        SELECT 
+            id, match_id, player_id, x_start, y_start, x_end, y_end, is_successful, created_at
+        FROM player_passes
+        WHERE player_id = ?
+    """
+    params = [player_id]
+
+    if match_id is not None:
+        query += " AND match_id = ?"
+        params.append(match_id)
+
+    query += " ORDER BY id ASC"
+
+    rows = db.execute(query, tuple(params)).fetchall()
+    
+    # Convert bool mapping
+    results = []
+    for row in rows:
+        d = dict(row)
+        d['is_successful'] = bool(d['is_successful'])
+        results.append(d)
+        
+    return results

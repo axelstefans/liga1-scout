@@ -5,7 +5,7 @@ load_dotenv()
 
 # ── SofaScore identifiers ─────────────────────────────────────────────────────
 LEAGUE_ID  = 406      # Liga 1 Peruana
-SEASON_ID  = 88529    # 2025 season
+SEASON_ID  = 88529    # 2026 season
 
 # ── Database ──────────────────────────────────────────────────────────────────
 DB_PATH    = os.getenv("DB_PATH", "liga1.db")

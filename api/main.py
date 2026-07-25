@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
-from .routers import players, teams, rankings
+from .routers import players, teams, rankings, predictions
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -15,7 +15,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "OPTIONS"], # Dashboard is read-only
+    allow_methods=["GET", "POST", "OPTIONS"], # Dashboard is read-only + POST for simulate
     allow_headers=["*"],
 )
 
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(players.router, prefix="/api/v1")
 app.include_router(teams.router, prefix="/api/v1")
 app.include_router(rankings.router, prefix="/api/v1")
+app.include_router(predictions.router, prefix="/api/v1")
 
 @app.get("/health")
 def health_check():

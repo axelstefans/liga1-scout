@@ -117,6 +117,18 @@ export interface PlayerShot {
   calculated_xg: number;
 }
 
+export interface PlayerPass {
+  id: number;
+  match_id: number;
+  player_id: number;
+  x_start: number | null;
+  y_start: number | null;
+  x_end: number | null;
+  y_end: number | null;
+  is_successful: boolean;
+  created_at: string;
+}
+
 export const playersApi = {
   search: async (query: string): Promise<PlayerSearchResult[]> => {
     const response = await apiClient.get(`/players/search?q=${query}`);
@@ -142,6 +154,11 @@ export const playersApi = {
     const response = await apiClient.get(`/players/${id}/shotmap`);
     return response.data;
   },
+  getPasses: async (id: number, matchId?: number): Promise<PlayerPass[]> => {
+    const url = matchId ? `/players/${id}/passes?match_id=${matchId}` : `/players/${id}/passes`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
 };
 
 export const rankingsApi = {
@@ -156,4 +173,35 @@ export const teamsApi = {
     const response = await apiClient.get(`/teams/${teamId}/next-match`);
     return response.data;
   }
+};
+
+export interface PredictionResponse {
+  projected_goals: {
+    home: number;
+    away: number;
+  };
+  match_winner_odds: {
+    home: number;
+    draw: number;
+    away: number;
+  };
+  over_under_25_odds: {
+    over: number;
+    under: number;
+  };
+  probabilities_percent: {
+    home: number;
+    draw: number;
+    away: number;
+    over_25: number;
+    under_25: number;
+  };
+}
+
+export const simulateMatch = async (homeTeam: string, awayTeam: string): Promise<PredictionResponse> => {
+  const response = await apiClient.post('/predictions/simulate', {
+    home_team: homeTeam,
+    away_team: awayTeam
+  });
+  return response.data;
 };

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import LanusStats as ls
 
 from ..core.database import get_db
-from ..schemas.player import PlayerProfile, PlayerSeasonStats, PlayerMatchStats, PlayerSearchResult
+from ..schemas.player import PlayerProfile, PlayerSeasonStats, PlayerMatchStats, PlayerSearchResult, PlayerPass
 from ..repositories import player_repo
 
 router = APIRouter(prefix="/players", tags=["Players"])
@@ -67,3 +67,12 @@ def get_player_shotmap(player_id: int, season_id: Optional[int] = None, db: sqli
 
     # Delegamos la tarea al repositorio donde está el modelo de IA
     return player_repo.get_player_shotmap(db, player_id, season_id)
+
+@router.get("/{player_id}/passes", response_model=List[PlayerPass])
+def get_player_passes(player_id: int, match_id: Optional[int] = None, db: sqlite3.Connection = Depends(get_db)):
+    """Get player's spatial pass data."""
+    profile = player_repo.get_player_profile(db, player_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+        
+    return player_repo.get_player_passes(db, player_id, match_id)

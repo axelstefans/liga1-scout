@@ -21,6 +21,8 @@ from scraper.sources.season_stats import scrape_and_store_season_stats
 from scraper.sources.matches import scrape_and_store_matches
 from scraper.sources.match_stats import scrape_and_store_match_stats
 from scraper.sources.transfermarkt import scrape_and_store_market_values
+from scraper.sources.spatial import scrape_and_store_spatial_events
+from scraper.sources.shotmap import scrape_and_store_shotmaps
 
 import LanusStats as ls
 
@@ -35,6 +37,8 @@ def main():
     parser.add_argument("--match-stats-only", action="store_true", help="Run only the match stats pipeline step")
     parser.add_argument("--rematch-stats", action="store_true", help="Clear existing match stats and re-scrape them")
     parser.add_argument("--transfermarkt-only", action="store_true", help="Run only the transfermarkt pipeline step")
+    parser.add_argument("--spatial-only", action="store_true", help="Run only the spatial events (passes) pipeline step")
+    parser.add_argument("--shotmap-only", action="store_true", help="Run only the shotmap pipeline step")
     parser.add_argument("--full", action="store_true", help="Run the full pipeline")
     
     args = parser.parse_args()
@@ -69,7 +73,7 @@ def main():
     if args.season_stats_only or args.full:
         scrape_and_store_season_stats(conn, api_client)
         
-    if args.matches_only or args.full or args.match_stats_only or args.rematch_stats:
+    if args.matches_only or args.full or args.match_stats_only or args.rematch_stats or args.spatial_only or args.shotmap_only:
         matches = scrape_and_store_matches(conn, api_client)
         
     if args.rematch_stats:
@@ -85,6 +89,12 @@ def main():
         logger.info("Initialising LanusStats Transfermarkt module...")
         tm_lanus = ls.Transfermarkt()
         scrape_and_store_market_values(conn, tm_lanus, teams)
+        
+    if args.spatial_only or args.full:
+        scrape_and_store_spatial_events(conn, api_client, matches)
+
+    if args.shotmap_only or args.full:
+        scrape_and_store_shotmaps(conn, api_client, test_mode=False)
 
     logger.info("Pipeline run complete.")
     conn.close()

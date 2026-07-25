@@ -35,7 +35,8 @@ ALLOWED_RANKING_STATS = {
     "total_duels_won_percentage": "pss.total_duels_won_percentage",
     "big_chances_created": "pss.big_chances_created",
     "was_fouled": "pss.was_fouled",
-    "fouls": "pss.fouls"
+    "fouls": "pss.fouls",
+    "expected_goals": "pss.expected_goals"
 }
 
 def get_player_rankings(db: sqlite3.Connection, stat: str, limit: int = 10) -> List[Dict[str, Any]]:

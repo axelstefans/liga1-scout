@@ -36,7 +36,7 @@ def scrape_and_store_shotmaps(conn, api_client, test_mode=True) -> int:
     # Cargar todos los IDs de jugadores válidos en memoria para máxima velocidad
     valid_players = {row['player_id'] for row in conn.execute("SELECT player_id FROM players").fetchall()}
     
-    matches = conn.execute("SELECT match_id FROM matches").fetchall()
+    matches = conn.execute("SELECT match_id, season_id, status FROM matches").fetchall()
     
     # MODO PRUEBA: Si está activo, solo probamos con 1 partido para no bloquear la IP
     if test_mode:
@@ -47,18 +47,27 @@ def scrape_and_store_shotmaps(conn, api_client, test_mode=True) -> int:
     now = datetime.utcnow().isoformat()
     
     for row in matches:
+        if row["status"] != "played":
+            continue
+        if row["season_id"] != config.SEASON_ID:
+            continue
+            
         match_id = row['match_id']
         resource_key = str(match_id)
         
         # Ignorar si ya está cacheado (a menos que estemos forzando el test)
         if is_cached(conn, resource_type, resource_key) and not test_mode:
-            continue
+            has_shots = conn.execute("SELECT 1 FROM player_shots WHERE match_id = ? LIMIT 1", (match_id,)).fetchone()
+            if has_shots:
+                continue
+            logger.info(f"Match {match_id} cached but missing from DB. Ignoring cache.")
             
         logger.info(f"Fetching shotmap for match {match_id}...")
         
         try:
-            # Usamos tu cliente LanusStats "polite" que ya incluye retrasos anti-baneo
-            shotmap_data = api_client.get_match_shotmap(match_id)
+            # Use _polite_get since get_match_shotmap isn't defined in SofaScoreAPIClient
+            shotmap_response = api_client._polite_get(f"api/v1/event/{match_id}/shotmap")
+            shotmap_data = shotmap_response.get('shotmap', [])
             
             if not shotmap_data:
                 logger.info(f"No shotmap data found for match {match_id}.")

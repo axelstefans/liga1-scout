@@ -65,6 +65,7 @@ class PlayerSeasonStats(BaseModel):
     big_chances_created: Optional[int] = None
     was_fouled: Optional[int] = None
     fouls: Optional[int] = None
+    expected_goals: Optional[float] = None
 
 class PlayerMatchStats(BaseModel):
     match_id: int
@@ -84,3 +85,13 @@ class PlayerMatchStats(BaseModel):
     round: Optional[int] = None    # League round number
     position: Optional[str] = None # Tactical position played
 
+class PlayerPass(BaseModel):
+    id: int
+    match_id: int
+    player_id: int
+    x_start: Optional[float] = None
+    y_start: Optional[float] = None
+    x_end: Optional[float] = None
+    y_end: Optional[float] = None
+    is_successful: bool
+    created_at: str

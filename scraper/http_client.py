@@ -58,6 +58,10 @@ class SofaScoreAPIClient:
     def get_rounds(self, league_id: int, season_id: int) -> dict:
         endpoint = f"api/v1/unique-tournament/{league_id}/season/{season_id}/rounds"
         return self._polite_get(endpoint)
+    
+    def get_player_rating_breakdown(self, event_id: int, player_id: int) -> dict:
+        endpoint = f"api/v1/event/{event_id}/player/{player_id}/rating-breakdown"
+        return self._polite_get(endpoint)
 
     def close(self):
         """Closes the underlying browser if needed."""
