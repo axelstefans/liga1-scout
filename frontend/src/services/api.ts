@@ -169,6 +169,10 @@ export const rankingsApi = {
 };
 
 export const teamsApi = {
+  getAll: async (): Promise<TeamBase[]> => {
+    const response = await apiClient.get(`/teams/`);
+    return response.data;
+  },
   getNextMatch: async (teamId: number): Promise<TeamNextMatch> => {
     const response = await apiClient.get(`/teams/${teamId}/next-match`);
     return response.data;
@@ -198,10 +202,26 @@ export interface PredictionResponse {
   };
 }
 
-export const simulateMatch = async (homeTeam: string, awayTeam: string): Promise<PredictionResponse> => {
+export const simulateMatch = async (homeTeam: string, awayTeam: string, homeCustomXg?: number, awayCustomXg?: number): Promise<PredictionResponse> => {
   const response = await apiClient.post('/predictions/simulate', {
     home_team: homeTeam,
-    away_team: awayTeam
+    away_team: awayTeam,
+    home_custom_xg: homeCustomXg,
+    away_custom_xg: awayCustomXg
   });
+  return response.data;
+};
+
+export interface PlayerPredictionStat {
+  player_id: number;
+  player_name: string;
+  position: string | null;
+  total_minutes: number;
+  total_xg: number;
+  xg90: number;
+}
+
+export const fetchTeamRoster = async (teamName: string): Promise<PlayerPredictionStat[]> => {
+  const response = await apiClient.get(`/predictions/roster?team_name=${encodeURIComponent(teamName)}`);
   return response.data;
 };

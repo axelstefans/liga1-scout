@@ -1,0 +1,140 @@
+# Project Structure
+Generated on: 2026-07-26T14:22:55.583093
+```text
+.agents
+    skills
+        ...
+.antigravitycli
+.gemini
+    commands
+        ...
+.specify
+    extensions
+        ...
+    integrations
+        ...
+    memory
+        ...
+    scripts
+        ...
+    templates
+        ...
+    workflows
+        ...
+    ...
+.vscode
+    settings.json
+api
+    core
+        config.py
+        database.py
+    repositories
+        player_repo.py
+        ranking_repo.py
+        team_repo.py
+    routers
+        players.py
+        predictions.py
+        rankings.py
+        teams.py
+    schemas
+        player.py
+        prediction.py
+        ranking.py
+        team.py
+    services
+        __init__.py
+        poisson_service.py
+    .gitkeep
+    main.py
+frontend
+    public
+        player_images
+            ...
+        liga1-logo.png
+    src
+        components
+            charts
+                AttributeRadar.tsx
+                PercentileBars.tsx
+                ScatterPlots.tsx
+            FormStrip.tsx
+            KeyStrengths.tsx
+            MatchTable.tsx
+            PassingTab.tsx
+            PlayerHeader.tsx
+            PositionProfile.tsx
+            PredictionDashboard.tsx
+            RosterSelector.tsx
+            SeasonHeatmap.tsx
+            ShootingTab.tsx
+            TimeInPosition.tsx
+        hooks
+            usePlayer.ts
+        pages
+            Home.tsx
+            PlayerDashboard.tsx
+            Predictor.tsx
+        services
+            api.ts
+        App.tsx
+        index.css
+        main.tsx
+        vite-env.d.ts
+    .gitkeep
+    index.html
+    package.json
+    postcss.config.js
+    tailwind.config.js
+    tsconfig.app.json
+    tsconfig.json
+    tsconfig.node.json
+    vite.config.ts
+migrations
+    001_initial_schema.sql
+    002_season_stats.sql
+    003_match_stats.sql
+    004_scrape_log.sql
+    005_transfermarkt.sql
+    006_add_position_to_match_stats.sql
+    007_add_height_and_foot.sql
+    008_create_shots_table.sql
+    009_player_spatial_events.sql
+scraper
+    sources
+        __init__.py
+        formation_parser.py
+        heatmap.py
+        match_stats.py
+        matches.py
+        season_stats.py
+        shotmap.py
+        spatial.py
+        squads.py
+        teams.py
+        transfermarkt.py
+    __init__.py
+    config.py
+    db.py
+    http_client.py
+    run.py
+scratch
+    fetch_sofascore.py
+shared
+    __init__.py
+    models.py
+specs
+    001-sofascore-pipeline
+        spec.md
+    002-fastapi-backend
+        spec.md
+    003-react-frontend
+        spec.md
+.env.example
+.gitignore
+GEMINI.md
+...
+verificar_matches.py
+verificar_tiros.py
+xg_model_pipeline.pkl
+```

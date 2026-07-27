@@ -7,6 +7,12 @@ def get_team_profile(db: sqlite3.Connection, team_id: int) -> Optional[Dict[str,
     row = db.execute(query, (team_id,)).fetchone()
     return dict(row) if row else None
 
+def get_all_teams(db: sqlite3.Connection) -> List[Dict[str, Any]]:
+    """Fetch all active teams for the current season."""
+    query = "SELECT * FROM teams WHERE is_active = 1 ORDER BY name ASC"
+    rows = db.execute(query).fetchall()
+    return [dict(row) for row in rows]
+
 def get_team_roster(db: sqlite3.Connection, team_id: int) -> List[Dict[str, Any]]:
     """Fetch all players currently assigned to the team."""
     query = """

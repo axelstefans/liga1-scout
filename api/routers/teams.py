@@ -3,10 +3,15 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..core.database import get_db
-from ..schemas.team import RosterPlayer, TeamNextMatch
+from ..schemas.team import RosterPlayer, TeamNextMatch, TeamProfile
 from ..repositories import team_repo
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
+
+@router.get("/", response_model=List[TeamProfile])
+def get_all_teams(db: sqlite3.Connection = Depends(get_db)):
+    """Get all active teams."""
+    return team_repo.get_all_teams(db)
 
 @router.get("/{team_id}/roster", response_model=List[RosterPlayer])
 def get_team_roster(team_id: int, db: sqlite3.Connection = Depends(get_db)):

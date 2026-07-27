@@ -1,20 +1,29 @@
-import React, { useState } from 'react';
-import { simulateMatch, PredictionResponse } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { simulateMatch, PredictionResponse, teamsApi } from '../services/api';
+import { RosterSelector } from './RosterSelector';
 
 export const PredictionDashboard: React.FC = () => {
-  const TEAMS = [
-    "Universitario de Deportes", "Sporting Cristal", "Alianza Lima", "FBC Melgar", 
-    "ADT Tarma", "Cienciano", "Cusco FC", "Sport Huancayo", "Los Chankas", 
-    "Atlético Grau", "Alianza Atlético", "Comerciantes Unidos", "Deportivo Garcilaso", 
-    "Universidad César Vallejo", "UTC de Cajamarca", "Sport Boys", "Carlos A. Mannucci", 
-    "Unión Comercio"
-  ];
-
+  const [teamsList, setTeamsList] = useState<string[]>([]);
   const [homeTeam, setHomeTeam] = useState<string>('');
   const [awayTeam, setAwayTeam] = useState<string>('');
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [homeCustomXg, setHomeCustomXg] = useState<number>(0);
+  const [awayCustomXg, setAwayCustomXg] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<"global" | "tactical">("global");
+  
+  const [bookieHome, setBookieHome] = useState<string>('');
+  const [bookieDraw, setBookieDraw] = useState<string>('');
+  const [bookieAway, setBookieAway] = useState<string>('');
+  const [bookieOver, setBookieOver] = useState<string>('');
+  const [bookieUnder, setBookieUnder] = useState<string>('');
+
+  useEffect(() => {
+    teamsApi.getAll()
+      .then(data => setTeamsList(data.map(t => t.name)))
+      .catch(err => console.error("Failed to load teams:", err));
+  }, []);
 
   const handleSwap = () => {
     setHomeTeam(awayTeam);
@@ -31,7 +40,12 @@ export const PredictionDashboard: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await simulateMatch(homeTeam, awayTeam);
+      const data = await simulateMatch(
+        homeTeam, 
+        awayTeam, 
+        activeTab === "tactical" && homeCustomXg > 0 ? homeCustomXg : undefined, 
+        activeTab === "tactical" && awayCustomXg > 0 ? awayCustomXg : undefined
+      );
       setResult(data);
     } catch (err: any) {
       setError(
@@ -53,25 +67,31 @@ export const PredictionDashboard: React.FC = () => {
   
   const isHighest = (val: number) => val === maxProb;
 
+  const hasValue = (bookieStr: string, trueOdds: number) => {
+    const bookie = parseFloat(bookieStr);
+    return !isNaN(bookie) && bookie > trueOdds;
+  };
+
   return (
     <div className="bg-gray-900 text-white p-6 rounded-lg shadow-xl w-full max-w-4xl mx-auto border border-gray-800">
       <h2 className="text-2xl font-bold mb-6 text-blue-400">Match Predictor (Poisson Model)</h2>
 
-      <form onSubmit={handleSimulate} className="flex flex-col md:flex-row gap-4 mb-8 md:items-end">
-        <div className="flex-1">
-          <label className="block text-sm text-gray-400 mb-1" htmlFor="homeTeam">Home Team</label>
-          <select 
-            id="homeTeam"
-            className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
-            value={homeTeam}
-            onChange={(e) => setHomeTeam(e.target.value)}
-          >
-            <option value="" disabled>Select a team...</option>
-            {TEAMS.map(team => (
-              <option key={team} value={team}>{team}</option>
-            ))}
-          </select>
-        </div>
+      <form onSubmit={handleSimulate} className="mb-8">
+        <div className="flex flex-col md:flex-row gap-4 md:items-end">
+          <div className="flex-1">
+            <label className="block text-sm text-gray-400 mb-1" htmlFor="homeTeam">Home Team</label>
+            <select 
+              id="homeTeam"
+              className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+              value={homeTeam}
+              onChange={(e) => setHomeTeam(e.target.value)}
+            >
+              <option value="" disabled>Select a team...</option>
+              {teamsList.map(team => (
+                <option key={team} value={team}>{team}</option>
+              ))}
+            </select>
+          </div>
         
         <div className="flex justify-center pb-1">
           <button 
@@ -95,13 +115,56 @@ export const PredictionDashboard: React.FC = () => {
             onChange={(e) => setAwayTeam(e.target.value)}
           >
             <option value="" disabled>Select a team...</option>
-            {TEAMS.map(team => (
+            {teamsList.map(team => (
               <option key={team} value={team}>{team}</option>
             ))}
           </select>
         </div>
+      </div>
 
-        <div className="flex items-end mt-4 md:mt-0">
+        <div className="flex justify-center mt-6 mb-6">
+          <div className="bg-gray-800 p-1 rounded-lg inline-flex shadow-inner border border-gray-700">
+            <button
+              type="button"
+              onClick={() => setActiveTab("global")}
+              className={`px-6 py-2 rounded-md text-sm font-semibold transition-colors ${
+                activeTab === "global" 
+                  ? "bg-blue-600 text-white shadow" 
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Global Prediction
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("tactical")}
+              className={`px-6 py-2 rounded-md text-sm font-semibold transition-colors ${
+                activeTab === "tactical" 
+                  ? "bg-blue-600 text-white shadow" 
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Tactical Setup
+            </button>
+          </div>
+        </div>
+
+        {activeTab === "tactical" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <RosterSelector 
+              teamName={homeTeam || null} 
+              teamType="Home" 
+              onTotalXgChange={setHomeCustomXg} 
+            />
+            <RosterSelector 
+              teamName={awayTeam || null} 
+              teamType="Away" 
+              onTotalXgChange={setAwayCustomXg} 
+            />
+          </div>
+        )}
+
+        <div className="flex justify-end mt-4">
           <button 
             type="submit" 
             disabled={loading}
@@ -187,6 +250,108 @@ export const PredictionDashboard: React.FC = () => {
             </div>
           </div>
           
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-6 bg-gray-800 p-5 rounded-lg border border-gray-700">
+          <h3 className="text-lg font-semibold text-blue-400 mb-4 border-b border-gray-700 pb-2">Value Bets Scanner</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 1X2 Market */}
+            <div>
+              <h4 className="text-md font-medium text-gray-300 mb-3">1X2 Market</h4>
+              <div className="space-y-3">
+                {/* Home */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-400 w-16">Home</label>
+                  <input 
+                    type="number" step="0.01" min="1.01" placeholder="Odds..."
+                    className={`w-24 bg-gray-900 border rounded p-1 text-white text-sm focus:outline-none transition-colors ${
+                      hasValue(bookieHome, result.match_winner_odds.home) ? "border-green-500" : "border-gray-600 focus:border-blue-500"
+                    }`}
+                    value={bookieHome} onChange={e => setBookieHome(e.target.value)}
+                  />
+                  <div className="w-24 text-right">
+                    {hasValue(bookieHome, result.match_winner_odds.home) && (
+                      <span className="text-xs bg-green-900 text-green-300 px-2 py-1 rounded font-bold">VALUE</span>
+                    )}
+                  </div>
+                </div>
+                {/* Draw */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-400 w-16">Draw</label>
+                  <input 
+                    type="number" step="0.01" min="1.01" placeholder="Odds..."
+                    className={`w-24 bg-gray-900 border rounded p-1 text-white text-sm focus:outline-none transition-colors ${
+                      hasValue(bookieDraw, result.match_winner_odds.draw) ? "border-green-500" : "border-gray-600 focus:border-blue-500"
+                    }`}
+                    value={bookieDraw} onChange={e => setBookieDraw(e.target.value)}
+                  />
+                  <div className="w-24 text-right">
+                    {hasValue(bookieDraw, result.match_winner_odds.draw) && (
+                      <span className="text-xs bg-green-900 text-green-300 px-2 py-1 rounded font-bold">VALUE</span>
+                    )}
+                  </div>
+                </div>
+                {/* Away */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-400 w-16">Away</label>
+                  <input 
+                    type="number" step="0.01" min="1.01" placeholder="Odds..."
+                    className={`w-24 bg-gray-900 border rounded p-1 text-white text-sm focus:outline-none transition-colors ${
+                      hasValue(bookieAway, result.match_winner_odds.away) ? "border-green-500" : "border-gray-600 focus:border-blue-500"
+                    }`}
+                    value={bookieAway} onChange={e => setBookieAway(e.target.value)}
+                  />
+                  <div className="w-24 text-right">
+                    {hasValue(bookieAway, result.match_winner_odds.away) && (
+                      <span className="text-xs bg-green-900 text-green-300 px-2 py-1 rounded font-bold">VALUE</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Goals Market */}
+            <div>
+              <h4 className="text-md font-medium text-gray-300 mb-3">Goals Market (2.5)</h4>
+              <div className="space-y-3">
+                {/* Over */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-400 w-16">Over</label>
+                  <input 
+                    type="number" step="0.01" min="1.01" placeholder="Odds..."
+                    className={`w-24 bg-gray-900 border rounded p-1 text-white text-sm focus:outline-none transition-colors ${
+                      hasValue(bookieOver, result.over_under_25_odds.over) ? "border-green-500" : "border-gray-600 focus:border-blue-500"
+                    }`}
+                    value={bookieOver} onChange={e => setBookieOver(e.target.value)}
+                  />
+                  <div className="w-24 text-right">
+                    {hasValue(bookieOver, result.over_under_25_odds.over) && (
+                      <span className="text-xs bg-green-900 text-green-300 px-2 py-1 rounded font-bold">VALUE</span>
+                    )}
+                  </div>
+                </div>
+                {/* Under */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-400 w-16">Under</label>
+                  <input 
+                    type="number" step="0.01" min="1.01" placeholder="Odds..."
+                    className={`w-24 bg-gray-900 border rounded p-1 text-white text-sm focus:outline-none transition-colors ${
+                      hasValue(bookieUnder, result.over_under_25_odds.under) ? "border-green-500" : "border-gray-600 focus:border-blue-500"
+                    }`}
+                    value={bookieUnder} onChange={e => setBookieUnder(e.target.value)}
+                  />
+                  <div className="w-24 text-right">
+                    {hasValue(bookieUnder, result.over_under_25_odds.under) && (
+                      <span className="text-xs bg-green-900 text-green-300 px-2 py-1 rounded font-bold">VALUE</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

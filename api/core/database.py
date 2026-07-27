@@ -19,18 +19,24 @@ def get_db() -> Generator[sqlite3.Connection, None, None]:
         conn = sqlite3.connect(
             f"file:{settings.DB_PATH}?mode=ro",
             uri=True,
-            check_same_thread=False
+            check_same_thread=False,
+            timeout=5.0,
         )
-        
+
+        # If the DB is locked by a writer, fail after 5s instead of hanging forever
+        conn.execute("PRAGMA busy_timeout = 5000")
+
         # Performance PRAGMAs (read-only safe)
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA synchronous = NORMAL")
+        # NOTE: journal_mode=WAL is intentionally NOT set here. Changing journal
+        # mode requires a write to the DB header, which a mode=ro connection
+        # cannot perform. WAL must be enabled once from a writer connection
+        # (e.g. in the scraper or a one-time setup script), not per request.
         conn.execute("PRAGMA temp_store = MEMORY")
         conn.execute("PRAGMA mmap_size = 30000000000")
-        
+
         # Return dict-like rows
         conn.row_factory = sqlite3.Row
-        
+
         yield conn
     except sqlite3.Error as e:
         logger.error(f"Database connection error: {e}")
