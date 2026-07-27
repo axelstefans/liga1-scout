@@ -156,6 +156,12 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
 def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Optional[int] = None) -> List[Dict[str, Any]]:
     """Fetch all shots for a player and calculate xG dynamically with AI."""
     
+    if season_id is None:
+        # Default to the player's most recent season in the shots table
+        row = db.execute("SELECT MAX(season_id) as max_season FROM player_shots WHERE player_id = ?", (player_id,)).fetchone()
+        if row and row['max_season']:
+            season_id = row['max_season']
+
     # 1. Obtenemos los tiros crudos de la base de datos excluyendo penales
     query = """
         SELECT
@@ -216,19 +222,39 @@ def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Option
 
 def get_player_passes(db: sqlite3.Connection, player_id: int, match_id: Optional[int] = None) -> List[Dict[str, Any]]:
     """Fetch passes for a specific player."""
+    season_id = None
+    if match_id is None:
+        # Default to the player's most recent season in the passes table
+        row = db.execute(
+            "SELECT MAX(m.season_id) as max_season "
+            "FROM matches m "
+            "JOIN player_passes pp ON m.match_id = pp.match_id "
+            "WHERE pp.player_id = ?", 
+            (player_id,)
+        ).fetchone()
+        if row and row['max_season']:
+            season_id = row['max_season']
+
     query = """
         SELECT 
-            id, match_id, player_id, x_start, y_start, x_end, y_end, is_successful, created_at
-        FROM player_passes
-        WHERE player_id = ?
+            pp.id, pp.match_id, pp.player_id, pp.x_start, pp.y_start, pp.x_end, pp.y_end, pp.is_successful, pp.created_at
+        FROM player_passes pp
     """
+    if season_id is not None:
+        query += " JOIN matches m ON pp.match_id = m.match_id"
+
+    query += " WHERE pp.player_id = ?"
     params = [player_id]
 
     if match_id is not None:
-        query += " AND match_id = ?"
+        query += " AND pp.match_id = ?"
         params.append(match_id)
 
-    query += " ORDER BY id ASC"
+    if season_id is not None:
+        query += " AND m.season_id = ?"
+        params.append(season_id)
+
+    query += " ORDER BY pp.id ASC"
 
     rows = db.execute(query, tuple(params)).fetchall()
     

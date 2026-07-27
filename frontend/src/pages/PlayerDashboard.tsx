@@ -295,7 +295,7 @@ const PlayerDashboard: React.FC = () => {
       )}
 
       {activeTab === 'passing' && (
-        <PassingTab playerId={playerId} themeColor={themeColor} />
+        <PassingTab playerId={playerId} themeColor={themeColor} playerName={profile.name} />
       )}
 
     </div>

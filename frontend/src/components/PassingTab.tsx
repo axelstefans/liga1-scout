@@ -5,9 +5,10 @@ import { PlayerPass } from '../services/api';
 interface PassingTabProps {
   playerId: number;
   themeColor: string;
+  playerName: string;
 }
 
-const PassingTab: React.FC<PassingTabProps> = ({ playerId, themeColor }) => {
+const PassingTab: React.FC<PassingTabProps> = ({ playerId, themeColor, playerName }) => {
   const { data: passData, isLoading } = usePlayerPasses(playerId);
   const { data: matchStats } = usePlayerMatchStats(playerId);
   
@@ -70,17 +71,26 @@ const PassingTab: React.FC<PassingTabProps> = ({ playerId, themeColor }) => {
     }
   });
 
-  const renderZonalGrid = (grid: number[][]) => (
-    <div className="relative w-full max-w-md h-auto aspect-[68/105] bg-[#fdfdfd] rounded border-2 border-gray-300 shadow-inner overflow-hidden mx-auto">
-      <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full text-gray-300" preserveAspectRatio="none">
-        
-        {/* Render Heatmap Cells FIRST */}
-        {Array.from({ length: numRows }).map((_, r) => 
-          Array.from({ length: numCols }).map((_, c) => {
-            const count = grid[r][c];
-            const pct = validPassesCount > 0 ? (count / validPassesCount) * 100 : 0;
-            const alpha = Math.min(0.85, pct / 20); 
-            
+  const toPct = (grid: number[][]) => grid.flat().map(count => validPassesCount > 0 ? (count / validPassesCount) * 100 : 0);
+  const sharedMaxPct = Math.max(...toPct(gridStarts), ...toPct(gridEnds));
+
+  const renderZonalGrid = (grid: number[][], titleSuffix: string, sharedMaxPct: number) => {
+    return (
+    <div className="w-full flex flex-col items-center">
+      <div className="text-center mb-4">
+        <h3 className="font-bold text-lg text-navy">{playerName} — {titleSuffix}</h3>
+        <p className="text-sm text-gray-500">{validPassesCount} Open Play Passes</p>
+      </div>
+      <div className="relative w-full max-w-md h-auto aspect-[68/105] bg-[#fdfdfd] rounded border-2 border-gray-300 shadow-inner overflow-hidden mx-auto">
+        <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full text-gray-300" preserveAspectRatio="none">
+          
+          {/* Render Heatmap Cells FIRST */}
+          {Array.from({ length: numRows }).map((_, r) => 
+            Array.from({ length: numCols }).map((_, c) => {
+              const count = grid[r][c];
+              const pct = validPassesCount > 0 ? (count / validPassesCount) * 100 : 0;
+              const alpha = pct > 0 ? 0.08 + Math.pow(pct / sharedMaxPct, 0.55) * 0.77 : 0;
+              
             return (
               <g key={`${r}-${c}`}>
                 <rect 
@@ -98,7 +108,7 @@ const PassingTab: React.FC<PassingTabProps> = ({ playerId, themeColor }) => {
                     y={r * rowHeight + rowHeight / 2} 
                     fontSize="3.8" 
                     fontWeight="bold" 
-                    fill={alpha > 0.4 ? '#ffffff' : '#111827'} 
+                    fill={alpha > 0.5 ? '#ffffff' : '#111827'} 
                     textAnchor="middle" 
                     dominantBaseline="middle"
                   >
@@ -127,10 +137,17 @@ const PassingTab: React.FC<PassingTabProps> = ({ playerId, themeColor }) => {
           <rect x="36.8" y="0" width="26.4" height="5.5" />
           <path d="M 39.4 16.5 A 9.15 5.926 0 0 0 60.6 16.5" />
           <ellipse cx="50" cy="11" rx="0.4" ry="0.259" fill="rgba(0,0,0,0.5)" />
+
+          <path d="M 0 1.5 A 1.5 1.5 0 0 0 1.5 0" />
+          <path d="M 98.5 0 A 1.5 1.5 0 0 0 100 1.5" />
+          <path d="M 100 98.5 A 1.5 1.5 0 0 0 98.5 100" />
+          <path d="M 1.5 100 A 1.5 1.5 0 0 0 0 98.5" />
         </g>
       </svg>
     </div>
+    </div>
   );
+};
 
   const filteredPasses = currentPassData.filter(p => {
     if (filter === 'successful') return p.is_successful;
@@ -306,13 +323,13 @@ const PassingTab: React.FC<PassingTabProps> = ({ playerId, themeColor }) => {
 
           {activeMap === 'starts' && (
             <div className="flex flex-col items-center w-full">
-              {renderZonalGrid(gridStarts)}
+              {renderZonalGrid(gridStarts, 'Pass Starts', sharedMaxPct)}
             </div>
           )}
 
           {activeMap === 'endings' && (
             <div className="flex flex-col items-center w-full">
-              {renderZonalGrid(gridEnds)}
+              {renderZonalGrid(gridEnds, 'Pass Endings', sharedMaxPct)}
             </div>
           )}
 
