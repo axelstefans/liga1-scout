@@ -7,17 +7,26 @@ interface MatchTableProps {
 
 const MatchTable: React.FC<MatchTableProps> = ({ matches }) => {
   const groupedMatches = useMemo(() => {
-    const groups: Record<number, PlayerMatchStats[]> = {};
+    const groups: Record<string, PlayerMatchStats[]> = {};
     matches.forEach(m => {
-      const r = m.round || 0;
-      if (!groups[r]) groups[r] = [];
-      groups[r].push(m);
+      const key = m.tournament_name || 'Other';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(m);
     });
 
     return Object.keys(groups)
-      .map(Number)
-      .sort((a, b) => b - a)
-      .map(r => ({ round: r, matches: groups[r] }));
+      .map(key => ({
+        key,
+        tournament: key,
+        matches: groups[key].sort((a, b) => new Date(b.match_date).getTime() - new Date(a.match_date).getTime())
+      }))
+      .sort((a, b) => {
+        if (a.tournament === 'Clausura' && b.tournament !== 'Clausura') return -1;
+        if (b.tournament === 'Clausura' && a.tournament !== 'Clausura') return 1;
+        if (a.tournament === 'Apertura' && b.tournament !== 'Apertura') return -1;
+        if (b.tournament === 'Apertura' && a.tournament !== 'Apertura') return 1;
+        return 0;
+      });
   }, [matches]);
 
   return (
@@ -46,13 +55,13 @@ const MatchTable: React.FC<MatchTableProps> = ({ matches }) => {
               : null;
 
             return (
-              <React.Fragment key={group.round}>
+              <React.Fragment key={group.key}>
                 {/* Round Header / Separator */}
                 <tr className="bg-[#F3F4F6] border-y border-border">
                   <td colSpan={10} className="px-3 py-1.5">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-navy text-[11px] tracking-wide">
-                        {group.round === 0 ? 'OTHER MATCHES' : `APERTURA · ROUND ${group.round}`}
+                        {group.tournament.toUpperCase()}
                       </span>
                       <span className="text-[10px] text-gray-500 font-medium uppercase">
                         {totalMatches} {totalMatches === 1 ? 'Match' : 'Matches'} · Avg Rating: {avgRating ? avgRating.toFixed(2) : '-'}
@@ -63,9 +72,14 @@ const MatchTable: React.FC<MatchTableProps> = ({ matches }) => {
 
                 {/* Match Rows */}
                 {group.matches.map((match, idx) => (
-                  <tr key={`${group.round}-${idx}`} className="border-b border-border hover:bg-[#F8F8F6] transition-colors bg-white group">
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-500 text-xs">
-                      {new Date(match.match_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  <tr key={`${group.key}-${idx}`} className="border-b border-border hover:bg-[#F8F8F6] transition-colors bg-white group">
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-500 text-xs flex items-center">
+                      <span>{new Date(match.match_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                      {match.round ? (
+                        <span className="ml-2 inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 text-[9px] font-bold">
+                          R{match.round}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 font-medium text-navy text-xs">
                       <div className="flex items-center gap-2">

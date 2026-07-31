@@ -19,8 +19,8 @@ try:
         p.name AS player_name,
         t.name AS team_name,
         SUM(s.minutes_played) AS total_minutes,
-        ROUND(SUM(s.expected_goals), 2) AS total_xg,
-        ROUND((SUM(s.expected_goals) / CAST(SUM(s.minutes_played) AS FLOAT)) * 90, 2) AS xG90
+        ROUND(SUM(COALESCE(s.expected_goals, 0.0)), 2) AS total_xg,
+        ROUND((SUM(COALESCE(s.expected_goals, 0.0)) / CAST(SUM(s.minutes_played) AS FLOAT)) * 90, 2) AS xG90
     FROM 
         player_match_stats s
     JOIN 
@@ -28,8 +28,7 @@ try:
     JOIN 
         teams t ON p.team_id = t.team_id
     WHERE 
-        s.minutes_played > 0 
-        AND s.expected_goals IS NOT NULL
+        s.minutes_played > 0
     GROUP BY 
         p.player_id, 
         p.name, 

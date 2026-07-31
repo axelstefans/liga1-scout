@@ -65,6 +65,11 @@ def search_players(db: sqlite3.Connection, query: str) -> List[Dict[str, Any]]:
         FROM players p
         LEFT JOIN teams t ON p.team_id = t.team_id
         WHERE p.name LIKE ?
+          AND p.team_id IN (
+              SELECT home_team_id FROM matches WHERE season_id = (SELECT MAX(season_id) FROM matches)
+              UNION
+              SELECT away_team_id FROM matches WHERE season_id = (SELECT MAX(season_id) FROM matches)
+          )
         ORDER BY p.name ASC
         LIMIT 20
     """
@@ -88,6 +93,7 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
             pms.match_id,
             m.match_date,
             m.round,
+            CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END as tournament_name,
             pms.minutes_played,
             pms.position,
             pms.sofascore_rating,
@@ -174,7 +180,11 @@ def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Option
             ps.distance_m,
             ps.angle_rad,
             ps.coord_x as x,
-            ps.coord_y as y
+            ps.coord_y as y,
+            ps.goal_mouth_x,
+            ps.goal_mouth_y,
+            ps.goal_mouth_z,
+            ps.goal_mouth_location
         FROM player_shots ps
         WHERE ps.player_id = ? AND ps.situation != 'penalty'
     """

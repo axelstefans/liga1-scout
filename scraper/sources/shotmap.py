@@ -55,12 +55,11 @@ def scrape_and_store_shotmaps(conn, api_client, test_mode=True) -> int:
         match_id = row['match_id']
         resource_key = str(match_id)
         
-        # Ignorar si ya está cacheado (a menos que estemos forzando el test)
-        if is_cached(conn, resource_type, resource_key) and not test_mode:
-            has_shots = conn.execute("SELECT 1 FROM player_shots WHERE match_id = ? LIMIT 1", (match_id,)).fetchone()
-            if has_shots:
+        if not test_mode:
+            shot_count = conn.execute("SELECT COUNT(*) FROM player_shots WHERE match_id = ?", (match_id,)).fetchone()[0]
+            if shot_count > 0:
+                logger.info(f"Shotmap for match {match_id} already exists in database, skipping API call")
                 continue
-            logger.info(f"Match {match_id} cached but missing from DB. Ignoring cache.")
             
         logger.info(f"Fetching shotmap for match {match_id}...")
         
@@ -91,6 +90,12 @@ def scrape_and_store_shotmaps(conn, api_client, test_mode=True) -> int:
                 # ¡Magia matemática en acción!
                 distance_m, angle_rad = calculate_shot_features(x_raw, y_raw, is_home)
                 
+                goal_mouth_coords = shot.get('goalMouthCoordinates', {})
+                goal_mouth_x = goal_mouth_coords.get('x') if goal_mouth_coords else None
+                goal_mouth_y = goal_mouth_coords.get('y') if goal_mouth_coords else None
+                goal_mouth_z = goal_mouth_coords.get('z') if goal_mouth_coords else None
+                goal_mouth_location = shot.get('goalMouthLocation')
+                
                 records.append((
                     shot.get('id'),
                     player_id,
@@ -104,14 +109,18 @@ def scrape_and_store_shotmaps(conn, api_client, test_mode=True) -> int:
                     y_raw,
                     distance_m,
                     angle_rad,
-                    now
+                    now,
+                    goal_mouth_x,
+                    goal_mouth_y,
+                    goal_mouth_z,
+                    goal_mouth_location
                 ))
             
             if records:
                 insert_query = '''
                     INSERT OR IGNORE INTO player_shots 
-                    (shot_id, player_id, match_id, season_id, is_home, shot_type, situation, body_part, coord_x, coord_y, distance_m, angle_rad, scraped_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (shot_id, player_id, match_id, season_id, is_home, shot_type, situation, body_part, coord_x, coord_y, distance_m, angle_rad, scraped_at, goal_mouth_x, goal_mouth_y, goal_mouth_z, goal_mouth_location)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 '''
                 # Context manager para inserción segura
                 with conn:

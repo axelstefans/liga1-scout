@@ -8,9 +8,10 @@ from scraper import config
 logger = logging.getLogger(__name__)
 
 def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matches: list[dict]):
+    # Pre-filter matches to only the current season to avoid misleading logs and unnecessary iterations
+    matches = [m for m in matches if m.get('season_id') == config.SEASON_ID and m.get('status') == 'played']
     logger.info(f"Starting spatial events (passes) extraction for {len(matches)} matches...")
     
-
     for match in matches:
         if match.get('status') != 'played':
             continue
@@ -19,8 +20,9 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
             
         match_id = match['match_id']
         
-        if is_cached(conn, 'spatial_match', str(match_id)):
-            logger.info(f"Spatial data for match {match_id} is cached. Skipping.")
+        pass_count = conn.execute("SELECT COUNT(*) FROM player_passes WHERE match_id = ?", (match_id,)).fetchone()[0]
+        if pass_count > 0:
+            logger.info(f"Pass data for match {match_id} already exists, skipping")
             continue
             
         # Get players who played in this match

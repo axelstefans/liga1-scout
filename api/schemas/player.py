@@ -84,6 +84,7 @@ class PlayerMatchStats(BaseModel):
     score: Optional[str] = None    # e.g. "2-1" from player team's perspective
     round: Optional[int] = None    # League round number
     position: Optional[str] = None # Tactical position played
+    tournament_name: Optional[str] = None # Apertura/Clausura derived from date
 
 class PlayerPass(BaseModel):
     id: int

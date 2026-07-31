@@ -10,6 +10,7 @@ interface ShootingTabProps {
 const ShootingTab: React.FC<ShootingTabProps> = ({ playerId, themeColor }) => {
   const { data: shotData, isLoading } = usePlayerShotmap(playerId);
   const [hoveredShot, setHoveredShot] = useState<PlayerShot | null>(null);
+  const [hoveredGoalMouthShot, setHoveredGoalMouthShot] = useState<PlayerShot | null>(null);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><p className="text-xl text-navy">Loading shot data...</p></div>;
@@ -45,6 +46,10 @@ const ShootingTab: React.FC<ShootingTabProps> = ({ playerId, themeColor }) => {
     if (shot.shot_type.toLowerCase() === 'goal') acc[sit].goals += 1;
     return acc;
   }, {} as Record<string, { count: number, goals: number }>);
+
+  const onTargetShots = shotData.filter(
+    (s) => s.shot_type.toLowerCase() === 'goal' || s.shot_type.toLowerCase() === 'save'
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
@@ -219,6 +224,69 @@ const ShootingTab: React.FC<ShootingTabProps> = ({ playerId, themeColor }) => {
                  </div>
                </div>
              ))}
+           </div>
+        </div>
+
+        <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
+           <h3 className="text-lg font-display mb-3 text-navy">Goal Mouth (On Target)</h3>
+           <div className="relative w-full max-w-sm mx-auto aspect-[100/60]">
+             <svg viewBox="0 0 100 60" className="w-full h-auto text-gray-400">
+               {/* Goal frame: posts and crossbar */}
+               <path d="M 10 55 L 10 5 L 90 5 L 90 55" fill="none" stroke="currentColor" strokeWidth="1" />
+               
+               {/* Shots */}
+               {onTargetShots.map((shot, idx) => {
+                 if (shot.goal_mouth_y == null || shot.goal_mouth_z == null) return null;
+                 
+                 const GOAL_Y_MIN = 45.2;
+                 const GOAL_Y_MAX = 54.8;
+                 let cx = 10 + ((shot.goal_mouth_y - GOAL_Y_MIN) / (GOAL_Y_MAX - GOAL_Y_MIN)) * 80;
+                 cx = Math.max(10, Math.min(90, cx));
+                 
+                 const GOAL_Z_MAX = 36.7;
+                 let cy = 55 - (Math.min(shot.goal_mouth_z, GOAL_Z_MAX) / GOAL_Z_MAX) * 50;
+                 cy = Math.max(5, Math.min(55, cy));
+                 
+                 const isGoal = shot.shot_type.toLowerCase() === 'goal';
+                 const fill = isGoal ? '#10b981' : '#9ca3af';
+                 
+                 return (
+                   <circle
+                     key={`gm-${idx}`}
+                     cx={cx}
+                     cy={cy}
+                     r={1.5}
+                     fill={fill}
+                     fillOpacity={0.65}
+                     stroke="#fff"
+                     strokeWidth={0.3}
+                     className="cursor-pointer hover:opacity-80"
+                     onMouseEnter={() => setHoveredGoalMouthShot(shot)}
+                     onMouseLeave={() => setHoveredGoalMouthShot(null)}
+                   />
+                 );
+               })}
+             </svg>
+
+             {/* Goal Mouth Tooltip */}
+             {hoveredGoalMouthShot !== null && (
+               <div className="absolute z-20 bg-gray-900 text-white text-xs p-3 rounded shadow-lg pointer-events-none transform -translate-x-1/2 left-1/2 mt-2 w-48">
+                 <div className="font-bold border-b border-gray-700 pb-1 mb-1 capitalize">
+                   {hoveredGoalMouthShot.shot_type}
+                 </div>
+                 <div className="grid grid-cols-2 gap-1 mt-2">
+                   <span className="text-gray-400">Situation:</span>
+                   <span className="text-right capitalize">{hoveredGoalMouthShot.situation || 'N/A'}</span>
+                   <span className="text-gray-400">Body Part:</span>
+                   <span className="text-right capitalize">{hoveredGoalMouthShot.body_part || 'N/A'}</span>
+                 </div>
+               </div>
+             )}
+           </div>
+
+           <div className="flex items-center justify-center space-x-4 mt-6 text-xs text-gray-600">
+             <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-[#10b981] mr-1"></div> Goal</div>
+             <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-[#9ca3af] mr-1"></div> Save</div>
            </div>
         </div>
       </div>

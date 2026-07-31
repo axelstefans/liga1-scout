@@ -84,6 +84,7 @@ export interface PlayerMatchStats {
   score: string | null;    // e.g. '2-1' from player's team perspective
   position?: string | null; // e.g. 'CM', 'ST'
   round?: number | null;
+  tournament_name?: string | null;
 }
 
 
@@ -115,6 +116,10 @@ export interface PlayerShot {
   x: number;
   y: number;
   calculated_xg: number;
+  goal_mouth_x?: number | null;
+  goal_mouth_y?: number | null;
+  goal_mouth_z?: number | null;
+  goal_mouth_location?: string | null;
 }
 
 export interface PlayerPass {
