@@ -17,15 +17,21 @@ def main():
 
     conn = sqlite3.connect(db_path)
 
-    # Retrieve shots only for matches in season 88529 that have not been processed yet
-    query = """
+    import sys
+    season_id_filter = ""
+    if len(sys.argv) > 1:
+        season_id = int(sys.argv[1])
+        season_id_filter = f"AND m.season_id = {season_id}"
+
+    # Retrieve shots only for matches that have not been processed yet
+    query = f"""
         SELECT shot_id, match_id, player_id, distance_m, angle_rad, body_part, situation
         FROM player_shots
         WHERE match_id IN (
             SELECT DISTINCT m.match_id
             FROM matches m
             JOIN player_match_stats pms ON m.match_id = pms.match_id
-            WHERE m.season_id = 88529
+            WHERE 1=1 {season_id_filter}
             GROUP BY m.match_id
             HAVING MAX(pms.expected_goals) IS NULL OR MAX(pms.expected_goals) = 0
         )

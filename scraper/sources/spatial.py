@@ -21,9 +21,21 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
         match_id = match['match_id']
         
         pass_count = conn.execute("SELECT COUNT(*) FROM player_passes WHERE match_id = ?", (match_id,)).fetchone()[0]
-        if pass_count > 0:
-            logger.info(f"Pass data for match {match_id} already exists, skipping")
+        
+        try:
+            def_count = conn.execute("SELECT COUNT(*) FROM player_defensive_actions WHERE match_id = ?", (match_id,)).fetchone()[0]
+        except sqlite3.OperationalError:
+            def_count = 0
+            
+        if pass_count > 0 and def_count > 0:
+            logger.info(f"Spatial data for match {match_id} already exists, skipping")
             continue
+            
+        if pass_count > 0 and def_count == 0:
+            logger.info(f"Backfilling new spatial data for match {match_id}. Purging old passes to avoid duplication...")
+            conn.execute("DELETE FROM player_passes WHERE match_id = ?", (match_id,))
+            conn.execute("DELETE FROM scrape_log WHERE resource_type = 'spatial_events' AND resource_key LIKE ?", (f"{match_id}_%",))
+            conn.commit()
             
         # Get players who played in this match
         players = conn.execute('''
@@ -45,12 +57,19 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
             try:
                 data = api_client.get_player_rating_breakdown(match_id, player_id)
                 
-                # Try to safely extract passes
+                # Try to safely extract events
                 passes = data.get('passes', [])
+                defensive = data.get('defensive', [])
+                dribbles = data.get('dribbles', [])
+                
                 if not passes and 'events' in data:
                     passes = data['events'].get('passes', [])
+                    defensive = data['events'].get('defensive', [])
+                    dribbles = data['events'].get('dribbles', [])
                 if not passes and 'event' in data:
                     passes = data['event'].get('passes', [])
+                    defensive = data['event'].get('defensive', [])
+                    dribbles = data['event'].get('dribbles', [])
                 
                 cursor = conn.cursor()
                 now = datetime.utcnow().isoformat()
@@ -79,10 +98,34 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
                     
                     inserted_count += 1
                 
+                for d in defensive:
+                    coords = d.get('playerCoordinates', {})
+                    x = coords.get('x')
+                    y = coords.get('y')
+                    
+                    cursor.execute('''
+                        INSERT INTO player_defensive_actions 
+                        (match_id, player_id, x, y, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (match_id, player_id, x, y, now))
+                    
+                for dr in dribbles:
+                    coords = dr.get('playerCoordinates', {})
+                    x = coords.get('x')
+                    y = coords.get('y')
+                    outcome = dr.get('outcome')
+                    is_successful = True if outcome in (True, 'Successful', 'successful', 1) else False
+                    
+                    cursor.execute('''
+                        INSERT INTO player_dribbles 
+                        (match_id, player_id, x, y, is_successful, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (match_id, player_id, x, y, is_successful, now))
+                
                 conn.commit()
                 log_scrape(conn, 'spatial_events', resource_key, 'success')
-                if inserted_count > 0:
-                    logger.info(f"Inserted {inserted_count} passes for player {player_id} in match {match_id}")
+                if inserted_count > 0 or defensive or dribbles:
+                    logger.info(f"Inserted {inserted_count} passes, {len(defensive)} def, {len(dribbles)} dribbles for player {player_id} in match {match_id}")
                 
             except Exception as e:
                 logger.error(f"Error extracting passes for player {player_id} in match {match_id}: {e}")
