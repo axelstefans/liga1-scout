@@ -5,8 +5,6 @@ from scipy.stats import poisson
 import joblib
 import sys
 import os
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
 
 # Ensure stadium_altitudes can be imported
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
@@ -297,72 +295,6 @@ def _legacy_obtener_metricas_equipo(conn, team_name, is_home):
     """
     return pd.read_sql_query(query, conn).iloc[0]
 
-def _build_glm_dataframe(matches_df: pd.DataFrame, target_date: str, db_conn=None) -> pd.DataFrame:
-    """
-    Flattens a point-in-time filtered matches DataFrame into a structure suitable for a Poisson GLM.
-    Every historical match generates two rows (one for the home team's attacking output, one for the away team's).
-    """
-    if matches_df.empty:
-        return pd.DataFrame(columns=['team', 'opponent', 'is_home', 'altitude_diff', 'expected_goals', 'weight'])
-        
-    team_name_map = {}
-    if db_conn is not None:
-        try:
-            teams = db_conn.execute("SELECT team_id, name FROM teams").fetchall()
-            for t in teams:
-                team_name_map[t[0]] = t[1]
-        except Exception:
-            pass
-
-    def get_alt(t_name):
-        if not t_name: return 0
-        for k, v in ALTITUDES.items():
-            if k.lower() in t_name.lower() or t_name.lower() in k.lower():
-                return v
-        return 0
-
-    target_dt = pd.to_datetime(target_date) if target_date else pd.Timestamp.now()
-
-    rows = []
-    for _, row in matches_df.iterrows():
-        h_id = row['home_team_id']
-        a_id = row['away_team_id']
-        
-        h_name = team_name_map.get(h_id, f"Team_{h_id}")
-        a_name = team_name_map.get(a_id, f"Team_{a_id}")
-        
-        h_alt = get_alt(h_name)
-        a_alt = get_alt(a_name)
-        
-        match_dt = pd.to_datetime(row['match_date'])
-        days_ago = (target_dt - match_dt).days
-        if days_ago < 0:
-            days_ago = 0
-            
-        weight = 0.5 ** (days_ago / 120.0)
-        
-        # Home attacking perspective
-        rows.append({
-            'team': str(h_name),
-            'opponent': str(a_name),
-            'is_home': 1,
-            'altitude_diff': float(h_alt - a_alt),
-            'expected_goals': float(row['home_xg']),
-            'weight': float(weight)
-        })
-        
-        # Away attacking perspective
-        rows.append({
-            'team': str(a_name),
-            'opponent': str(h_name),
-            'is_home': 0,
-            'altitude_diff': float(a_alt - h_alt),
-            'expected_goals': float(row['away_xg']),
-            'weight': float(weight)
-        })
-        
-    return pd.DataFrame(rows)
-
 def calculate_match_odds(db_conn, home_team: str, away_team: str, home_custom_xg: float = None, away_custom_xg: float = None, target_date: str = None) -> dict:
     """Calculates Match Odds using Poisson Distribution and outputs a structured dictionary."""
     
@@ -380,45 +312,25 @@ def calculate_match_odds(db_conn, home_team: str, away_team: str, home_custom_xg
     if target_date is not None:
         matches_df = matches_df[matches_df['match_date'] < target_date]
         
-    # --- GLM MODEL TRAINING ---
-    glm_df = _build_glm_dataframe(matches_df, target_date, db_conn)
-    
-    # Train the Poisson GLM dynamically on the point-in-time filtered dataset
-    if not glm_df.empty:
-        model = smf.glm('expected_goals ~ team + opponent + is_home + altitude_diff', data=glm_df, family=sm.families.Poisson(), freq_weights=glm_df['weight']).fit()
-        
-        h_name = db_conn.execute("SELECT name FROM teams WHERE team_id = ?", (home_team_id,)).fetchone()[0]
-        a_name = db_conn.execute("SELECT name FROM teams WHERE team_id = ?", (away_team_id,)).fetchone()[0]
-        
-        def _get_alt_from_dict(t_name):
-            for k, v in ALTITUDES.items():
-                if k.lower() in t_name.lower() or t_name.lower() in k.lower():
-                    return v
-            return 0
-            
-        h_alt = _get_alt_from_dict(h_name)
-        a_alt = _get_alt_from_dict(a_name)
-        
-        try:
-            pred_df = pd.DataFrame([
-                {'team': h_name, 'opponent': a_name, 'is_home': 1, 'altitude_diff': float(h_alt - a_alt)},
-                {'team': a_name, 'opponent': h_name, 'is_home': 0, 'altitude_diff': float(a_alt - h_alt)}
-            ])
-            lambdas = model.predict(pred_df)
-            db_xg_local = float(lambdas.iloc[0])
-            db_xg_visita = float(lambdas.iloc[1])
-        except Exception:
-            # Fallback if a team has absolutely zero historical matches
-            db_xg_local = 1.0
-            db_xg_visita = 1.0
-    else:
-        db_xg_local = 1.0
-        db_xg_visita = 1.0
-
-    # Retain baseline metrics strictly for custom override fallback logic
     league_avg_home_xg, league_avg_away_xg = get_league_baselines(matches_df)
+    league_avg_overall = (league_avg_home_xg + league_avg_away_xg) / 2
+    if league_avg_overall == 0: league_avg_overall = 1.0
+
     h_stats = get_historical_team_metrics(matches_df, home_team_id, league_avg_home_xg, league_avg_away_xg)
+    a_stats = get_historical_team_metrics(matches_df, away_team_id, league_avg_home_xg, league_avg_away_xg)
+
+    # 3. Calculate multiplicative lambdas
+    # Using shrunk home/away stats to capture real asymmetric performance (especially for altitude teams)
+    # but pulling towards the overall average when sample size is small.
+    atk_home = h_stats['shrunk_xGF_home'] / league_avg_home_xg
+    def_home = h_stats['shrunk_xGA_home'] / league_avg_away_xg
     
+    atk_away = a_stats['shrunk_xGF_away'] / league_avg_away_xg
+    def_away = a_stats['shrunk_xGA_away'] / league_avg_home_xg
+    
+    db_xg_local = atk_home * def_away * league_avg_home_xg
+    db_xg_visita = atk_away * def_home * league_avg_away_xg
+
     TACTICAL_NORMALIZATION = 0.60
 
     # Custom override logic (preserved from legacy)
@@ -434,16 +346,13 @@ def calculate_match_odds(db_conn, home_team: str, away_team: str, home_custom_xg
     else:
         xg_visita = db_xg_visita
 
-    # 4. Dynamic Poisson Matrix (No 6x6 Hard Limit)
+    # 4. Dynamic Poisson Matrix (10x10 instead of 6x6 to fix truncation bug)
     max_goles = 10
     prob_matrix = np.zeros((max_goles, max_goles))
     
     for i in range(max_goles):
         for j in range(max_goles):
             prob_matrix[i][j] = poisson.pmf(i, xg_local) * poisson.pmf(j, xg_visita)
-
-    # Normalize to exactly 1.0 to ensure no probability mass is lost from truncation
-    prob_matrix = prob_matrix / np.sum(prob_matrix)
 
     prob_local = np.sum(np.tril(prob_matrix, -1))
     prob_empate = np.sum(np.diag(prob_matrix))
@@ -457,6 +366,38 @@ def calculate_match_odds(db_conn, home_team: str, away_team: str, home_custom_xg
                 prob_over_25 += prob_matrix[i][j]
             else:
                 prob_under_25 += prob_matrix[i][j]
+
+    # 4.5 Altitude Recalibration for 1X2 Market
+    # The coefficients were fit on 2023-2025 data and validated out-of-sample on 2026.
+    def _get_alt_from_dict(t_name):
+        for k, v in ALTITUDES.items():
+            if k.lower() in t_name.lower() or t_name.lower() in k.lower():
+                return v
+        return None
+        
+    home_alt = _get_alt_from_dict(home_team)
+    away_alt = _get_alt_from_dict(away_team)
+    
+    if home_alt is not None and away_alt is not None:
+        abs_alt_diff = abs(home_alt - away_alt)
+        
+        # Clamp to avoid division by zero in logit
+        p_home_clamped = np.clip(prob_local, 1e-15, 1 - 1e-15)
+        orig_log_odds = np.log(p_home_clamped / (1 - p_home_clamped))
+        
+        # Apply logistic regression formula
+        new_log_odds = -0.1378 + 0.8914 * orig_log_odds + 0.000173 * abs_alt_diff
+        recal_prob_local = 1 / (1 + np.exp(-new_log_odds))
+        
+        # Rescale Draw and Away proportionally to fill remaining probability mass
+        remaining_mass_orig = prob_empate + prob_visita
+        if remaining_mass_orig > 0:
+            remaining_mass_new = 1.0 - recal_prob_local
+            scale_factor = remaining_mass_new / remaining_mass_orig
+            prob_empate = prob_empate * scale_factor
+            prob_visita = prob_visita * scale_factor
+        
+        prob_local = recal_prob_local
 
     # 5. Convert to Decimal Odds
     cuota_local = 1 / prob_local if prob_local > 0 else 0
