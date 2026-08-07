@@ -134,6 +134,30 @@ export interface PlayerPass {
   created_at: string;
 }
 
+export interface PlayerDefensiveAction {
+  id: number;
+  match_id: number;
+  player_id: number;
+  x: number | null;
+  y: number | null;
+  created_at: string;
+}
+
+export interface PlayerDribble {
+  id: number;
+  match_id: number;
+  player_id: number;
+  x: number | null;
+  y: number | null;
+  is_successful: boolean;
+  created_at: string;
+}
+
+export interface PlayerDefendingStats {
+  defensive_actions: PlayerDefensiveAction[];
+  dribbles: PlayerDribble[];
+}
+
 export const playersApi = {
   search: async (query: string): Promise<PlayerSearchResult[]> => {
     const response = await apiClient.get(`/players/search?q=${query}`);
@@ -162,6 +186,10 @@ export const playersApi = {
   getPasses: async (id: number, matchId?: number): Promise<PlayerPass[]> => {
     const url = matchId ? `/players/${id}/passes?match_id=${matchId}` : `/players/${id}/passes`;
     const response = await apiClient.get(url);
+    return response.data;
+  },
+  getDefending: async (id: number): Promise<PlayerDefendingStats> => {
+    const response = await apiClient.get(`/players/${id}/defending`);
     return response.data;
   },
 };

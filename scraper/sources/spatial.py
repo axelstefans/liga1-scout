@@ -19,6 +19,7 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
             continue
             
         match_id = match['match_id']
+        season_id = match.get('season_id')
         
         pass_count = conn.execute("SELECT COUNT(*) FROM player_passes WHERE match_id = ?", (match_id,)).fetchone()[0]
         
@@ -61,15 +62,18 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
                 passes = data.get('passes', [])
                 defensive = data.get('defensive', [])
                 dribbles = data.get('dribbles', [])
+                ball_carries = data.get('ball-carries', [])
                 
                 if not passes and 'events' in data:
                     passes = data['events'].get('passes', [])
                     defensive = data['events'].get('defensive', [])
                     dribbles = data['events'].get('dribbles', [])
+                    ball_carries = data['events'].get('ball-carries', [])
                 if not passes and 'event' in data:
                     passes = data['event'].get('passes', [])
                     defensive = data['event'].get('defensive', [])
                     dribbles = data['event'].get('dribbles', [])
+                    ball_carries = data['event'].get('ball-carries', [])
                 
                 cursor = conn.cursor()
                 now = datetime.utcnow().isoformat()
@@ -121,11 +125,28 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
                         (match_id, player_id, x, y, is_successful, created_at)
                         VALUES (?, ?, ?, ?, ?, ?)
                     ''', (match_id, player_id, x, y, is_successful, now))
+                    
+                for bc in ball_carries:
+                    start_coords = bc.get('playerCoordinates', {})
+                    end_coords = bc.get('passEndCoordinates', {})
+                    
+                    x_start = start_coords.get('x')
+                    y_start = start_coords.get('y')
+                    x_end = end_coords.get('x')
+                    y_end = end_coords.get('y')
+                    
+                    is_home = True if bc.get('isHome') in (True, 1, 'true', 'True') else False
+                    
+                    cursor.execute('''
+                        INSERT INTO player_ball_carries 
+                        (match_id, player_id, season_id, x_start, y_start, x_end, y_end, is_home, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (match_id, player_id, season_id, x_start, y_start, x_end, y_end, is_home, now))
                 
                 conn.commit()
                 log_scrape(conn, 'spatial_events', resource_key, 'success')
-                if inserted_count > 0 or defensive or dribbles:
-                    logger.info(f"Inserted {inserted_count} passes, {len(defensive)} def, {len(dribbles)} dribbles for player {player_id} in match {match_id}")
+                if inserted_count > 0 or defensive or dribbles or ball_carries:
+                    logger.info(f"Inserted {inserted_count} passes, {len(defensive)} def, {len(dribbles)} dribbles, {len(ball_carries)} carries for player {player_id} in match {match_id}")
                 
             except Exception as e:
                 logger.error(f"Error extracting passes for player {player_id} in match {match_id}: {e}")

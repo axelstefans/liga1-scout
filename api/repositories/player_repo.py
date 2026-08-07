@@ -276,3 +276,34 @@ def get_player_passes(db: sqlite3.Connection, player_id: int, match_id: Optional
         results.append(d)
         
     return results
+
+def get_player_defending_stats(db: sqlite3.Connection, player_id: int) -> Dict[str, Any]:
+    """Fetch defensive actions and dribbles for a specific player."""
+    
+    # 1. Fetch defensive actions
+    def_query = """
+        SELECT id, match_id, player_id, x, y, created_at
+        FROM player_defensive_actions
+        WHERE player_id = ?
+    """
+    def_rows = db.execute(def_query, (player_id,)).fetchall()
+    defensive_actions = [dict(row) for row in def_rows]
+    
+    # 2. Fetch dribbles
+    dribbles_query = """
+        SELECT id, match_id, player_id, x, y, is_successful, created_at
+        FROM player_dribbles
+        WHERE player_id = ?
+    """
+    dribbles_rows = db.execute(dribbles_query, (player_id,)).fetchall()
+    
+    dribbles = []
+    for row in dribbles_rows:
+        d = dict(row)
+        d['is_successful'] = bool(d['is_successful'])
+        dribbles.append(d)
+        
+    return {
+        "defensive_actions": defensive_actions,
+        "dribbles": dribbles
+    }

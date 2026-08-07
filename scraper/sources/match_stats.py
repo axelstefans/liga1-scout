@@ -27,8 +27,14 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
         match_url = match['match_url']
         resource_key = str(match_id)
         
+        # Definitive DB presence check (permanent skip for finished matches)
+        has_data = conn.execute("SELECT 1 FROM player_match_stats WHERE match_id = ? LIMIT 1", (match_id,)).fetchone()
+        if has_data:
+            logger.info(f"Match stats for {match_id} already exist in DB. Skipping API call.")
+            continue
+            
         if is_cached(conn, resource_type, resource_key):
-            logger.info(f"Match stats for {match_id} are cached. Skipping.")
+            logger.info(f"Match stats for {match_id} are cached (recent). Skipping.")
             continue
             
         logger.info(f"Fetching match stats for {match_id} via LanusStats...")

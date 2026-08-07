@@ -61,6 +61,15 @@ export const usePlayerPasses = (playerId: number, matchId?: number) => {
   });
 };
 
+export const usePlayerDefending = (playerId: number) => {
+  return useQuery({
+    queryKey: ['players', playerId, 'defending'],
+    queryFn: () => playersApi.getDefending(playerId),
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+};
+
 // Use this to fetch the top players for a stat to calculate distributions
 export const useLeagueRankings = (stat: string, limit: number = 100) => {
   return useQuery({

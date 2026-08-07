@@ -3,6 +3,17 @@ import pandas as pd
 import numpy as np
 from scipy.stats import poisson
 import joblib
+import sys
+import os
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+# Ensure stadium_altitudes can be imported
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+try:
+    from stadium_altitudes import ALTITUDES
+except ImportError:
+    ALTITUDES = {}
 
 # Cache the model so we don't load it on every request
 _xg_model = None
@@ -149,24 +160,56 @@ def get_league_baselines(matches_df):
         return 1.0, 1.0
     return matches_df['home_xg'].mean(), matches_df['away_xg'].mean()
 
-def get_historical_team_metrics(matches_df, team_id: int):
+def get_historical_team_metrics(matches_df, team_id: int, league_avg_home_xg: float, league_avg_away_xg: float):
     home_games = matches_df[matches_df['home_team_id'] == team_id]
     away_games = matches_df[matches_df['away_team_id'] == team_id]
     
-    total_matches = len(home_games) + len(away_games)
+    n_home = len(home_games)
+    n_away = len(away_games)
+    total_matches = n_home + n_away
+    
     if total_matches == 0:
-        return {'xGF_home': 0.0, 'xGA_home': 0.0, 'xGF_away': 0.0, 'xGA_away': 0.0, 'overall_xGF': 0.0, 'overall_xGA': 0.0}
+        return {
+            'xGF_home': 0.0, 'xGA_home': 0.0, 'xGF_away': 0.0, 'xGA_away': 0.0, 
+            'overall_xGF': 0.0, 'overall_xGA': 0.0,
+            'shrunk_xGF_home': 0.0, 'shrunk_xGA_home': 0.0,
+            'shrunk_xGF_away': 0.0, 'shrunk_xGA_away': 0.0
+        }
         
     overall_xgf = (home_games['home_xg'].sum() + away_games['away_xg'].sum()) / total_matches
     overall_xga = (home_games['away_xg'].sum() + away_games['home_xg'].sum()) / total_matches
     
+    raw_xGF_home = home_games['home_xg'].mean() if n_home > 0 else overall_xgf
+    raw_xGA_home = home_games['away_xg'].mean() if n_home > 0 else overall_xga
+    raw_xGF_away = away_games['away_xg'].mean() if n_away > 0 else overall_xgf
+    raw_xGA_away = away_games['home_xg'].mean() if n_away > 0 else overall_xga
+    
+    # Shrinkage-based home/away splits (k=8)
+    # The prior itself must reflect the home/away baseline split, otherwise shrinkage flattens genuine home advantage.
+    k = 8
+    
+    league_avg_overall_xg = (league_avg_home_xg + league_avg_away_xg) / 2
+    if league_avg_overall_xg == 0:
+        league_avg_overall_xg = 1.0
+        
+    home_xgf_prior = overall_xgf * (league_avg_home_xg / league_avg_overall_xg)
+    away_xgf_prior = overall_xgf * (league_avg_away_xg / league_avg_overall_xg)
+    
+    # For goals conceded (xGA), home xGA compares to away xGF baseline, and away xGA compares to home xGF baseline.
+    home_xga_prior = overall_xga * (league_avg_away_xg / league_avg_overall_xg)
+    away_xga_prior = overall_xga * (league_avg_home_xg / league_avg_overall_xg)
+    
     return {
-        'xGF_home': home_games['home_xg'].mean() if len(home_games) > 0 else overall_xgf,
-        'xGA_home': home_games['away_xg'].mean() if len(home_games) > 0 else overall_xga,
-        'xGF_away': away_games['away_xg'].mean() if len(away_games) > 0 else overall_xgf,
-        'xGA_away': away_games['home_xg'].mean() if len(away_games) > 0 else overall_xga,
+        'xGF_home': raw_xGF_home,
+        'xGA_home': raw_xGA_home,
+        'xGF_away': raw_xGF_away,
+        'xGA_away': raw_xGA_away,
         'overall_xGF': overall_xgf,
-        'overall_xGA': overall_xga
+        'overall_xGA': overall_xga,
+        'shrunk_xGF_home': (n_home * raw_xGF_home + k * home_xgf_prior) / (n_home + k),
+        'shrunk_xGA_home': (n_home * raw_xGA_home + k * home_xga_prior) / (n_home + k),
+        'shrunk_xGF_away': (n_away * raw_xGF_away + k * away_xgf_prior) / (n_away + k),
+        'shrunk_xGA_away': (n_away * raw_xGA_away + k * away_xga_prior) / (n_away + k)
     }
 
 def get_output_calibration_factor(conn, matches_df) -> float:
@@ -196,7 +239,7 @@ def get_output_calibration_factor(conn, matches_df) -> float:
         
     team_metrics = {}
     for team_id in pd.concat([real_matches['home_team_id'], real_matches['away_team_id']]).unique():
-        team_metrics[team_id] = get_historical_team_metrics(matches_df, team_id)
+        team_metrics[team_id] = get_historical_team_metrics(matches_df, team_id, league_avg_home_xg, league_avg_away_xg)
         
     model_total_goals = 0
     for _, row in real_matches.iterrows():
@@ -254,6 +297,72 @@ def _legacy_obtener_metricas_equipo(conn, team_name, is_home):
     """
     return pd.read_sql_query(query, conn).iloc[0]
 
+def _build_glm_dataframe(matches_df: pd.DataFrame, target_date: str, db_conn=None) -> pd.DataFrame:
+    """
+    Flattens a point-in-time filtered matches DataFrame into a structure suitable for a Poisson GLM.
+    Every historical match generates two rows (one for the home team's attacking output, one for the away team's).
+    """
+    if matches_df.empty:
+        return pd.DataFrame(columns=['team', 'opponent', 'is_home', 'altitude_diff', 'expected_goals', 'weight'])
+        
+    team_name_map = {}
+    if db_conn is not None:
+        try:
+            teams = db_conn.execute("SELECT team_id, name FROM teams").fetchall()
+            for t in teams:
+                team_name_map[t[0]] = t[1]
+        except Exception:
+            pass
+
+    def get_alt(t_name):
+        if not t_name: return 0
+        for k, v in ALTITUDES.items():
+            if k.lower() in t_name.lower() or t_name.lower() in k.lower():
+                return v
+        return 0
+
+    target_dt = pd.to_datetime(target_date) if target_date else pd.Timestamp.now()
+
+    rows = []
+    for _, row in matches_df.iterrows():
+        h_id = row['home_team_id']
+        a_id = row['away_team_id']
+        
+        h_name = team_name_map.get(h_id, f"Team_{h_id}")
+        a_name = team_name_map.get(a_id, f"Team_{a_id}")
+        
+        h_alt = get_alt(h_name)
+        a_alt = get_alt(a_name)
+        
+        match_dt = pd.to_datetime(row['match_date'])
+        days_ago = (target_dt - match_dt).days
+        if days_ago < 0:
+            days_ago = 0
+            
+        weight = 0.5 ** (days_ago / 120.0)
+        
+        # Home attacking perspective
+        rows.append({
+            'team': str(h_name),
+            'opponent': str(a_name),
+            'is_home': 1,
+            'altitude_diff': float(h_alt - a_alt),
+            'expected_goals': float(row['home_xg']),
+            'weight': float(weight)
+        })
+        
+        # Away attacking perspective
+        rows.append({
+            'team': str(a_name),
+            'opponent': str(h_name),
+            'is_home': 0,
+            'altitude_diff': float(a_alt - h_alt),
+            'expected_goals': float(row['away_xg']),
+            'weight': float(weight)
+        })
+        
+    return pd.DataFrame(rows)
+
 def calculate_match_odds(db_conn, home_team: str, away_team: str, home_custom_xg: float = None, away_custom_xg: float = None, target_date: str = None) -> dict:
     """Calculates Match Odds using Poisson Distribution and outputs a structured dictionary."""
     
@@ -271,24 +380,45 @@ def calculate_match_odds(db_conn, home_team: str, away_team: str, home_custom_xg
     if target_date is not None:
         matches_df = matches_df[matches_df['match_date'] < target_date]
         
+    # --- GLM MODEL TRAINING ---
+    glm_df = _build_glm_dataframe(matches_df, target_date, db_conn)
+    
+    # Train the Poisson GLM dynamically on the point-in-time filtered dataset
+    if not glm_df.empty:
+        model = smf.glm('expected_goals ~ team + opponent + is_home + altitude_diff', data=glm_df, family=sm.families.Poisson(), freq_weights=glm_df['weight']).fit()
+        
+        h_name = db_conn.execute("SELECT name FROM teams WHERE team_id = ?", (home_team_id,)).fetchone()[0]
+        a_name = db_conn.execute("SELECT name FROM teams WHERE team_id = ?", (away_team_id,)).fetchone()[0]
+        
+        def _get_alt_from_dict(t_name):
+            for k, v in ALTITUDES.items():
+                if k.lower() in t_name.lower() or t_name.lower() in k.lower():
+                    return v
+            return 0
+            
+        h_alt = _get_alt_from_dict(h_name)
+        a_alt = _get_alt_from_dict(a_name)
+        
+        try:
+            pred_df = pd.DataFrame([
+                {'team': h_name, 'opponent': a_name, 'is_home': 1, 'altitude_diff': float(h_alt - a_alt)},
+                {'team': a_name, 'opponent': h_name, 'is_home': 0, 'altitude_diff': float(a_alt - h_alt)}
+            ])
+            lambdas = model.predict(pred_df)
+            db_xg_local = float(lambdas.iloc[0])
+            db_xg_visita = float(lambdas.iloc[1])
+        except Exception:
+            # Fallback if a team has absolutely zero historical matches
+            db_xg_local = 1.0
+            db_xg_visita = 1.0
+    else:
+        db_xg_local = 1.0
+        db_xg_visita = 1.0
+
+    # Retain baseline metrics strictly for custom override fallback logic
     league_avg_home_xg, league_avg_away_xg = get_league_baselines(matches_df)
-    league_avg_overall = (league_avg_home_xg + league_avg_away_xg) / 2
-    if league_avg_overall == 0: league_avg_overall = 1.0
-
-    h_stats = get_historical_team_metrics(matches_df, home_team_id)
-    a_stats = get_historical_team_metrics(matches_df, away_team_id)
-
-    # 3. Calculate multiplicative lambdas
-    # Using overall attack/defense strength fallback to avoid small sample size issues
-    atk_home = h_stats['overall_xGF'] / league_avg_overall
-    def_home = h_stats['overall_xGA'] / league_avg_overall
+    h_stats = get_historical_team_metrics(matches_df, home_team_id, league_avg_home_xg, league_avg_away_xg)
     
-    atk_away = a_stats['overall_xGF'] / league_avg_overall
-    def_away = a_stats['overall_xGA'] / league_avg_overall
-    
-    db_xg_local = atk_home * def_away * league_avg_home_xg
-    db_xg_visita = atk_away * def_home * league_avg_away_xg
-
     TACTICAL_NORMALIZATION = 0.60
 
     # Custom override logic (preserved from legacy)
@@ -304,20 +434,16 @@ def calculate_match_odds(db_conn, home_team: str, away_team: str, home_custom_xg
     else:
         xg_visita = db_xg_visita
 
-    # Apply output calibration factor to final lambdas
-    # (Disabled: Backtest showed this flat output multiplier harms Brier score. 
-    # V4 validation scored 0.2222 on Home Win without it. Kept for reference only.)
-    # output_calibration = get_output_calibration_factor(db_conn, matches_df)
-    # xg_local *= output_calibration
-    # xg_visita *= output_calibration
-
-    # 4. Poisson Matrix
-    max_goles = 6
+    # 4. Dynamic Poisson Matrix (No 6x6 Hard Limit)
+    max_goles = 10
     prob_matrix = np.zeros((max_goles, max_goles))
     
     for i in range(max_goles):
         for j in range(max_goles):
             prob_matrix[i][j] = poisson.pmf(i, xg_local) * poisson.pmf(j, xg_visita)
+
+    # Normalize to exactly 1.0 to ensure no probability mass is lost from truncation
+    prob_matrix = prob_matrix / np.sum(prob_matrix)
 
     prob_local = np.sum(np.tril(prob_matrix, -1))
     prob_empate = np.sum(np.diag(prob_matrix))

@@ -76,3 +76,12 @@ def get_player_passes(player_id: int, match_id: Optional[int] = None, db: sqlite
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
         
     return player_repo.get_player_passes(db, player_id, match_id)
+
+@router.get("/{player_id}/defending", response_model=Dict[str, List[Dict[str, Any]]])
+def get_player_defending(player_id: int, db: sqlite3.Connection = Depends(get_db)):
+    """Get player's spatial defensive actions and dribbles."""
+    profile = player_repo.get_player_profile(db, player_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+        
+    return player_repo.get_player_defending_stats(db, player_id)
