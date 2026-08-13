@@ -49,3 +49,9 @@ frontend/node_modules/
 .agents/
 .gemini/
 .specify/
+.antigravitycli/
+skills-lock.json
+GEMINI.md
+
+# Carpetas de pruebas
+scratch/
