@@ -153,9 +153,22 @@ export interface PlayerDribble {
   created_at: string;
 }
 
+export interface PlayerBallCarry {
+  id: number;
+  match_id: number;
+  player_id: number;
+  x_start: number | null;
+  y_start: number | null;
+  x_end: number | null;
+  y_end: number | null;
+  is_home: boolean;
+  created_at: string;
+}
+
 export interface PlayerDefendingStats {
   defensive_actions: PlayerDefensiveAction[];
   dribbles: PlayerDribble[];
+  ball_carries: PlayerBallCarry[];
 }
 
 export const playersApi = {
