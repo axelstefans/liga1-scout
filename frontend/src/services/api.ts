@@ -140,6 +140,10 @@ export interface PlayerDefensiveAction {
   player_id: number;
   x: number | null;
   y: number | null;
+  action_type: string | null;
+  end_x: number | null;
+  end_y: number | null;
+  is_home: boolean | null;
   created_at: string;
 }
 
