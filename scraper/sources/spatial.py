@@ -107,11 +107,18 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
                     x = coords.get('x')
                     y = coords.get('y')
                     
+                    action_type = d.get('eventActionType')
+                    is_home = True if d.get('isHome') in (True, 1, 'true', 'True') else False
+                    
+                    end_coords = d.get('passEndCoordinates', {})
+                    end_x = end_coords.get('x')
+                    end_y = end_coords.get('y')
+                    
                     cursor.execute('''
                         INSERT INTO player_defensive_actions 
-                        (match_id, player_id, x, y, created_at)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (match_id, player_id, x, y, now))
+                        (match_id, player_id, x, y, created_at, action_type, end_x, end_y, is_home)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (match_id, player_id, x, y, now, action_type, end_x, end_y, is_home))
                     
                 for dr in dribbles:
                     coords = dr.get('playerCoordinates', {})
