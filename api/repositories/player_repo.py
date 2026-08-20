@@ -277,25 +277,49 @@ def get_player_passes(db: sqlite3.Connection, player_id: int, match_id: Optional
         
     return results
 
-def get_player_defending_stats(db: sqlite3.Connection, player_id: int) -> Dict[str, Any]:
+def get_player_defending_stats(db: sqlite3.Connection, player_id: int, season_id: Optional[int] = None) -> Dict[str, Any]:
     """Fetch defensive actions and dribbles for a specific player."""
     
+    if season_id is None:
+        # Default to the player's most recent season with defending data
+        row = db.execute("""
+            SELECT MAX(m.season_id) as max_season
+            FROM matches m
+            WHERE m.match_id IN (
+                SELECT match_id FROM player_defensive_actions WHERE player_id = ?
+                UNION
+                SELECT match_id FROM player_dribbles WHERE player_id = ?
+            )
+        """, (player_id, player_id)).fetchone()
+        
+        if row and row['max_season']:
+            season_id = row['max_season']
+        else:
+            season_id = db.execute("SELECT MAX(season_id) FROM matches").fetchone()[0]
+        
     # 1. Fetch defensive actions
     def_query = """
-        SELECT id, match_id, player_id, x, y, created_at
-        FROM player_defensive_actions
-        WHERE player_id = ?
+        SELECT a.id, a.match_id, a.player_id, a.x, a.y, a.action_type, a.end_x, a.end_y, a.is_home, a.created_at
+        FROM player_defensive_actions a
+        JOIN matches m ON a.match_id = m.match_id
+        WHERE a.player_id = ? AND m.season_id = ?
     """
-    def_rows = db.execute(def_query, (player_id,)).fetchall()
-    defensive_actions = [dict(row) for row in def_rows]
+    def_rows = db.execute(def_query, (player_id, season_id)).fetchall()
+    
+    defensive_actions = []
+    for row in def_rows:
+        d = dict(row)
+        d['is_home'] = bool(d['is_home']) if d['is_home'] is not None else None
+        defensive_actions.append(d)
     
     # 2. Fetch dribbles
     dribbles_query = """
-        SELECT id, match_id, player_id, x, y, is_successful, created_at
-        FROM player_dribbles
-        WHERE player_id = ?
+        SELECT d.id, d.match_id, d.player_id, d.x, d.y, d.is_successful, d.created_at
+        FROM player_dribbles d
+        JOIN matches m ON d.match_id = m.match_id
+        WHERE d.player_id = ? AND m.season_id = ?
     """
-    dribbles_rows = db.execute(dribbles_query, (player_id,)).fetchall()
+    dribbles_rows = db.execute(dribbles_query, (player_id, season_id)).fetchall()
     
     dribbles = []
     for row in dribbles_rows:
@@ -303,7 +327,23 @@ def get_player_defending_stats(db: sqlite3.Connection, player_id: int) -> Dict[s
         d['is_successful'] = bool(d['is_successful'])
         dribbles.append(d)
         
+    # 3. Fetch ball carries
+    bc_query = """
+        SELECT bc.id, bc.match_id, bc.player_id, bc.x_start, bc.y_start, bc.x_end, bc.y_end, bc.is_home, bc.created_at
+        FROM player_ball_carries bc
+        JOIN matches m ON bc.match_id = m.match_id
+        WHERE bc.player_id = ? AND m.season_id = ?
+    """
+    bc_rows = db.execute(bc_query, (player_id, season_id)).fetchall()
+    
+    ball_carries = []
+    for row in bc_rows:
+        bc = dict(row)
+        bc['is_home'] = bool(bc['is_home'])
+        ball_carries.append(bc)
+        
     return {
         "defensive_actions": defensive_actions,
-        "dribbles": dribbles
+        "dribbles": dribbles,
+        "ball_carries": ball_carries
     }
