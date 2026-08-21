@@ -42,7 +42,7 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
         players = conn.execute('''
             SELECT player_id 
             FROM player_match_stats 
-            WHERE match_id = ? AND (minutes_played IS NULL OR minutes_played > 0)
+            WHERE match_id = ? AND minutes_played > 0
         ''', (match_id,)).fetchall()
         
         if not players:
