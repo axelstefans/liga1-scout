@@ -64,10 +64,6 @@ const SeasonHeatmap: React.FC<SeasonHeatmapProps> = ({ playerId, themeColor }) =
       {isLoading && (
         <div className="h-64 flex flex-col items-center justify-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy"></div>
-          <p className="text-sm text-gray-500 text-center">
-            Fetching heatmap data...<br />
-            <span className="text-xs opacity-75">(This launches an internal scraper and may take a few seconds)</span>
-          </p>
         </div>
       )}
 

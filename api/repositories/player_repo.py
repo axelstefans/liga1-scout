@@ -353,3 +353,18 @@ def get_player_defending_stats(db: sqlite3.Connection, player_id: int, season_id
         "dribbles": dribbles,
         "ball_carries": ball_carries
     }
+
+def get_player_heatmap(db: sqlite3.Connection, player_id: int) -> List[Dict[str, Any]]:
+    import json
+    row = db.execute(
+        "SELECT heatmap_json FROM player_heatmaps WHERE player_id = ? ORDER BY season_id DESC LIMIT 1",
+        (player_id,)
+    ).fetchone()
+    
+    if not row or not row['heatmap_json']:
+        return []
+        
+    try:
+        return json.loads(row['heatmap_json'])
+    except:
+        return []

@@ -1,7 +1,6 @@
 import sqlite3
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-import LanusStats as ls
 
 from ..core.database import get_db
 from ..schemas.player import PlayerProfile, PlayerSeasonStats, PlayerMatchStats, PlayerSearchResult, PlayerPass
@@ -43,19 +42,13 @@ def get_player_match_stats(player_id: int, db: sqlite3.Connection = Depends(get_
     return player_repo.get_player_match_stats(db, player_id)
 
 @router.get("/{player_id}/heatmap", response_model=List[Dict[str, Any]])
-def get_player_heatmap(player_id: int):
-    """Get player's season heatmap coordinates using LanusStats."""
-    try:
-        sofascore = ls.SofaScore()
-        heatmap_data = sofascore.get_player_season_heatmap("Peru Liga 1", "2026", player_id)
-
-        if hasattr(heatmap_data, 'to_dict'):
-            return heatmap_data.to_dict(orient='records')
-        return heatmap_data
-    except Exception as e:
-        if "PlayerDoesntHaveInfo" in type(e).__name__ or "PlayerDoesntHaveInfo" in str(e):
-            return []
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+def get_player_heatmap(player_id: int, db: sqlite3.Connection = Depends(get_db)):
+    """Get player's season heatmap coordinates from the database."""
+    profile = player_repo.get_player_profile(db, player_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+        
+    return player_repo.get_player_heatmap(db, player_id)
 
 @router.get("/{player_id}/shotmap", response_model=List[Dict[str, Any]])
 def get_player_shotmap(player_id: int, season_id: Optional[int] = None, db: sqlite3.Connection = Depends(get_db)):
