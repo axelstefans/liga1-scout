@@ -66,6 +66,24 @@ class PlayerSeasonStats(BaseModel):
     was_fouled: Optional[int] = None
     fouls: Optional[int] = None
     expected_goals: Optional[float] = None
+    
+    # --- PERCENTILES ---
+    goals_pct: Optional[float] = None
+    assists_pct: Optional[float] = None
+    rating_pct: Optional[float] = None
+    yellow_cards_pct: Optional[float] = None
+    red_cards_pct: Optional[float] = None
+    shots_on_target_pct: Optional[float] = None
+    successful_dribbles_pct: Optional[float] = None
+    accurate_passes_percentage_pct: Optional[float] = None
+    ground_duels_won_percentage_pct: Optional[float] = None
+    aerial_duels_won_pct: Optional[float] = None
+    key_passes_pct: Optional[float] = None
+    interceptions_pct: Optional[float] = None
+    tackles_pct: Optional[float] = None
+    saves_pct: Optional[float] = None
+    clean_sheets_pct: Optional[float] = None
+    minutes_played_pct: Optional[float] = None
 
 class PlayerMatchStats(BaseModel):
     match_id: int

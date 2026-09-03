@@ -22,6 +22,7 @@ export interface TeamBase {
   name: string;
   short_name: string | null;
   logo_url: string | null;
+  primary_color?: string | null;
 }
 
 export interface TeamNextMatch {
@@ -40,6 +41,8 @@ export interface PlayerProfile {
   position: string | null;
   position_group: string | null;
   shirt_number: number | null;
+  height?: number | null;
+  preferred_foot?: string | null;
   team: TeamBase | null;
   market_value_eur: number | null;
   market_value_str: string | null;
@@ -51,20 +54,32 @@ export interface PlayerSeasonStats {
   started: number | null;
   minutes_played: number | null;
   goals: number | null;
+  goals_pct?: number | null;
   assists: number | null;
+  assists_pct?: number | null;
   rating: number | null;
+  rating_pct?: number | null;
   yellow_cards: number | null;
   red_cards: number | null;
   shots_on_target: number | null;
   successful_dribbles: number | null;
+  successful_dribbles_pct?: number | null;
   accurate_passes_percentage: number | null;
+  accurate_passes_percentage_pct?: number | null;
   ground_duels_won_percentage: number | null;
+  ground_duels_won_percentage_pct?: number | null;
   aerial_duels_won: number | null;
   key_passes: number | null;
+  key_passes_pct?: number | null;
   interceptions: number | null;
+  interceptions_pct?: number | null;
   tackles: number | null;
+  tackles_pct?: number | null;
   saves: number | null;
+  saves_pct?: number | null;
   clean_sheets: number | null;
+  clean_sheets_pct?: number | null;
+  minutes_played_pct?: number | null;
 }
 
 export interface PlayerMatchStats {

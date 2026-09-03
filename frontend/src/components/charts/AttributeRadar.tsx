@@ -8,31 +8,29 @@ interface AttributeRadarProps {
   themeColor?: string;
 }
 
-// Very rough normalization function to generate 0-100 scores based on raw values.
-// In a real app, this would use league percentiles.
-const normalize = (value: number | null, max: number) => {
-  if (value === null || value === undefined) return 0;
-  return Math.min(Math.round((value / max) * 100), 100);
+const avg = (...values: (number | null | undefined)[]) => {
+  const valid = values.filter((v): v is number => v !== null && v !== undefined);
+  if (valid.length === 0) return null;
+  return Math.round(valid.reduce((sum, v) => sum + v, 0) / valid.length);
 };
 
-const AttributeRadar: React.FC<AttributeRadarProps> = ({ stats, positionGroup, themeColor }) => {
+const AttributeRadar: React.FC<AttributeRadarProps> = ({ stats, themeColor }) => {
   
   const data = useMemo(() => {
-    // Generate scores (these max values are arbitrary approximations for Liga 1 per season)
-    const attacking = normalize((stats.goals || 0) * 5 + (stats.assists || 0) * 3, 50);
-    const passing = normalize(stats.accurate_passes_percentage || 0, 100);
-    const defending = normalize((stats.tackles || 0) * 2 + (stats.interceptions || 0) * 2, 80);
-    const physical = normalize(stats.ground_duels_won_percentage || 0, 100);
-    const creative = normalize(stats.key_passes || 0, 40);
-    const retention = normalize(stats.successful_dribbles || 0, 50);
+    const attacking = avg(stats.goals_pct, stats.assists_pct);
+    const passing = avg(stats.accurate_passes_percentage_pct);
+    const defending = avg(stats.tackles_pct, stats.interceptions_pct);
+    const physical = avg(stats.ground_duels_won_percentage_pct);
+    const creative = avg(stats.key_passes_pct);
+    const retention = avg(stats.successful_dribbles_pct);
 
     return [
-      { subject: 'Attacking', A: attacking, fullMark: 100 },
-      { subject: 'Passing', A: passing, fullMark: 100 },
-      { subject: 'Creative', A: creative, fullMark: 100 },
-      { subject: 'Defending', A: defending, fullMark: 100 },
-      { subject: 'Physical', A: physical, fullMark: 100 },
-      { subject: 'Retention', A: retention, fullMark: 100 },
+      { subject: attacking === null ? 'Attacking (N/A)' : 'Attacking', A: attacking || 0, fullMark: 100 },
+      { subject: passing === null ? 'Passing (N/A)' : 'Passing', A: passing || 0, fullMark: 100 },
+      { subject: creative === null ? 'Creative (N/A)' : 'Creative', A: creative || 0, fullMark: 100 },
+      { subject: defending === null ? 'Defending (N/A)' : 'Defending', A: defending || 0, fullMark: 100 },
+      { subject: physical === null ? 'Physical (N/A)' : 'Physical', A: physical || 0, fullMark: 100 },
+      { subject: retention === null ? 'Retention (N/A)' : 'Retention', A: retention || 0, fullMark: 100 },
     ];
   }, [stats]);
 

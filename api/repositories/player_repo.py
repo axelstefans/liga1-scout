@@ -6,9 +6,9 @@ import joblib
 # Cargar el modelo xG globalmente al iniciar el repositorio
 try:
     xg_model = joblib.load('xg_model_pipeline.pkl')
-    print("✅ Modelo xG cargado correctamente en el repositorio.")
+    print("Modelo xG cargado correctamente en el repositorio.")
 except Exception as e:
-    print(f"⚠️ Advertencia: No se pudo cargar el modelo xG. Error: {e}")
+    print(f"Advertencia: No se pudo cargar el modelo xG. Error: {e}")
     xg_model = None
 
 def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[str, Any]]:
@@ -79,9 +79,15 @@ def search_players(db: sqlite3.Connection, query: str) -> List[Dict[str, Any]]:
 def get_player_season_stats(db: sqlite3.Connection, player_id: int) -> Optional[Dict[str, Any]]:
     """Fetch aggregate season stats for a player."""
     query = """
-        SELECT *
-        FROM player_season_stats
-        WHERE player_id = ?
+        SELECT 
+            pss.*,
+            psp.goals_pct, psp.assists_pct, psp.key_passes_pct, psp.successful_dribbles_pct,
+            psp.tackles_pct, psp.interceptions_pct, psp.rating_pct, psp.minutes_played_pct,
+            psp.accurate_passes_percentage_pct, psp.ground_duels_won_percentage_pct,
+            psp.saves_pct, psp.clean_sheets_pct
+        FROM player_season_stats pss
+        LEFT JOIN player_season_percentiles psp ON pss.player_id = psp.player_id
+        WHERE pss.player_id = ?
     """
     row = db.execute(query, (player_id,)).fetchone()
     return dict(row) if row else None

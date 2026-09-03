@@ -23,6 +23,7 @@ from scraper.sources.match_stats import scrape_and_store_match_stats
 from scraper.sources.transfermarkt import scrape_and_store_market_values
 from scraper.sources.spatial import scrape_and_store_spatial_events
 from scraper.sources.shotmap import scrape_and_store_shotmaps
+from scraper.sources.percentiles import compute_and_store_percentiles
 
 import LanusStats as ls
 
@@ -39,6 +40,7 @@ def main():
     parser.add_argument("--transfermarkt-only", action="store_true", help="Run only the transfermarkt pipeline step")
     parser.add_argument("--spatial-only", action="store_true", help="Run only the spatial events (passes) pipeline step")
     parser.add_argument("--shotmap-only", action="store_true", help="Run only the shotmap pipeline step")
+    parser.add_argument("--percentiles-only", action="store_true", help="Run only the percentiles calculation pipeline step")
     parser.add_argument("--full", action="store_true", help="Run the full pipeline")
     
     args = parser.parse_args()
@@ -95,6 +97,9 @@ def main():
 
     if args.shotmap_only or args.full:
         scrape_and_store_shotmaps(conn, api_client, test_mode=False)
+
+    if args.percentiles_only or args.full:
+        compute_and_store_percentiles(conn)
 
     logger.info("Pipeline run complete.")
     conn.close()

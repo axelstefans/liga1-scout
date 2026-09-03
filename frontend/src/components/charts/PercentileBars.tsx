@@ -7,24 +7,10 @@ interface PercentileBarsProps {
   themeColor?: string;
 }
 
-// Temporary max bounds for calculating internal pseudo-percentiles
-const MAX_BOUNDS: Record<string, number> = {
-  goals: 25,
-  assists: 15,
-  key_passes: 60,
-  successful_dribbles: 80,
-  tackles: 100,
-  interceptions: 80,
-  accurate_passes_percentage: 100,
-  ground_duels_won_percentage: 100,
-  rating: 10,
-  minutes_played: 3000
-};
-
-const Bar: React.FC<{ label: string; value: number | null; max: number; isPercent?: boolean; themeColor?: string }> = ({ label, value, max, isPercent, themeColor }) => {
+const Bar: React.FC<{ label: string; value: number | null; pctValue?: number | null; isPercent?: boolean; themeColor?: string }> = ({ label, value, pctValue, isPercent, themeColor }) => {
+  if (pctValue === null || pctValue === undefined) return null;
   const val = value || 0;
-  // If it's a percentage stat, don't divide by max if it's already out of 100
-  const fillPct = isPercent ? val : Math.min((val / max) * 100, 100);
+  const fillPct = pctValue;
   
   return (
     <div className="mb-4">
@@ -46,35 +32,35 @@ const PercentileBars: React.FC<PercentileBarsProps> = ({ stats, positionGroup, t
   
   return (
     <div className="space-y-2">
-      <Bar label="Minutes Played" value={stats.minutes_played} max={MAX_BOUNDS.minutes_played} themeColor={themeColor} />
-      <Bar label="Rating" value={stats.rating} max={MAX_BOUNDS.rating} themeColor={themeColor} />
+      <Bar label="Minutes Played" value={stats.minutes_played} pctValue={stats.minutes_played_pct} themeColor={themeColor} />
+      <Bar label="Rating" value={stats.rating} pctValue={stats.rating_pct} themeColor={themeColor} />
       
       {!isGoalkeeper && (
         <>
-          <Bar label="Goals" value={stats.goals} max={MAX_BOUNDS.goals} themeColor={themeColor} />
-          <Bar label="Assists" value={stats.assists} max={MAX_BOUNDS.assists} themeColor={themeColor} />
-          <Bar label="Key Passes" value={stats.key_passes} max={MAX_BOUNDS.key_passes} themeColor={themeColor} />
+          <Bar label="Goals" value={stats.goals} pctValue={stats.goals_pct} themeColor={themeColor} />
+          <Bar label="Assists" value={stats.assists} pctValue={stats.assists_pct} themeColor={themeColor} />
+          <Bar label="Key Passes" value={stats.key_passes} pctValue={stats.key_passes_pct} themeColor={themeColor} />
         </>
       )}
 
       {(isMidfielder || isDefender) && (
         <>
-          <Bar label="Tackles" value={stats.tackles} max={MAX_BOUNDS.tackles} themeColor={themeColor} />
-          <Bar label="Interceptions" value={stats.interceptions} max={MAX_BOUNDS.interceptions} themeColor={themeColor} />
+          <Bar label="Tackles" value={stats.tackles} pctValue={stats.tackles_pct} themeColor={themeColor} />
+          <Bar label="Interceptions" value={stats.interceptions} pctValue={stats.interceptions_pct} themeColor={themeColor} />
         </>
       )}
 
       {!isGoalkeeper && (
-         <Bar label="Successful Dribbles" value={stats.successful_dribbles} max={MAX_BOUNDS.successful_dribbles} themeColor={themeColor} />
+         <Bar label="Successful Dribbles" value={stats.successful_dribbles} pctValue={stats.successful_dribbles_pct} themeColor={themeColor} />
       )}
 
-      <Bar label="Pass Accuracy" value={stats.accurate_passes_percentage} max={MAX_BOUNDS.accurate_passes_percentage} isPercent themeColor={themeColor} />
-      <Bar label="Ground Duels Won" value={stats.ground_duels_won_percentage} max={MAX_BOUNDS.ground_duels_won_percentage} isPercent themeColor={themeColor} />
+      <Bar label="Pass Accuracy" value={stats.accurate_passes_percentage} pctValue={stats.accurate_passes_percentage_pct} isPercent themeColor={themeColor} />
+      <Bar label="Ground Duels Won" value={stats.ground_duels_won_percentage} pctValue={stats.ground_duels_won_percentage_pct} isPercent themeColor={themeColor} />
       
       {isGoalkeeper && (
         <>
-          <Bar label="Saves" value={stats.saves} max={150} themeColor={themeColor} />
-          <Bar label="Clean Sheets" value={stats.clean_sheets} max={20} themeColor={themeColor} />
+          <Bar label="Saves" value={stats.saves} pctValue={stats.saves_pct} themeColor={themeColor} />
+          <Bar label="Clean Sheets" value={stats.clean_sheets} pctValue={stats.clean_sheets_pct} themeColor={themeColor} />
         </>
       )}
     </div>
