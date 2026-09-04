@@ -15,9 +15,9 @@ def scrape_and_store_heatmaps(conn, api_client) -> int:
     """
     logger.info("Starting heatmap scrape...")
     
-    # Query distinct player_ids. Limit to 3 for testing as requested.
+    # Query distinct player_ids.
     players = conn.execute(
-        "SELECT DISTINCT player_id FROM player_season_stats LIMIT 3"
+        "SELECT DISTINCT player_id FROM player_season_stats"
     ).fetchall()
     
     total_inserted = 0

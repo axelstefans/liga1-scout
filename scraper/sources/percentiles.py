@@ -8,7 +8,9 @@ logger = logging.getLogger(__name__)
 
 VOLUME_STATS = [
     'goals', 'assists', 'key_passes', 'successful_dribbles',
-    'tackles', 'interceptions', 'saves', 'clean_sheets'
+    'tackles', 'interceptions', 'saves', 'clean_sheets',
+    'expected_goals', 'accurate_final_third_passes', 'clearances',
+    'shots_on_target', 'aerial_duels_won'
 ]
 
 NON_VOLUME_STATS = [
@@ -26,6 +28,8 @@ def compute_and_store_percentiles(conn: sqlite3.Connection):
             pss.minutes_played,
             pss.goals, pss.assists, pss.key_passes, pss.successful_dribbles,
             pss.tackles, pss.interceptions, pss.saves, pss.clean_sheets,
+            pss.expected_goals, pss.accurate_final_third_passes, pss.clearances,
+            pss.shots_on_target, pss.aerial_duels_won,
             pss.rating, pss.accurate_passes_percentage, pss.ground_duels_won_percentage
         FROM player_season_stats pss
         JOIN players p ON pss.player_id = p.player_id

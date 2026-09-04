@@ -84,7 +84,9 @@ def get_player_season_stats(db: sqlite3.Connection, player_id: int) -> Optional[
             psp.goals_pct, psp.assists_pct, psp.key_passes_pct, psp.successful_dribbles_pct,
             psp.tackles_pct, psp.interceptions_pct, psp.rating_pct, psp.minutes_played_pct,
             psp.accurate_passes_percentage_pct, psp.ground_duels_won_percentage_pct,
-            psp.saves_pct, psp.clean_sheets_pct
+            psp.saves_pct, psp.clean_sheets_pct,
+            psp.expected_goals_pct, psp.accurate_final_third_passes_pct, psp.clearances_pct,
+            psp.shots_on_target_pct, psp.aerial_duels_won_pct
         FROM player_season_stats pss
         LEFT JOIN player_season_percentiles psp ON pss.player_id = psp.player_id
         WHERE pss.player_id = ?

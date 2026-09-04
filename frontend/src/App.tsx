@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import Home from './pages/Home';
 import PlayerDashboard from './pages/PlayerDashboard';
+import DossierExport from './pages/DossierExport';
 
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/player/:id" element={<PlayerDashboard />} />
+            <Route path="/dossier/:id" element={<DossierExport />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

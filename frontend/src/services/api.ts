@@ -62,6 +62,7 @@ export interface PlayerSeasonStats {
   yellow_cards: number | null;
   red_cards: number | null;
   shots_on_target: number | null;
+  shots_on_target_pct?: number | null;
   successful_dribbles: number | null;
   successful_dribbles_pct?: number | null;
   accurate_passes_percentage: number | null;
@@ -69,6 +70,7 @@ export interface PlayerSeasonStats {
   ground_duels_won_percentage: number | null;
   ground_duels_won_percentage_pct?: number | null;
   aerial_duels_won: number | null;
+  aerial_duels_won_pct?: number | null;
   key_passes: number | null;
   key_passes_pct?: number | null;
   interceptions: number | null;
@@ -80,6 +82,12 @@ export interface PlayerSeasonStats {
   clean_sheets: number | null;
   clean_sheets_pct?: number | null;
   minutes_played_pct?: number | null;
+  expected_goals?: number | null;
+  expected_goals_pct?: number | null;
+  accurate_final_third_passes?: number | null;
+  accurate_final_third_passes_pct?: number | null;
+  clearances?: number | null;
+  clearances_pct?: number | null;
 }
 
 export interface PlayerMatchStats {
