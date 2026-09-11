@@ -1,5 +1,6 @@
 import sqlite3
 from typing import Optional, List, Dict, Any
+import numpy as np
 import pandas as pd
 import joblib
 
@@ -370,3 +371,79 @@ def get_player_heatmap(db: sqlite3.Connection, player_id: int) -> List[Dict[str,
         return json.loads(row['heatmap_json'])
     except:
         return []
+
+SIMILARITY_METRICS = [
+    'goals_pct', 'assists_pct', 'key_passes_pct', 'successful_dribbles_pct',
+    'tackles_pct', 'interceptions_pct', 'rating_pct', 'accurate_passes_percentage_pct',
+    'ground_duels_won_percentage_pct', 'expected_goals_pct', 'accurate_final_third_passes_pct',
+    'clearances_pct', 'shots_on_target_pct', 'aerial_duels_won_pct'
+]
+
+def get_similar_players(
+    db: sqlite3.Connection,
+    player_id: int,
+    limit: int = 10,
+    min_minutes: int = 300
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Find players with the most similar percentile performance profiles using Cosine Similarity.
+    """
+    cols = ', '.join([f'psp.{m}' for m in SIMILARITY_METRICS])
+    target_query = f"""
+        SELECT 
+            p.player_id, p.name, p.position, p.position_group,
+            {cols}
+        FROM players p
+        LEFT JOIN player_season_percentiles psp ON p.player_id = psp.player_id
+        WHERE p.player_id = ?
+    """
+    target_row = db.execute(target_query, (player_id,)).fetchone()
+    if not target_row:
+        return None
+
+    target = dict(target_row)
+    pos_group = target.get('position_group')
+    if not pos_group:
+        return []
+
+    u = np.array([target.get(m) or 0.0 for m in SIMILARITY_METRICS], dtype=float)
+    norm_u = np.linalg.norm(u)
+    if norm_u == 0:
+        return []
+
+    cand_query = f"""
+        SELECT 
+            p.player_id, p.name, p.position, p.shirt_number,
+            t.team_id, t.name as team_name,
+            pss.minutes_played,
+            {cols}
+        FROM player_season_percentiles psp
+        JOIN players p ON psp.player_id = p.player_id
+        JOIN player_season_stats pss ON psp.player_id = pss.player_id
+        LEFT JOIN teams t ON p.team_id = t.team_id
+        WHERE p.position_group = ?
+          AND pss.minutes_played >= ?
+          AND p.player_id != ?
+    """
+    candidates = db.execute(cand_query, (pos_group, min_minutes, player_id)).fetchall()
+
+    results = []
+    for cand_row in candidates:
+        c = dict(cand_row)
+        v = np.array([c.get(m) or 0.0 for m in SIMILARITY_METRICS], dtype=float)
+        norm_v = np.linalg.norm(v)
+        sim = float(np.dot(u, v) / (norm_u * norm_v)) if norm_v > 0 else 0.0
+
+        results.append({
+            "player_id": c["player_id"],
+            "name": c["name"],
+            "team_name": c["team_name"],
+            "team_id": c["team_id"],
+            "position": c["position"],
+            "similarity_pct": round(sim * 100, 1),
+            "minutes_played": c["minutes_played"],
+            "shirt_number": c["shirt_number"]
+        })
+
+    results.sort(key=lambda x: x["similarity_pct"], reverse=True)
+    return results[:limit]

@@ -79,13 +79,11 @@ const ShootingTab: React.FC<ShootingTabProps> = ({ playerId, themeColor }) => {
             {shotData.map((shot, idx) => {
               const isGoal = shot.shot_type.toLowerCase() === 'goal';
               const isBlocked = shot.shot_type.toLowerCase() === 'block' || shot.shot_type.toLowerCase() === 'blocked';
-              const isSaved = shot.shot_type.toLowerCase() === 'save' || shot.shot_type.toLowerCase() === 'miss';
               
               // Size proportional to xG
               const xg = shot.calculated_xg || 0.02;
               const r = 3 + (xg * 15);
 
-              let color = '#fff';
               let fill = 'transparent';
               let stroke = '#fff';
 

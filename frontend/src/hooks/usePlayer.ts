@@ -52,6 +52,8 @@ export const usePlayerShotmap = (playerId: number) => {
   });
 };
 
+export const usePlayerShots = usePlayerShotmap;
+
 export const usePlayerPasses = (playerId: number, matchId?: number) => {
   return useQuery({
     queryKey: ['players', playerId, 'passes', matchId],
@@ -70,6 +72,8 @@ export const usePlayerDefending = (playerId: number) => {
   });
 };
 
+export const usePlayerDefensiveActions = usePlayerDefending;
+
 // Use this to fetch the top players for a stat to calculate distributions
 export const useLeagueRankings = (stat: string, limit: number = 100) => {
   return useQuery({
@@ -86,5 +90,14 @@ export const useTeamNextMatch = (teamId: number | undefined) => {
     queryFn: () => teamsApi.getNextMatch(teamId!),
     enabled: !!teamId,
     retry: false, // Do not retry on 404
+  });
+};
+
+export const useSimilarPlayers = (playerId: number, limit: number = 10) => {
+  return useQuery({
+    queryKey: ['players', playerId, 'similar', limit],
+    queryFn: () => playersApi.getSimilarPlayers(playerId, limit),
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 30, // 30 minutes
   });
 };

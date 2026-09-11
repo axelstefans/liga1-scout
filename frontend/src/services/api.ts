@@ -88,6 +88,9 @@ export interface PlayerSeasonStats {
   accurate_final_third_passes_pct?: number | null;
   clearances?: number | null;
   clearances_pct?: number | null;
+  total_shots?: number | null;
+  accurate_passes?: number | null;
+  big_chances_created?: number | null;
 }
 
 export interface PlayerMatchStats {
@@ -198,6 +201,17 @@ export interface PlayerDefendingStats {
   ball_carries: PlayerBallCarry[];
 }
 
+export interface SimilarPlayer {
+  player_id: number;
+  name: string;
+  team_name: string | null;
+  team_id: number | null;
+  position: string | null;
+  similarity_pct: number;
+  minutes_played: number | null;
+  shirt_number: number | null;
+}
+
 export const playersApi = {
   search: async (query: string): Promise<PlayerSearchResult[]> => {
     const response = await apiClient.get(`/players/search?q=${query}`);
@@ -230,6 +244,10 @@ export const playersApi = {
   },
   getDefending: async (id: number): Promise<PlayerDefendingStats> => {
     const response = await apiClient.get(`/players/${id}/defending`);
+    return response.data;
+  },
+  getSimilarPlayers: async (id: number, limit: number = 10): Promise<SimilarPlayer[]> => {
+    const response = await apiClient.get(`/players/${id}/similar?limit=${limit}`);
     return response.data;
   },
 };

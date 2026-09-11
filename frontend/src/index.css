@@ -8,7 +8,7 @@
   }
   
   /* Styling for display headings using Bebas Neue */
-  h1, h2, h3, h4, .display-heading {
+  .display-heading {
     font-family: 'Bebas Neue', sans-serif;
     letter-spacing: 0.05em;
   }

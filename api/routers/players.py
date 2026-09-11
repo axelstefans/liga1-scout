@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
 from ..core.database import get_db
-from ..schemas.player import PlayerProfile, PlayerSeasonStats, PlayerMatchStats, PlayerSearchResult, PlayerPass
+from ..schemas.player import PlayerProfile, PlayerSeasonStats, PlayerMatchStats, PlayerSearchResult, PlayerPass, SimilarPlayer
 from ..repositories import player_repo
 
 router = APIRouter(prefix="/players", tags=["Players"])
@@ -82,3 +82,16 @@ def get_player_defending(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
         
     return player_repo.get_player_defending_stats(db, player_id, season_id)
+
+@router.get("/{player_id}/similar", response_model=List[SimilarPlayer])
+def get_similar_players(
+    player_id: int,
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of similar players to return"),
+    min_minutes: int = Query(300, ge=0, description="Minimum minutes played for candidates"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Find players with the most similar percentile performance profiles."""
+    similar = player_repo.get_similar_players(db, player_id, limit=limit, min_minutes=min_minutes)
+    if similar is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    return similar

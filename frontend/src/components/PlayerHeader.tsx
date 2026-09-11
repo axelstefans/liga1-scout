@@ -7,7 +7,7 @@ interface PlayerHeaderProps {
   themeColor?: string;
 }
 
-const calculateAge = (dobString?: string) => {
+const calculateAge = (dobString?: string | null) => {
   if (!dobString) return null;
   const birthDate = new Date(dobString);
   const today = new Date();
@@ -19,7 +19,7 @@ const calculateAge = (dobString?: string) => {
   return age;
 };
 
-const getCountryCode = (country?: string) => {
+const getCountryCode = (country?: string | null) => {
   if (!country) return 'xx';
   const map: Record<string, string> = {
     'peru': 'pe',
@@ -68,7 +68,7 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition, them
         {/* Club Row */}
         <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 uppercase tracking-wide flex-wrap">
           {countryCode !== 'xx' ? (
-            <img src={`https://flagcdn.com/w40/${countryCode}.png`} alt={profile.nationality} className="w-6 h-auto shadow-sm" />
+            <img src={`https://flagcdn.com/w40/${countryCode}.png`} alt={profile.nationality || ''} className="w-6 h-auto shadow-sm" />
           ) : (
             <span>{profile.nationality || 'Unknown'}</span>
           )}

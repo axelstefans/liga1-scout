@@ -114,3 +114,13 @@ class PlayerPass(BaseModel):
     y_end: Optional[float] = None
     is_successful: bool
     created_at: str
+
+class SimilarPlayer(BaseModel):
+    player_id: int
+    name: str
+    team_name: Optional[str] = None
+    team_id: Optional[int] = None
+    position: Optional[str] = None
+    similarity_pct: float
+    minutes_played: Optional[int] = None
+    shirt_number: Optional[int] = None

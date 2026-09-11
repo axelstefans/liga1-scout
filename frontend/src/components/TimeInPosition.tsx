@@ -4,6 +4,9 @@ import { PlayerMatchStats } from '../services/api';
 interface TimeInPositionProps {
   matchStats: PlayerMatchStats[] | undefined;
   themeColor?: string;
+  title?: string;
+  titleClassName?: string;
+  className?: string;
 }
 
 const POSITION_COORDS: Record<string, { x: number, y: number }> = {
@@ -58,7 +61,13 @@ const POSITION_ALIASES: Record<string, string> = {
   'G': 'GK'
 };
 
-const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats, themeColor }) => {
+const TimeInPosition: React.FC<TimeInPositionProps> = ({ 
+  matchStats, 
+  themeColor,
+  title = 'Time in Position',
+  titleClassName = 'font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case mb-2',
+  className = 'bg-white border border-slate-200 p-3 rounded-lg shadow-2xs'
+}) => {
   const positionStats = useMemo(() => {
     if (!matchStats) return [];
     
@@ -87,11 +96,9 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({ matchStats, themeColor 
       .sort((a, b) => b.mins - a.mins);
   }, [matchStats]);
 
-  const totalMinutes = positionStats.reduce((sum, stat) => sum + stat.mins, 0);
-
   return (
-    <div className="bg-card border border-border p-6 rounded-lg shadow-sm">
-      <h3 className="text-xl font-display text-navy mb-1">TIME IN POSITION</h3>
+    <div className={className}>
+      <div className={titleClassName}>{title}</div>
       
       {positionStats.length === 0 ? (
         <div className="h-64 flex items-center justify-center">
