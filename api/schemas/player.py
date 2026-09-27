@@ -124,3 +124,5 @@ class SimilarPlayer(BaseModel):
     similarity_pct: float
     minutes_played: Optional[int] = None
     shirt_number: Optional[int] = None
+    date_of_birth: Optional[str] = None
+    age: Optional[int] = None

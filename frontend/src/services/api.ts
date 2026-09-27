@@ -124,6 +124,9 @@ export interface PlayerRankingEntry {
   position: string | null;
   minutes_played: number | null;
   value: number | string;
+  accurate_passes_percentage?: number | null;
+  date_of_birth?: string | null;
+  age?: number | null;
 }
 
 export interface HeatmapPoint {
@@ -210,6 +213,8 @@ export interface SimilarPlayer {
   similarity_pct: number;
   minutes_played: number | null;
   shirt_number: number | null;
+  date_of_birth?: string | null;
+  age?: number | null;
 }
 
 export const playersApi = {
@@ -253,8 +258,11 @@ export const playersApi = {
 };
 
 export const rankingsApi = {
-  getTopPlayers: async (stat: string, limit: number = 100): Promise<PlayerRankingEntry[]> => {
-    const response = await apiClient.get(`/rankings/players?stat=${stat}&limit=${limit}`);
+  getTopPlayers: async (stat: string, limit: number = 100, positionGroup?: string, minMinutes?: number): Promise<PlayerRankingEntry[]> => {
+    let url = `/rankings/players?stat=${stat}&limit=${limit}`;
+    if (positionGroup) url += `&position_group=${encodeURIComponent(positionGroup)}`;
+    if (minMinutes !== undefined) url += `&min_minutes=${minMinutes}`;
+    const response = await apiClient.get(url);
     return response.data;
   }
 };

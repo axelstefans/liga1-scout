@@ -1,5 +1,6 @@
 import sqlite3
 from typing import Optional, List, Dict, Any
+from datetime import datetime, date
 import numpy as np
 import pandas as pd
 import joblib
@@ -383,7 +384,7 @@ def get_similar_players(
     db: sqlite3.Connection,
     player_id: int,
     limit: int = 10,
-    min_minutes: int = 300
+    min_minutes: int = 450
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Find players with the most similar percentile performance profiles using Cosine Similarity.
@@ -413,7 +414,7 @@ def get_similar_players(
 
     cand_query = f"""
         SELECT 
-            p.player_id, p.name, p.position, p.shirt_number,
+            p.player_id, p.name, p.position, p.shirt_number, p.date_of_birth,
             t.team_id, t.name as team_name,
             pss.minutes_played,
             {cols}
@@ -427,12 +428,22 @@ def get_similar_players(
     """
     candidates = db.execute(cand_query, (pos_group, min_minutes, player_id)).fetchall()
 
+    today = date.today()
     results = []
     for cand_row in candidates:
         c = dict(cand_row)
         v = np.array([c.get(m) or 0.0 for m in SIMILARITY_METRICS], dtype=float)
         norm_v = np.linalg.norm(v)
         sim = float(np.dot(u, v) / (norm_u * norm_v)) if norm_v > 0 else 0.0
+
+        dob = c.get("date_of_birth")
+        age = None
+        if dob:
+            try:
+                b_date = datetime.strptime(str(dob)[:10], '%Y-%m-%d').date()
+                age = today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
+            except Exception:
+                age = None
 
         results.append({
             "player_id": c["player_id"],
@@ -442,7 +453,9 @@ def get_similar_players(
             "position": c["position"],
             "similarity_pct": round(sim * 100, 1),
             "minutes_played": c["minutes_played"],
-            "shirt_number": c["shirt_number"]
+            "shirt_number": c["shirt_number"],
+            "date_of_birth": dob,
+            "age": age,
         })
 
     results.sort(key=lambda x: x["similarity_pct"], reverse=True)

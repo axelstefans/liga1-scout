@@ -52,9 +52,9 @@ def compute_and_store_percentiles(conn: sqlite3.Connection):
 
     metrics_to_rank = [f'{stat}_p90' for stat in VOLUME_STATS] + NON_VOLUME_STATS
 
-    # Build qualified pool
-    qualified_df = df[df['minutes_played'] >= 300].copy()
-    unqualified_df = df[df['minutes_played'] < 300].copy()
+    # Build qualified pool (strict 450+ minutes qualification threshold)
+    qualified_df = df[df['minutes_played'] >= 450].copy()
+    unqualified_df = df[df['minutes_played'] < 450].copy()
     
     # Compute percentiles for qualified pool
     result_records = []

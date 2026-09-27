@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlayerProfile } from '../services/api';
+import { getTeamCrestUrl } from '../utils/teams';
 
 interface PlayerHeaderProps {
   profile: PlayerProfile;
@@ -76,9 +77,17 @@ const PlayerHeader: React.FC<PlayerHeaderProps> = ({ profile, mainPosition, them
           {profile.team && (
             <>
               <span>{profile.team.name}</span>
-              {profile.team.logo_url && (
-                <img src={profile.team.logo_url} alt={profile.team.name} className="h-6 object-contain" />
-              )}
+              <img 
+                src={getTeamCrestUrl(profile.team.team_id, profile.team.logo_url)} 
+                alt={profile.team.name} 
+                className="h-6 object-contain" 
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (target.src !== '/liga1-logo.png') {
+                    target.src = '/liga1-logo.png';
+                  }
+                }}
+              />
             </>
           )}
           <img src="/liga1-logo.png" alt="Liga 1" className="h-6 object-contain ml-2" />

@@ -16,6 +16,7 @@ import ShootingTab from '../components/ShootingTab';
 import PassingTab from '../components/PassingTab';
 import DefendingTab from '../components/DefendingTab';
 import PossessionTab from '../components/PossessionTab';
+import { getTeamThemeColor } from '../utils/teams';
 
 const PlayerDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,52 +26,8 @@ const PlayerDashboard: React.FC = () => {
 
   const { data: profile, isLoading: isProfileLoading } = usePlayerProfile(playerId);
   const teamId = profile?.team?.team_id;
-  
-  const COLOR_OVERRIDES: Record<string, string> = {
-    // Existing & fixed
-    "Cusco FC": "#D4AF37",
-    "Cusco": "#D4AF37",
-    "Comerciantes Unidos": "#5B2C6F",
-    "Melgar": "#E30613",
-    "FBC Melgar": "#E30613",
-    "Alianza Atlético": "#004797",
-    "Alianza Atletico de Sullana": "#004797",
-    "UTC": "#E8C32E",
-    "UTC Cajamarca": "#E8C32E",
-    "Universidad Técnica de Cajamarca": "#E8C32E",
-
-    // Big teams
-    "Alianza Lima": "#00306f",
-    "Universitario": "#A67C52",
-    "Universitario de Deportes": "#A67C52",
-    "Sporting Cristal": "#00AEEF",
-    "Club Sporting Cristal": "#00AEEF",
-
-    // Rest of Liga 1 2026
-    "Los Chankas": "#F5A623",
-    "CD Los Chankas": "#F5A623",
-    "Cienciano": "#CC0000",
-    "Deportivo Garcilaso": "#00a5d5",
-    "ADT": "#005bed",
-    "AD Tarma": "#005bed",
-    "Sport Boys": "#FF69B4",
-    "Sport Boys Association": "#FF69B4",
-    "Atlético Grau": "#FFCC00",
-    "Sport Huancayo": "#CC0000",
-    "CSD Sport Huancayo": "#CC0000",
-    "Juan Pablo II College": "#ffd900d3",
-    "ADC Juan Pablo II College": "#ffd900d3",
-    "FC Cajamarca": "#0f3e5b",
-    "CD Moquegua": "#ffd900d3",
-    "Deportivo Moquegua": "#ffd900d3",
-  };
   const teamName = profile?.team?.name || "";
-  let resolvedColor = COLOR_OVERRIDES[teamName] || profile?.team?.primary_color || '#0ea5e9';
-  
-  if (resolvedColor.toLowerCase() === '#ffffff' || resolvedColor.toLowerCase() === '#fff') {
-    resolvedColor = '#0ea5e9';
-  }
-  const themeColor = resolvedColor;
+  const themeColor = getTeamThemeColor(teamName, profile?.team?.primary_color);
   
   const { data: nextMatch, isLoading: isNextMatchLoading } = useTeamNextMatch(teamId);
 
