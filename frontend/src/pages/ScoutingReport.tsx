@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
-  Search, ChevronDown, Check, Download 
+  Search, ChevronDown, Check, Download, Loader2 
 } from 'lucide-react';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import { 
   usePlayerProfile, 
   usePlayerSearch, 
@@ -146,6 +148,18 @@ const VOLUME_STAT_KEYS = new Set([
 
 const POSITION_GROUPS = ['All Positions', 'Defender', 'Midfielder', 'Forward', 'Goalkeeper'];
 
+const TOP_6_CLUBS = new Set([
+  'universitario', 'alianza lima', 'sporting cristal', 'fbc melgar', 'melgar', 'cusco fc', 'cienciano', 'adt'
+]);
+
+const LIMA_CLUBS = new Set([
+  'universitario', 'alianza lima', 'sporting cristal', 'sport boys'
+]);
+
+const ALTITUDE_CLUBS = new Set([
+  'fbc melgar', 'melgar', 'cienciano', 'cusco fc', 'adt', 'sport huancayo', 'deportivo garcilaso', 'los chankas', 'comerciantes unidos'
+]);
+
 const calculateAge = (dobString?: string | null) => {
   if (!dobString) return null;
   const birthDate = new Date(dobString);
@@ -282,7 +296,7 @@ const SimilarPlayerRow: React.FC<SimilarPlayerRowProps> = ({
               target.src = '/liga1-logo.png';
             }
           }}
-          className="w-4 h-4 object-contain shrink-0"
+          className="w-5 h-5 object-contain shrink-0"
         />
         <span className="text-[10px] text-slate-500 truncate">{clubName}</span>
       </div>
@@ -376,8 +390,8 @@ const ScoutingReport: React.FC = () => {
   const [minAge, setMinAge] = useState<number>(16);
   const [maxAge, setMaxAge] = useState<number>(36);
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>(['liga1_2026']);
-  const [benchmarkMode, setBenchmarkMode] = useState<'all' | 'own' | 'target'>('own');
-  const [targetLeague, setTargetLeague] = useState<string>('liga1');
+  const [benchmarkMode, setBenchmarkMode] = useState<'all' | 'own' | 'target'>('all');
+  const [targetGroup, setTargetGroup] = useState<string>('top6');
   const [xAxisMetric, setXAxisMetric] = useState<string>('accurate_passes_percentage');
   const [yAxisMetric, setYAxisMetric] = useState<string>('key_passes');
   const [beeswarm1, setBeeswarm1] = useState<string>('key_passes');
@@ -399,8 +413,14 @@ const ScoutingReport: React.FC = () => {
   const [isPlayerSearchOpen, setIsPlayerSearchOpen] = useState<boolean>(false);
   const [isRadarDropdownOpen, setIsRadarDropdownOpen] = useState<boolean>(false);
 
-  // Exclude teams filter
-  const [excludedTeams, setExcludedTeams] = useState<number[]>([]);
+  // Export States & Ref
+  const [isExportingPng, setIsExportingPng] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const dossierRef = useRef<HTMLDivElement>(null);
+
+  // Exclude teams filter (applied vs pending)
+  const [appliedExcludedTeams, setAppliedExcludedTeams] = useState<number[]>([]);
+  const [pendingExcludedTeams, setPendingExcludedTeams] = useState<number[]>([]);
   const [teamSearchQuery, setTeamSearchQuery] = useState<string>('');
 
   // Player search inside selector
@@ -418,6 +438,7 @@ const ScoutingReport: React.FC = () => {
   const clubThemeColor = useMemo(() => {
     return getTeamThemeColor(profile?.team?.name, profile?.team?.primary_color);
   }, [profile?.team?.name, profile?.team?.primary_color]);
+  const clubThemeRgb = useMemo(() => hexToRgb(clubThemeColor), [clubThemeColor]);
   const { data: seasonStats } = usePlayerSeasonStats(playerId);
   const { data: matchStats } = usePlayerMatchStats(playerId);
   const { data: similarPlayers, isLoading: isSimilarLoading } = useSimilarPlayers(playerId, 15);
@@ -446,6 +467,15 @@ const ScoutingReport: React.FC = () => {
     return map;
   }, [teams]);
 
+  const excludedTeamNames = useMemo(() => {
+    const set = new Set<string>();
+    appliedExcludedTeams.forEach(id => {
+      const t = teamMap.get(id);
+      if (t?.name) set.add(t.name.toLowerCase());
+    });
+    return set;
+  }, [appliedExcludedTeams, teamMap]);
+
   const similarPlayersMap = useMemo(() => {
     const map = new Map<number, SimilarPlayer>();
     if (similarPlayers) {
@@ -460,13 +490,36 @@ const ScoutingReport: React.FC = () => {
   const currentLeaderboardStat = hoveredMetric || 'accurate_passes_percentage';
   const playerPositionGroup = profile?.position_group || 'Defender';
 
-  const { data: topPlayers, isLoading: isTopPlayersLoading } = useQuery<PlayerRankingEntry[]>({
+  const { data: topPlayersRaw, isLoading: isTopPlayersLoading } = useQuery<PlayerRankingEntry[]>({
     queryKey: ['top-ranking-players', currentLeaderboardStat, playerPositionGroup],
     queryFn: async () => {
-      return await rankingsApi.getTopPlayers(currentLeaderboardStat, 10, playerPositionGroup, 450);
+      return await rankingsApi.getTopPlayers(currentLeaderboardStat, 40, playerPositionGroup, 450);
     },
     staleTime: 1000 * 60 * 10,
   });
+
+  const topPlayers = useMemo(() => {
+    if (!topPlayersRaw) return [];
+    return topPlayersRaw
+      .filter(p => {
+        if (p.player_id === playerId) return true;
+        const teamLower = (p.team_name || '').toLowerCase();
+        if (excludedTeamNames.has(teamLower)) return false;
+        const age = resolvePlayerAge(p) ?? resolvePlayerAge(similarPlayersMap.get(p.player_id));
+        if (age !== null && (age < minAge || age > maxAge)) return false;
+        if (benchmarkMode === 'own') {
+          const myTeam = (profile?.team?.name || '').toLowerCase();
+          if (myTeam && !teamLower.includes(myTeam) && !myTeam.includes(teamLower)) return false;
+        } else if (benchmarkMode === 'target') {
+          if (targetGroup === 'top6' && !TOP_6_CLUBS.has(teamLower)) return false;
+          if (targetGroup === 'lima' && !LIMA_CLUBS.has(teamLower)) return false;
+          if (targetGroup === 'altitude' && !ALTITUDE_CLUBS.has(teamLower)) return false;
+          if (targetGroup === 'provincial' && LIMA_CLUBS.has(teamLower)) return false;
+        }
+        return true;
+      })
+      .slice(0, 10);
+  }, [topPlayersRaw, playerId, excludedTeamNames, minAge, maxAge, benchmarkMode, targetGroup, profile?.team?.name, similarPlayersMap]);
 
   // 2D League Scatterplot Queries for Floor 3
   const scatterMetricX = xAxisMetric;
@@ -548,12 +601,6 @@ const ScoutingReport: React.FC = () => {
     );
   };
 
-  const toggleExcludeTeam = (teamId: number) => {
-    setExcludedTeams(prev => 
-      prev.includes(teamId) ? prev.filter(t => t !== teamId) : [...prev, teamId]
-    );
-  };
-
   const toggleRadarSlice = (slice: string) => {
     setActiveRadarSlices(prev => 
       prev.includes(slice) ? prev.filter(s => s !== slice) : [...prev, slice]
@@ -606,7 +653,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       const thetaMid = (thetaStart + thetaEnd) / 2;
 
       // Extract percentile from seasonStats
-      const rawPct = seasonStats ? (seasonStats[metric.pctKey] as number | undefined | null) : null;
+      let rawPct = seasonStats ? (seasonStats[metric.pctKey] as number | undefined | null) : null;
+      if ((rawPct === null || rawPct === undefined) && metric.key === 'expected_goals') {
+        rawPct = seasonStats?.expected_goals_pct ?? 50;
+      }
       const pct = typeof rawPct === 'number' && !isNaN(rawPct) ? Math.max(8, Math.min(100, rawPct)) : 50;
 
       // Scaled outer radius proportional to percentile
@@ -625,7 +675,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       const pathData = `M ${x0} ${y0} L ${x1} ${y1} A ${rOuter} ${rOuter} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${rMin} ${rMin} 0 0 0 ${x0} ${y0} Z`;
 
       // Value calculation
-      const rawVal = seasonStats ? (seasonStats[metric.key as keyof PlayerSeasonStats] as number | undefined | null) : null;
+      let rawVal = seasonStats ? (seasonStats[metric.key as keyof PlayerSeasonStats] as number | undefined | null) : null;
+      if ((rawVal === null || rawVal === undefined) && metric.key === 'expected_goals') {
+        rawVal = seasonStats?.expected_goals ?? 0;
+      }
       const formattedValue = metric.isPercentage
         ? `${(rawVal ?? 0).toFixed(1)}%`
         : (((rawVal ?? 0) / minutes) * 90).toFixed(2);
@@ -666,6 +719,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     });
   }, [activeMetrics, seasonStats]);
 
+  const hoveredWedge = useMemo(() => {
+    if (!hoveredMetric) return null;
+    return radarGeometry.find(w => w.metric.key === hoveredMetric) || null;
+  }, [hoveredMetric, radarGeometry]);
+
   // --------------------------------------------------------------------------
   // Event Calculations for Floor 2 Mini-Pitches
   // --------------------------------------------------------------------------
@@ -678,10 +736,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     return seasonStats?.goals ?? 0;
   }, [shots, seasonStats]);
   const total_xg = useMemo(() => {
+    if (seasonStats?.expected_goals != null && seasonStats.expected_goals > 0) {
+      return seasonStats.expected_goals;
+    }
     if (shots.length > 0) {
       return shots.reduce((sum, s) => sum + (s.calculated_xg || 0), 0);
     }
-    return seasonStats?.expected_goals ?? 0;
+    return 0;
   }, [shots, seasonStats]);
 
   // 2. Chances Created (Mini-Pitch 2)
@@ -865,12 +926,16 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
   const getPassZonalCellFill = useCallback((pct: number) => {
     if (pct <= 0) return 'transparent';
-    if (pct < 2) return '#DBEAFE';
-    if (pct < 5) return '#93C5FD';
-    if (pct <= 8) return '#60A5FA';
-    if (pct < 12) return '#1E40AF';
-    return '#1E3A8A';
-  }, []);
+    const { r, g, b } = hexToRgb(clubThemeColor);
+    let alpha = 0.16;
+    if (pct >= 12) alpha = 0.95;
+    else if (pct >= 8) alpha = 0.75;
+    else if (pct >= 5) alpha = 0.52;
+    else if (pct >= 2) alpha = 0.32;
+    else alpha = 0.18;
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }, [clubThemeColor]);
   const getPassStartCellFill = getPassZonalCellFill;
 
   // 5. Pass Endings (Vertical Zonal Heatmap Matrix)
@@ -1032,7 +1097,6 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
       const posGroup = itemX.position_group || yObj.entry.position_group;
       if (
-        benchmarkMode !== 'all' && 
         selectedPositionGroup && 
         selectedPositionGroup !== 'All Positions' && 
         posGroup && 
@@ -1046,6 +1110,27 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       const computedAge = isTarget && profile
         ? calculateAge(profile.date_of_birth)
         : resolvePlayerAge(itemX) ?? resolvePlayerAge(yObj.entry) ?? resolvePlayerAge(simMatch);
+
+      if (!isTarget) {
+        const teamLower = (itemX.team_name || '').toLowerCase();
+
+        // 1. Excluded teams filter
+        if (excludedTeamNames.has(teamLower)) return;
+
+        // 2. Age filter
+        if (computedAge !== null && (computedAge < minAge || computedAge > maxAge)) return;
+
+        // 3. Benchmark mode filter
+        if (benchmarkMode === 'own') {
+          const myTeam = (profile?.team?.name || '').toLowerCase();
+          if (myTeam && !teamLower.includes(myTeam) && !myTeam.includes(teamLower)) return;
+        } else if (benchmarkMode === 'target') {
+          if (targetGroup === 'top6' && !TOP_6_CLUBS.has(teamLower)) return;
+          if (targetGroup === 'lima' && !LIMA_CLUBS.has(teamLower)) return;
+          if (targetGroup === 'altitude' && !ALTITUDE_CLUBS.has(teamLower)) return;
+          if (targetGroup === 'provincial' && LIMA_CLUBS.has(teamLower)) return;
+        }
+      }
 
       points.push({
         player_id: itemX.player_id,
@@ -1088,7 +1173,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     }
 
     return points;
-  }, [xRankings, yRankings, yMap, benchmarkMode, selectedPositionGroup, playerId, profile, seasonStats, scatterMetricX, scatterMetricY, similarPlayersMap]);
+  }, [xRankings, yRankings, yMap, benchmarkMode, targetGroup, selectedPositionGroup, playerId, profile, seasonStats, scatterMetricX, scatterMetricY, similarPlayersMap, excludedTeamNames, minAge, maxAge]);
 
   const scatterPlotData = useMemo(() => {
     if (rawScatterPoints.length === 0) {
@@ -1287,6 +1372,37 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         ? calculateAge(profile.date_of_birth)
         : resolvePlayerAge(item) ?? resolvePlayerAge(simMatch);
 
+      if (!isTarget) {
+        const teamLower = (item.team_name || '').toLowerCase();
+
+        // 1. Excluded teams filter
+        if (excludedTeamNames.has(teamLower)) return;
+
+        // 2. Position group filter
+        if (
+          selectedPositionGroup &&
+          selectedPositionGroup !== 'All Positions' &&
+          item.position_group &&
+          item.position_group !== selectedPositionGroup
+        ) {
+          return;
+        }
+
+        // 3. Age filter
+        if (computedAge !== null && (computedAge < minAge || computedAge > maxAge)) return;
+
+        // 4. Benchmark mode filter
+        if (benchmarkMode === 'own') {
+          const myTeam = (profile?.team?.name || '').toLowerCase();
+          if (myTeam && !teamLower.includes(myTeam) && !myTeam.includes(teamLower)) return;
+        } else if (benchmarkMode === 'target') {
+          if (targetGroup === 'top6' && !TOP_6_CLUBS.has(teamLower)) return;
+          if (targetGroup === 'lima' && !LIMA_CLUBS.has(teamLower)) return;
+          if (targetGroup === 'altitude' && !ALTITUDE_CLUBS.has(teamLower)) return;
+          if (targetGroup === 'provincial' && LIMA_CLUBS.has(teamLower)) return;
+        }
+      }
+
       rawPoints.push({
         player_id: item.player_id,
         name: item.name,
@@ -1413,7 +1529,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       points,
       targetPoint,
     };
-  }, [benchmarkMode, selectedPositionGroup, playerId, profile, seasonStats, similarPlayersMap]);
+  }, [benchmarkMode, targetGroup, selectedPositionGroup, playerId, profile, seasonStats, similarPlayersMap, excludedTeamNames, minAge, maxAge]);
 
   const beeswarm1Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric1, b1Rankings), [computeBeeswarmStrip, beeswarmMetric1, b1Rankings]);
   const beeswarm2Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric2, b2Rankings), [computeBeeswarmStrip, beeswarmMetric2, b2Rankings]);
@@ -1454,23 +1570,15 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     return selected;
   }, [similarPlayers]);
 
-  // --------------------------------------------------------------------------
-  // Export Handlers
-  // --------------------------------------------------------------------------
-  const handleExportPNG = () => {
-    alert('Export to PNG initiated for canvas #scouting-dossier-canvas');
-  };
-
-  const handleExportSVG = () => {
-    alert('Export to SVG initiated for canvas #scouting-dossier-canvas');
-  };
-
   const playerAge = calculateAge(profile?.date_of_birth);
   const countryCode = getCountryCode(profile?.nationality);
   const playerName = profile?.name || 'Marco Huamán';
   const positionLabel = (profile?.position === 'D' ? 'Full Back' : profile?.position) || selectedPositionGroup || 'Full Back';
 
   const cohortCount = useMemo(() => {
+    if (rawScatterPoints && rawScatterPoints.length > 0) {
+      return rawScatterPoints.length;
+    }
     if (selectedPositionGroup === 'Defender' || !selectedPositionGroup) {
       return 34; // Qualified Liga 1 Full Backs (LB/RB/LWB/RWB with >= 450 min)
     }
@@ -1479,7 +1587,143 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       if (filtered.length > 0) return filtered.length;
     }
     return 34;
-  }, [xRankings, selectedPositionGroup]);
+  }, [rawScatterPoints, xRankings, selectedPositionGroup]);
+
+  // --------------------------------------------------------------------------
+  // Export Handlers
+  // --------------------------------------------------------------------------
+  const handleDownloadPNG = async () => {
+    if (isExportingPng || isExportingPdf) return;
+    const targetElement = dossierRef.current || document.getElementById('scouting-dossier-canvas');
+    if (!targetElement) return;
+
+    const originalTargetCursor = targetElement.style.cursor;
+    const originalBodyCursor = document.body.style.cursor;
+
+    try {
+      setIsExportingPng(true);
+      targetElement.style.cursor = 'none';
+      document.body.style.cursor = 'none';
+      setHoveredBeeswarmPoint(null);
+      setHoveredScatterPoint(null);
+
+      await document.fonts.ready;
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      const fullHeight = Math.max(targetElement.scrollHeight, targetElement.offsetHeight, targetElement.clientHeight);
+      const fullWidth = Math.max(targetElement.scrollWidth, targetElement.offsetWidth, targetElement.clientWidth);
+
+      const dataUrl = await toPng(targetElement, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: '#f8fafc',
+        width: fullWidth,
+        height: fullHeight,
+        style: {
+          cursor: 'none',
+          width: `${fullWidth}px`,
+          height: `${fullHeight}px`,
+          maxHeight: 'none',
+          overflow: 'visible',
+        },
+        filter: (node) => {
+          if (node instanceof HTMLElement && node.classList.contains('export-ignore')) {
+            return false;
+          }
+          return true;
+        },
+      });
+
+      const cleanPlayer = playerName.trim().replace(/\s+/g, '_');
+      const cleanTeam = (profile?.team?.name || 'Liga1').trim().replace(/\s+/g, '_');
+      const filename = `Scouting_Report_${cleanPlayer}_${cleanTeam}.png`;
+
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to export PNG:', err);
+      alert('Could not generate PNG export. Please try again.');
+    } finally {
+      targetElement.style.cursor = originalTargetCursor;
+      document.body.style.cursor = originalBodyCursor;
+      setIsExportingPng(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (isExportingPng || isExportingPdf) return;
+    const targetElement = dossierRef.current || document.getElementById('scouting-dossier-canvas');
+    if (!targetElement) return;
+
+    const originalTargetCursor = targetElement.style.cursor;
+    const originalBodyCursor = document.body.style.cursor;
+
+    try {
+      setIsExportingPdf(true);
+      targetElement.style.cursor = 'none';
+      document.body.style.cursor = 'none';
+      setHoveredBeeswarmPoint(null);
+      setHoveredScatterPoint(null);
+
+      await document.fonts.ready;
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      const fullHeight = Math.max(targetElement.scrollHeight, targetElement.offsetHeight, targetElement.clientHeight);
+      const fullWidth = Math.max(targetElement.scrollWidth, targetElement.offsetWidth, targetElement.clientWidth);
+
+      const dataUrl = await toPng(targetElement, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: '#f8fafc',
+        width: fullWidth,
+        height: fullHeight,
+        style: {
+          cursor: 'none',
+          width: `${fullWidth}px`,
+          height: `${fullHeight}px`,
+          maxHeight: 'none',
+          overflow: 'visible',
+        },
+        filter: (node) => {
+          if (node instanceof HTMLElement && node.classList.contains('export-ignore')) {
+            return false;
+          }
+          return true;
+        },
+      });
+
+      // Calculate exact image properties from captured bitmap
+      const dummyPdf = new jsPDF({ unit: 'mm' });
+      const imgProps = dummyPdf.getImageProperties(dataUrl);
+
+      // Fit 297mm width and scale height dynamically to match entire bitmap aspect ratio
+      const pdfWidth = 297;
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      const pdf = new jsPDF({
+        orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight],
+      });
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'SLOW');
+
+      const cleanPlayer = playerName.trim().replace(/\s+/g, '_');
+      const cleanTeam = (profile?.team?.name || 'Liga1').trim().replace(/\s+/g, '_');
+      const filename = `Scouting_Report_${cleanPlayer}_${cleanTeam}.pdf`;
+
+      pdf.save(filename);
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+      alert('Could not generate PDF export. Please try again.');
+    } finally {
+      targetElement.style.cursor = originalTargetCursor;
+      document.body.style.cursor = originalBodyCursor;
+      setIsExportingPdf(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white text-slate-800 antialiased font-sans">
@@ -1504,44 +1748,66 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             Data Configuration
           </h2>
 
-          {/* Min age & Max age in one horizontal row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Min age:</label>
+          {/* Min age & Max age in one horizontal row with synchronized dual-fill track */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="flex items-center space-x-3">
+              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">Min age:</label>
               <input
                 type="number"
-                min={15}
-                max={maxAge - 1}
+                min={16}
+                max={42}
                 value={minAge}
-                onChange={(e) => setMinAge(Math.max(15, parseInt(e.target.value) || 15))}
-                className="w-14 border border-slate-300 rounded px-2 py-1 text-center font-mono text-sm text-slate-900 bg-white"
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 16;
+                  const clamped = Math.max(16, Math.min(val, maxAge));
+                  setMinAge(clamped);
+                }}
+                className="w-14 px-2 py-1 border border-slate-300 rounded text-center text-sm font-medium text-slate-800 bg-white focus:outline-none focus:border-slate-500"
               />
               <input
                 type="range"
-                min={15}
-                max={maxAge - 1}
+                min={16}
+                max={42}
                 value={minAge}
-                onChange={(e) => setMinAge(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-slate-800"
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  const clamped = Math.min(val, maxAge);
+                  setMinAge(clamped);
+                }}
+                style={{
+                  background: `linear-gradient(to right, #e2e8f0 0%, #e2e8f0 ${((minAge - 16) / 26) * 100}%, #1e293b ${((minAge - 16) / 26) * 100}%, #1e293b ${((maxAge - 16) / 26) * 100}%, #e2e8f0 ${((maxAge - 16) / 26) * 100}%, #e2e8f0 100%)`
+                }}
+                className="w-full h-1.5 rounded appearance-none cursor-pointer accent-slate-800"
               />
             </div>
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Max age:</label>
+            <div className="flex items-center space-x-3">
+              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">Max age:</label>
               <input
                 type="number"
-                min={minAge + 1}
-                max={45}
+                min={16}
+                max={42}
                 value={maxAge}
-                onChange={(e) => setMaxAge(Math.min(45, parseInt(e.target.value) || 45))}
-                className="w-14 border border-slate-300 rounded px-2 py-1 text-center font-mono text-sm text-slate-900 bg-white"
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 42;
+                  const clamped = Math.min(42, Math.max(val, minAge));
+                  setMaxAge(clamped);
+                }}
+                className="w-14 px-2 py-1 border border-slate-300 rounded text-center text-sm font-medium text-slate-800 bg-white focus:outline-none focus:border-slate-500"
               />
               <input
                 type="range"
-                min={minAge + 1}
-                max={45}
+                min={16}
+                max={42}
                 value={maxAge}
-                onChange={(e) => setMaxAge(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-slate-800"
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  const clamped = Math.max(val, minAge);
+                  setMaxAge(clamped);
+                }}
+                style={{
+                  background: `linear-gradient(to right, #e2e8f0 0%, #e2e8f0 ${((minAge - 16) / 26) * 100}%, #1e293b ${((minAge - 16) / 26) * 100}%, #1e293b ${((maxAge - 16) / 26) * 100}%, #e2e8f0 ${((maxAge - 16) / 26) * 100}%, #e2e8f0 100%)`
+                }}
+                className="w-full h-1.5 rounded appearance-none cursor-pointer accent-slate-800"
               />
             </div>
           </div>
@@ -1557,91 +1823,124 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   type="checkbox"
                   checked={selectedLeagues.includes('liga1_2026')}
                   onChange={() => toggleLeague('liga1_2026')}
-                  className="rounded border-slate-300 text-slate-800 focus:ring-0"
+                  className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
                 />
-                <span className="text-slate-800 font-medium">Liga 1 2026</span>
+                <span className="text-slate-800 font-medium">Liga 1 (2026)</span>
               </label>
               <label className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={selectedLeagues.includes('liga2_2026')}
-                  onChange={() => toggleLeague('liga2_2026')}
-                  className="rounded border-slate-300 text-slate-800 focus:ring-0"
+                  checked={selectedLeagues.includes('liga1_apertura')}
+                  onChange={() => toggleLeague('liga1_apertura')}
+                  className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
                 />
-                <span className="text-slate-500">Liga 2 2026</span>
+                <span className="text-slate-600">Torneo Apertura</span>
               </label>
             </div>
           </div>
 
-          {/* Teams to exclude (X/18) */}
+          {/* Teams to exclude Popover */}
           <div className="relative" ref={excludeDropdownRef}>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Teams to exclude ({excludedTeams.length}/{teams?.length || 18})
+              Teams to exclude ({appliedExcludedTeams.length}/{teams?.length || 18})
             </label>
             <button
               type="button"
-              onClick={() => setIsExcludeDropdownOpen(!isExcludeDropdownOpen)}
-              className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 bg-white hover:bg-slate-50 transition-colors"
+              onClick={() => {
+                if (!isExcludeDropdownOpen) {
+                  setPendingExcludedTeams([...appliedExcludedTeams]);
+                }
+                setIsExcludeDropdownOpen(!isExcludeDropdownOpen);
+              }}
+              className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              <span>{excludedTeams.length > 0 ? `${excludedTeams.length} teams excluded` : 'No teams excluded'}</span>
+              <span>
+                {appliedExcludedTeams.length > 0 
+                  ? `${appliedExcludedTeams.length} ${appliedExcludedTeams.length === 1 ? 'team' : 'teams'} excluded` 
+                  : 'No teams excluded'}
+              </span>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
 
             {isExcludeDropdownOpen && (
-              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-3 space-y-2">
+              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-3 space-y-2.5">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-xs font-bold uppercase text-slate-700">Filter Clubs</span>
-                  <div className="space-x-3 text-xs font-semibold">
+                  <span className="text-xs font-bold uppercase text-slate-700 tracking-wider">
+                    Filter Clubs ({pendingExcludedTeams.length}/{teams?.length || 18})
+                  </span>
+                  <div className="flex items-center space-x-2 text-xs">
                     <button 
                       type="button"
-                      onClick={() => setExcludedTeams(teams ? teams.map((t: TeamBase) => t.team_id) : [])} 
-                      className="text-slate-800 hover:underline"
+                      onClick={() => setPendingExcludedTeams(teams ? teams.map((t: TeamBase) => t.team_id) : [])} 
+                      className="font-semibold text-slate-700 hover:text-slate-900 underline cursor-pointer"
                     >
                       All
                     </button>
                     <button 
                       type="button"
-                      onClick={() => setExcludedTeams([])} 
-                      className="text-slate-500 hover:underline"
+                      onClick={() => setPendingExcludedTeams([])} 
+                      className="font-semibold text-slate-500 hover:text-slate-700 underline cursor-pointer"
                     >
                       None
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppliedExcludedTeams([...pendingExcludedTeams]);
+                        setIsExcludeDropdownOpen(false);
+                      }}
+                      className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-0.5 rounded text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      Apply
                     </button>
                   </div>
                 </div>
 
                 <input
                   type="text"
-                  placeholder="Search team name..."
+                  placeholder="filter team name..."
                   value={teamSearchQuery}
                   onChange={(e) => setTeamSearchQuery(e.target.value)}
                   className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
                 />
 
-                <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
+                <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                   {filteredTeams.map((team: TeamBase) => {
-                    const isExcluded = excludedTeams.includes(team.team_id);
+                    const isChecked = pendingExcludedTeams.includes(team.team_id);
                     return (
                       <label
                         key={team.team_id}
                         className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs text-slate-700"
                       >
-                        <span className="truncate pr-2">{team.name}</span>
+                        <span className="truncate pr-2 font-medium">{team.name}</span>
                         <input
                           type="checkbox"
-                          checked={isExcluded}
-                          onChange={() => toggleExcludeTeam(team.team_id)}
-                          className="rounded border-slate-300 text-slate-800 focus:ring-0"
+                          checked={isChecked}
+                          onChange={() => {
+                            setPendingExcludedTeams(prev =>
+                              prev.includes(team.team_id)
+                                ? prev.filter(id => id !== team.team_id)
+                                : [...prev, team.team_id]
+                            );
+                          }}
+                          className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
                         />
                       </label>
                     );
                   })}
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex justify-end">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">
+                    {pendingExcludedTeams.length} of {teams?.length || 18} selected
+                  </span>
                   <button
                     type="button"
-                    onClick={() => setIsExcludeDropdownOpen(false)}
-                    className="bg-slate-900 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-slate-800"
+                    onClick={() => {
+                      setAppliedExcludedTeams([...pendingExcludedTeams]);
+                      setIsExcludeDropdownOpen(false);
+                    }}
+                    className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer transition-colors"
                   >
                     Apply
                   </button>
@@ -1664,9 +1963,9 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 name="benchmarkMode"
                 checked={benchmarkMode === 'all'}
                 onChange={() => setBenchmarkMode('all')}
-                className="text-slate-800 focus:ring-0"
+                className="text-slate-800 focus:ring-0 cursor-pointer"
               />
-              <span className="text-slate-800">vs all leagues</span>
+              <span className="text-slate-800 font-medium">vs all teams</span>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -1674,9 +1973,9 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 name="benchmarkMode"
                 checked={benchmarkMode === 'own'}
                 onChange={() => setBenchmarkMode('own')}
-                className="text-slate-800 focus:ring-0"
+                className="text-slate-800 focus:ring-0 cursor-pointer"
               />
-              <span className="text-slate-800">vs own league</span>
+              <span className="text-slate-800 font-medium">vs own team</span>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -1684,24 +1983,24 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 name="benchmarkMode"
                 checked={benchmarkMode === 'target'}
                 onChange={() => setBenchmarkMode('target')}
-                className="text-slate-800 focus:ring-0"
+                className="text-slate-800 focus:ring-0 cursor-pointer"
               />
-              <span className="text-slate-800">vs target league &rarr;</span>
+              <span className="text-slate-800 font-medium">vs target tier &rarr;</span>
             </label>
           </div>
 
           {benchmarkMode === 'target' && (
             <div className="pt-1">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Target league</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Target tier / group</label>
               <select
-                value={targetLeague}
-                onChange={(e) => setTargetLeague(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white"
+                value={targetGroup}
+                onChange={(e) => setTargetGroup(e.target.value)}
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
-                <option value="liga1">Liga 1 (Peru)</option>
-                <option value="brasileirao">Brasileirão (Brazil)</option>
-                <option value="argentina">Primera División (Argentina)</option>
-                <option value="colombia">Liga BetPlay (Colombia)</option>
+                <option value="top6">Top 6 Clubs (Title Contenders: 'U', Alianza, Cristal, Melgar, Cusco, Cienciano)</option>
+                <option value="lima">Lima Powerhouses (Alianza, 'U', Cristal, Sport Boys)</option>
+                <option value="altitude">Altitude Clubs (Sierra: Melgar, Cienciano, Cusco, ADT, Huancayo)</option>
+                <option value="provincial">Provincial Clubs (Outside Lima)</option>
               </select>
             </div>
           )}
@@ -1719,7 +2018,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <select
                 value={xAxisMetric}
                 onChange={(e) => setXAxisMetric(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white"
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
                   <option key={m.key} value={m.key}>{m.label}</option>
@@ -1731,7 +2030,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <select
                 value={yAxisMetric}
                 onChange={(e) => setYAxisMetric(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white"
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
                   <option key={m.key} value={m.key}>{m.label}</option>
@@ -1746,7 +2045,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <select
                 value={beeswarm1}
                 onChange={(e) => setBeeswarm1(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white"
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
                   <option key={m.key} value={m.key}>{m.label}</option>
@@ -1758,7 +2057,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <select
                 value={beeswarm2}
                 onChange={(e) => setBeeswarm2(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white"
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
                   <option key={m.key} value={m.key}>{m.label}</option>
@@ -1772,7 +2071,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             <select
               value={beeswarm3}
               onChange={(e) => setBeeswarm3(e.target.value)}
-              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white"
+              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
             >
               {AVAILABLE_METRICS.map(m => (
                 <option key={m.key} value={m.key}>{m.label}</option>
@@ -1793,7 +2092,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <select
                 value={selectedPositionGroup}
                 onChange={(e) => setSelectedPositionGroup(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white"
+                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {POSITION_GROUPS.map((pos) => (
                   <option key={pos} value={pos}>{pos}</option>
@@ -1806,9 +2105,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <button
                 type="button"
                 onClick={() => setIsPlayerSearchOpen(!isPlayerSearchOpen)}
-                className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left truncate"
+                className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left truncate cursor-pointer"
               >
-                <span className="truncate font-medium">{isProfileLoading ? 'Loading...' : profile?.name || `Player #${playerId}`}</span>
+                <span className="truncate font-medium">
+                  {isProfileLoading ? 'Loading...' : `${profile?.name || `Player #${playerId}`} — ${profile?.team?.name || 'Alianza Lima'}`}
+                </span>
                 <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-1" />
               </button>
 
@@ -1843,12 +2144,12 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           setIsPlayerSearchOpen(false);
                           navigate(`/scouting/${p.player_id}`);
                         }}
-                        className="w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-slate-50 transition-colors"
+                        className="w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
                       >
                         <div className="truncate">
-                          <p className="font-semibold text-slate-800 truncate">{p.name}</p>
+                          <p className="font-semibold text-slate-800 truncate">{p.name} — {p.team_name || 'Liga 1'}</p>
                           <p className="text-[11px] text-slate-500 truncate">
-                            {p.team_name || 'Free agent'} • {p.position_group || 'Unknown'}
+                            {p.position_group || 'Unknown'}
                           </p>
                         </div>
                         {p.player_id === playerId && (
@@ -1870,7 +2171,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             <button
               type="button"
               onClick={() => setIsRadarDropdownOpen(!isRadarDropdownOpen)}
-              className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left"
+              className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left cursor-pointer"
             >
               <span>{activeRadarSlices.length} slices selected</span>
               <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-1" />
@@ -1880,13 +2181,22 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <div className="absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2.5 space-y-1.5">
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-xs font-bold uppercase text-slate-800">Toggle Slices</span>
-                  <button 
-                    type="button"
-                    onClick={() => setActiveRadarSlices(RADAR_SLICE_OPTIONS)} 
-                    className="text-xs font-semibold text-slate-700 hover:underline"
-                  >
-                    Reset all
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      type="button"
+                      onClick={() => setActiveRadarSlices(RADAR_SLICE_OPTIONS)} 
+                      className="text-xs font-semibold text-slate-700 hover:underline cursor-pointer"
+                    >
+                      All
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setActiveRadarSlices([])} 
+                      className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
+                    >
+                      None
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                   {RADAR_SLICE_OPTIONS.map(slice => (
@@ -1899,7 +2209,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         type="checkbox"
                         checked={activeRadarSlices.includes(slice)}
                         onChange={() => toggleRadarSlice(slice)}
-                        className="rounded border-slate-300 text-slate-800 focus:ring-0"
+                        className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
                       />
                     </label>
                   ))}
@@ -1914,7 +2224,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       {/* =================================================================== */}
       {/* TIER 2: FULL-BLEED PANORAMIC DOSSIER CANVAS                         */}
       {/* =================================================================== */}
-      <div id="scouting-dossier-canvas" className="w-full max-w-[1520px] mx-auto px-6 py-8 space-y-6">
+      <div id="scouting-dossier-canvas" ref={dossierRef} className="w-full max-w-[1520px] mx-auto px-6 py-8 space-y-6 bg-slate-50">
         
         {/* ----------------------------------------------------------------- */}
         {/* FLOOR 1: Bio & Polar Pizza Rose Radar Section                     */}
@@ -1937,7 +2247,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         target.src = '/liga1-logo.png';
                       }
                     }}
-                    className="w-4 h-4 object-contain shrink-0"
+                    className="w-7 h-7 object-contain shrink-0"
                   />
                   <span className="text-[11px] font-semibold text-slate-700 truncate">
                     {profile?.team?.name || 'Alianza Lima'}
@@ -1999,6 +2309,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   <span className="font-bold text-slate-800 flex items-center gap-1">
                     <img 
                       src={`https://flagcdn.com/w20/${countryCode}.png`} 
+                      crossOrigin="anonymous"
                       alt="" 
                       className="w-3.5 h-2.5 object-cover rounded-xs shrink-0" 
                     />
@@ -2026,9 +2337,15 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* Metric Rows: compact vertical stack */}
               <div className="space-y-1.5">
                 {activeMetrics.map((metric) => {
-                  const rawPct = seasonStats ? (seasonStats[metric.pctKey] as number | undefined | null) : null;
+                  let rawPct = seasonStats ? (seasonStats[metric.pctKey] as number | undefined | null) : null;
+                  if ((rawPct === null || rawPct === undefined) && metric.key === 'expected_goals') {
+                    rawPct = seasonStats?.expected_goals_pct ?? 50;
+                  }
                   const pct = typeof rawPct === 'number' && !isNaN(rawPct) ? Math.round(rawPct) : 50;
-                  const rawVal = seasonStats ? (seasonStats[metric.key as keyof PlayerSeasonStats] as number | undefined | null) : null;
+                  let rawVal = seasonStats ? (seasonStats[metric.key as keyof PlayerSeasonStats] as number | undefined | null) : null;
+                  if ((rawVal === null || rawVal === undefined) && metric.key === 'expected_goals') {
+                    rawVal = seasonStats?.expected_goals ?? 0;
+                  }
                   const minutes = seasonStats?.minutes_played || 1;
                   const valStr = metric.isPercentage
                     ? `${(rawVal ?? 0).toFixed(1)}%`
@@ -2198,20 +2515,18 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
                 {/* Inner Hub Center Circle at (225, 240) */}
                 <circle cx="225" cy="240" r={25} fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="1" />
-                {activeHoveredMetricDef ? (
+                {hoveredWedge ? (
                   <g pointerEvents="none">
                     <text 
                       x="225" 
                       y="235" 
-                      fontSize="11" 
+                      fontSize="12" 
                       fontWeight="bold" 
                       textAnchor="middle" 
                       dominantBaseline="central" 
                       fill="#1D4ED8"
                     >
-                      {seasonStats && seasonStats[activeHoveredMetricDef.pctKey] 
-                        ? `${Math.round(Number(seasonStats[activeHoveredMetricDef.pctKey]))}th` 
-                        : '--'}
+                      {Math.round(hoveredWedge.pct)}
                     </text>
                     <text 
                       x="225" 
@@ -2286,12 +2601,23 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         key={player.player_id}
                         className={`flex items-center justify-between px-1.5 py-0.5 rounded transition-colors ${
                           isCurrentPlayer 
-                            ? 'bg-sky-100/70 border border-sky-300 font-semibold' 
+                            ? 'font-semibold' 
                             : 'hover:bg-slate-100/80 text-slate-700'
                         }`}
+                        style={
+                          isCurrentPlayer
+                            ? {
+                                backgroundColor: `rgba(${clubThemeRgb.r}, ${clubThemeRgb.g}, ${clubThemeRgb.b}, 0.12)`,
+                                border: `1px solid rgba(${clubThemeRgb.r}, ${clubThemeRgb.g}, ${clubThemeRgb.b}, 0.35)`,
+                              }
+                            : undefined
+                        }
                       >
                         <div className="flex items-center gap-1.5 min-w-0 pr-1 truncate">
-                          <span className={`font-semibold text-[10px] shrink-0 ${isCurrentPlayer ? 'text-sky-900 font-bold' : 'text-slate-800'}`}>
+                          <span 
+                            className={`font-semibold text-[10px] shrink-0 ${isCurrentPlayer ? 'font-bold' : 'text-slate-800'}`}
+                            style={isCurrentPlayer ? { color: clubThemeColor } : undefined}
+                          >
                             {player.rank}. {player.name}
                           </span>
                           <span className="text-slate-400 text-[9.5px] font-normal truncate">
@@ -2301,7 +2627,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
                         <span className="font-mono font-bold text-slate-800 text-[10.5px] shrink-0 ml-1.5">
                           {formattedValue}
-                          {activeHoveredMetricDef?.isPercentage ? '%' : ''}
+                          {(RADAR_METRICS.find(m => m.key === currentLeaderboardStat)?.isPercentage || activeHoveredMetricDef?.isPercentage) ? '%' : ''}
                         </span>
                       </div>
                     );
@@ -3243,7 +3569,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                             cx={cx}
                             cy={cy}
                             r={r}
-                            fill="#1E3A8A"
+                            fill={clubThemeColor}
                             fillOpacity={opacity}
                           />
                         );
@@ -3487,7 +3813,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     {/* Interactive Floating Tooltip (Dark Minimalist Overlay) */}
                     {hoveredBeeswarmPoint && hoveredBeeswarmPoint.metricKey === strip.key && (
                       <div 
-                        className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2.5 bg-[#18181b] text-white p-2.5 rounded-lg shadow-xl border border-zinc-700/50 text-left min-w-[170px]"
+                        className="export-ignore absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2.5 bg-[#18181b] text-white p-2.5 rounded-lg shadow-xl border border-zinc-700/50 text-left min-w-[170px]"
                         style={{
                           left: `${Math.max(16, Math.min(84, (hoveredBeeswarmPoint.svgX / 320) * 100))}%`,
                           top: `${(hoveredBeeswarmPoint.svgY / 48) * 100}%`,
@@ -3728,7 +4054,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* Layer 5 (Top): Interactive Tooltip Layer (Dark Minimalist Overlay) */}
               {hoveredScatterPoint && (
                 <div 
-                  className={`absolute z-50 pointer-events-none transform -translate-x-1/2 bg-[#18181b] text-white p-2.5 rounded-lg shadow-xl border border-zinc-700/50 text-left min-w-[170px] ${
+                  className={`export-ignore absolute z-50 pointer-events-none transform -translate-x-1/2 bg-[#18181b] text-white p-2.5 rounded-lg shadow-xl border border-zinc-700/50 text-left min-w-[170px] ${
                     hoveredScatterPoint.svgY < 80 ? 'translate-y-3' : '-translate-y-full -mt-2.5'
                   }`}
                   style={{
@@ -3866,24 +4192,44 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       {/* =================================================================== */}
       {/* TIER 3: BOTTOM EXPORT BUTTONS                                       */}
       {/* =================================================================== */}
-      <div className="w-full max-w-[1520px] mx-auto px-6 pt-4 pb-12 border-t border-slate-200 flex items-center justify-end gap-4">
+      <div className="export-ignore w-full max-w-[1520px] mx-auto px-6 pt-4 pb-12 border-t border-slate-200 flex items-center justify-end gap-4">
         <div className="flex items-center space-x-4">
           <button
             type="button"
-            onClick={handleExportPNG}
-            className="bg-[#1D70B8] hover:bg-[#155b96] text-white px-5 py-2.5 rounded font-semibold text-sm inline-flex items-center justify-center transition-colors cursor-pointer"
+            onClick={handleDownloadPNG}
+            disabled={isExportingPng || isExportingPdf}
+            className="bg-[#1D70B8] hover:bg-[#155b96] disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded font-semibold text-sm inline-flex items-center justify-center transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Download PNG
+            {isExportingPng ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating PNG...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 mr-2" />
+                Download PNG
+              </>
+            )}
           </button>
 
           <button
             type="button"
-            onClick={handleExportSVG}
-            className="bg-[#00823B] hover:bg-[#00682f] text-white px-5 py-2.5 rounded font-semibold text-sm inline-flex items-center justify-center transition-colors cursor-pointer"
+            onClick={handleDownloadPDF}
+            disabled={isExportingPng || isExportingPdf}
+            className="bg-[#00823B] hover:bg-[#00682f] disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded font-semibold text-sm inline-flex items-center justify-center transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Download SVG
+            {isExportingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </>
+            )}
           </button>
         </div>
       </div>

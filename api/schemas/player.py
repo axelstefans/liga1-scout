@@ -84,6 +84,9 @@ class PlayerSeasonStats(BaseModel):
     saves_pct: Optional[float] = None
     clean_sheets_pct: Optional[float] = None
     minutes_played_pct: Optional[float] = None
+    expected_goals_pct: Optional[float] = None
+    accurate_final_third_passes_pct: Optional[float] = None
+    clearances_pct: Optional[float] = None
 
 class PlayerMatchStats(BaseModel):
     match_id: int
