@@ -377,6 +377,28 @@ export interface TeamShotZonesResponse {
   tactics_conceded?: ShotTacticsSummary | null;
 }
 
+export interface PassNetworkNode {
+  player_id: number;
+  name: string;
+  jersey: number | null;
+  x: number;
+  y: number;
+  total_passes: number;
+}
+
+export interface PassNetworkEdge {
+  passer_id: number;
+  receiver_id: number;
+  pass_count: number;
+}
+
+export interface TeamPassNetworkResponse {
+  team_id: number;
+  tournament: string;
+  nodes: PassNetworkNode[];
+  edges: PassNetworkEdge[];
+}
+
 export const teamsApi = {
   getAll: async (): Promise<TeamBase[]> => {
     const response = await apiClient.get(`/teams/`);
@@ -393,6 +415,13 @@ export const teamsApi = {
   },
   getShotZones: async (teamId: number, tournament?: 'Apertura' | 'Clausura'): Promise<TeamShotZonesResponse> => {
     const url = tournament ? `/teams/${teamId}/shot-zones?tournament=${tournament}` : `/teams/${teamId}/shot-zones`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getPassNetwork: async (teamId: number, tournament?: 'Apertura' | 'Clausura' | 'all'): Promise<TeamPassNetworkResponse> => {
+    const url = tournament && tournament !== 'all'
+      ? `/teams/${teamId}/pass-network?tournament=${tournament}`
+      : `/teams/${teamId}/pass-network`;
     const response = await apiClient.get(url);
     return response.data;
   }

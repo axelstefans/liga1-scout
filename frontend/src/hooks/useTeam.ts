@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { teamsApi, TeamMetricEntry, TeamShotZonesResponse, TeamBase } from '../services/api';
+import { 
+  teamsApi, TeamMetricEntry, TeamShotZonesResponse, 
+  TeamPassNetworkResponse, TeamBase 
+} from '../services/api';
 
 export const useTeamMetrics = (tournament?: 'Apertura' | 'Clausura') => {
   return useQuery<TeamMetricEntry[]>({
@@ -18,6 +21,15 @@ export const useTeamShotZones = (teamId: number, tournament?: 'Apertura' | 'Clau
   });
 };
 
+export const useTeamPassNetwork = (teamId: number, tournament?: 'Apertura' | 'Clausura' | 'all') => {
+  return useQuery<TeamPassNetworkResponse>({
+    queryKey: ['teams', teamId, 'passNetwork', tournament || 'all'],
+    queryFn: () => teamsApi.getPassNetwork(teamId, tournament),
+    enabled: !!teamId,
+    staleTime: 1000 * 60 * 10,
+  });
+};
+
 export const useTeamsList = () => {
   return useQuery<TeamBase[]>({
     queryKey: ['teams', 'list'],
@@ -25,3 +37,4 @@ export const useTeamsList = () => {
     staleTime: 1000 * 60 * 30, // 30 minutes
   });
 };
+

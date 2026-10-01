@@ -3,12 +3,14 @@ import Home from './pages/Home';
 import PlayerDashboard from './pages/PlayerDashboard';
 import ScoutingReport from './pages/ScoutingReport';
 import TeamLeagueAnalytics from './pages/TeamLeagueAnalytics';
+import ClubDetailAnalytics from './pages/ClubDetailAnalytics';
 
 function AppContent() {
   const location = useLocation();
   const isScouting = location.pathname.startsWith('/scouting');
   const isTeams = location.pathname.startsWith('/teams');
-  const isSearch = !isScouting && !isTeams;
+  const isClubs = location.pathname.startsWith('/clubs');
+  const isSearch = !isScouting && !isTeams && !isClubs;
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -47,6 +49,16 @@ function AppContent() {
           >
             Equipos y Liga
           </Link>
+          <Link
+            to="/clubs"
+            className={`uppercase font-medium text-sm tracking-wider pb-1 transition-all ${
+              isClubs
+                ? 'text-white border-b-2 border-cream font-bold'
+                : 'text-cream/80 hover:text-white border-b-2 border-transparent'
+            }`}
+          >
+            Clubes
+          </Link>
         </nav>
       </header>
       <main className={isScouting ? 'flex-grow' : 'flex-grow p-4 md:p-8'}>
@@ -56,6 +68,8 @@ function AppContent() {
           <Route path="/scouting" element={<ScoutingReport />} />
           <Route path="/scouting/:id" element={<ScoutingReport />} />
           <Route path="/teams" element={<TeamLeagueAnalytics />} />
+          <Route path="/clubs" element={<ClubDetailAnalytics />} />
+          <Route path="/clubs/:id" element={<ClubDetailAnalytics />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

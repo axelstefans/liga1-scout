@@ -126,3 +126,23 @@ class TeamShotZonesResponse(BaseModel):
     shots_conceded: List[ShotZoneCell]
     tactics_taken: Optional[ShotTacticsSummary] = None
     tactics_conceded: Optional[ShotTacticsSummary] = None
+
+class PassNetworkNode(BaseModel):
+    player_id: int
+    name: str
+    jersey: Optional[int] = None
+    x: float
+    y: float
+    total_passes: int
+
+class PassNetworkEdge(BaseModel):
+    passer_id: int
+    receiver_id: int
+    pass_count: int
+
+class TeamPassNetworkResponse(BaseModel):
+    team_id: int
+    tournament: str
+    nodes: List[PassNetworkNode]
+    edges: List[PassNetworkEdge]
+

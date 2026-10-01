@@ -173,6 +173,77 @@ def test_complete_34_metrics_suite():
             assert metric in team, f"Missing metric '{metric}' in Clausura for {team.get('name')}"
             assert team[metric] is not None, f"Metric '{metric}' is None in Clausura for {team.get('name')}"
 
+def test_get_team_pass_network():
+    # 1. Full Season
+    t0 = time.perf_counter()
+    resp = client.get("/api/teams/2311/pass-network")
+    latency_ms = (time.perf_counter() - t0) * 1000
+    assert resp.status_code == 200
+    assert latency_ms < 250.0, f"Pass network latency {latency_ms:.2f}ms too high"
+
+    data = resp.json()
+    assert data["team_id"] == 2311
+    assert data["tournament"] == "all"
+    assert len(data["nodes"]) == 11, f"Expected 11 XI Base nodes, got {len(data['nodes'])}"
+    assert len(data["edges"]) > 0, "Expected at least 1 edge"
+
+    # Node validation
+    for node in data["nodes"]:
+        assert "player_id" in node
+        assert "name" in node and len(node["name"]) > 0
+        assert "jersey" in node
+        assert 0.0 <= node["x"] <= 100.0
+        assert 0.0 <= node["y"] <= 100.0
+        assert node["total_passes"] > 0
+
+    # Edge validation
+    node_ids = set(n["player_id"] for n in data["nodes"])
+    for edge in data["edges"]:
+        assert edge["passer_id"] in node_ids
+        assert edge["receiver_id"] in node_ids
+        assert edge["passer_id"] != edge["receiver_id"]
+        assert edge["pass_count"] >= 1
+
+    # 2. Tournament filter (Apertura)
+    resp_ap = client.get("/api/teams/2311/pass-network?tournament=Apertura")
+    assert resp_ap.status_code == 200
+    data_ap = resp_ap.json()
+    assert data_ap["tournament"] == "Apertura"
+    assert len(data_ap["nodes"]) == 11
+    assert len(data_ap["edges"]) > 0
+
+    # 3. Specifically test Cusco FC (team_id 63760): Carlos Gamarra NOT in XI for 'all', Ampuero IS present
+    resp_cusco = client.get("/api/teams/63760/pass-network?tournament=all")
+    assert resp_cusco.status_code == 200
+    cusco_data = resp_cusco.json()
+    assert len(cusco_data["nodes"]) == 11, f"Expected exactly 11 nodes for Cusco FC, got {len(cusco_data['nodes'])}"
+    cusco_names = [n["name"] for n in cusco_data["nodes"]]
+    assert any("Ampuero" in n for n in cusco_names), f"Alvaro Ampuero should be in starting XI: {cusco_names}"
+    assert not any("Gamarra" in n for n in cusco_names), f"Carlos Gamarra should NOT be in starting XI for 'all': {cusco_names}"
+
+    # 4. Strict check across all 18 teams and scopes ('all', 'Apertura', 'Clausura')
+    resp_teams = client.get("/api/teams/")
+    assert resp_teams.status_code == 200
+    all_teams = resp_teams.json()
+    assert len(all_teams) == 18
+
+    for t in all_teams:
+        tid = t["team_id"]
+        for scope in ["all", "Apertura", "Clausura"]:
+            r = client.get(f"/api/teams/{tid}/pass-network?tournament={scope}")
+            assert r.status_code == 200
+            pn = r.json()
+            assert len(pn["nodes"]) == 11, f"Team {t['name']} ({tid}) in scope '{scope}' returned {len(pn['nodes'])} nodes instead of 11"
+            # Ensure edges only connect nodes within the 11
+            pn_node_ids = set(n["player_id"] for n in pn["nodes"])
+            for e in pn["edges"]:
+                assert e["passer_id"] in pn_node_ids, f"Edge passer {e['passer_id']} outside XI"
+                assert e["receiver_id"] in pn_node_ids, f"Edge receiver {e['receiver_id']} outside XI"
+
+    # 5. Non-existent team should return 404
+    resp_404 = client.get("/api/teams/9999999/pass-network")
+    assert resp_404.status_code == 404
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

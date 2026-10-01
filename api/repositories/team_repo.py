@@ -1,5 +1,6 @@
 import sqlite3
 from typing import Optional, List, Dict, Any
+from collections import defaultdict
 
 def get_team_profile(db: sqlite3.Connection, team_id: int) -> Optional[Dict[str, Any]]:
     """Fetch basic team information."""
@@ -278,3 +279,163 @@ def get_team_shot_zones(
         "tactics_taken": compute_tactics(shots_taken_raw),
         "tactics_conceded": compute_tactics(shots_conceded_raw)
     }
+
+def get_team_pass_network(
+    db: sqlite3.Connection,
+    team_id: int,
+    tournament: Optional[str] = "all"
+) -> Optional[Dict[str, Any]]:
+    """
+    Compute pass network for a team's Base XI (strictly top 11 players by total minutes played).
+    Calculates average (x, y) coordinates for nodes and successful pass volume between pairs.
+    """
+    team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
+    if not team_row:
+        return None
+
+    tourn_clause = ""
+    params: List[Any] = [team_id]
+    normalized_tourn = "all"
+    if tournament and tournament.strip().lower() in ("apertura", "clausura"):
+        normalized_tourn = "Apertura" if tournament.strip().lower() == "apertura" else "Clausura"
+        tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+        params.append(normalized_tourn)
+
+    # 1. Strictly query Top 11 players by total minutes played (without Cartesian join explosion)
+    xi_query = f"""
+        SELECT 
+            pms.player_id,
+            p.name,
+            p.shirt_number,
+            SUM(pms.minutes_played) as total_minutes
+        FROM player_match_stats pms
+        JOIN players p ON pms.player_id = p.player_id
+        JOIN matches m ON pms.match_id = m.match_id
+        WHERE pms.team_id = ? AND m.status = 'played' {tourn_clause}
+        GROUP BY pms.player_id, p.name, p.shirt_number
+        HAVING SUM(pms.minutes_played) > 0
+        ORDER BY total_minutes DESC
+        LIMIT 11
+    """
+    xi_rows = db.execute(xi_query, params).fetchall()
+    if not xi_rows:
+        return {
+            "team_id": team_id,
+            "tournament": normalized_tourn,
+            "nodes": [],
+            "edges": []
+        }
+
+    xi_ids = [r["player_id"] for r in xi_rows]
+    xi_id_set = set(xi_ids)
+    placeholders = ",".join("?" * len(xi_ids))
+
+    # 2. Query spatial pass statistics ONLY for those 11 players
+    stats_query = f"""
+        SELECT 
+            pp.player_id,
+            COUNT(pp.id) as total_passes_attempted,
+            SUM(CASE WHEN pp.is_successful = 1 THEN 1 ELSE 0 END) as successful_passes,
+            ROUND(AVG(pp.x_start), 1) as x,
+            ROUND(AVG(pp.y_start), 1) as y
+        FROM player_passes pp
+        JOIN player_match_stats pms ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
+        JOIN matches m ON pp.match_id = m.match_id
+        WHERE pms.team_id = ? AND m.status = 'played' AND pp.player_id IN ({placeholders})
+          {tourn_clause}
+        GROUP BY pp.player_id
+    """
+    stats_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else [])
+    stats_rows = db.execute(stats_query, stats_params).fetchall()
+    stats_map = {r["player_id"]: dict(r) for r in stats_rows}
+
+    nodes = []
+    coords = {}
+    for r in xi_rows:
+        pid = r["player_id"]
+        st = stats_map.get(pid, {})
+        node_x = float(st.get("x")) if st.get("x") is not None else 50.0
+        node_y = float(st.get("y")) if st.get("y") is not None else 50.0
+        succ_passes = int(st.get("successful_passes") or 0)
+
+        nodes.append({
+            "player_id": pid,
+            "name": r["name"],
+            "jersey": int(r["shirt_number"]) if r["shirt_number"] is not None and r["shirt_number"] > 0 else None,
+            "x": node_x,
+            "y": node_y,
+            "total_passes": succ_passes
+        })
+        coords[pid] = (node_x, node_y)
+
+    # 3. Matches played by the XI
+    mp_query = f"""
+        SELECT pms.match_id, pms.player_id
+        FROM player_match_stats pms
+        JOIN matches m ON pms.match_id = m.match_id
+        WHERE pms.team_id = ? AND pms.player_id IN ({placeholders})
+          AND pms.minutes_played > 0 AND m.status = 'played' {tourn_clause}
+    """
+    mp_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else [])
+    mp_rows = db.execute(mp_query, mp_params).fetchall()
+    match_players = defaultdict(set)
+    for r in mp_rows:
+        match_players[r["match_id"]].add(r["player_id"])
+
+    # 4. Successful passes made ONLY by the 11 players
+    passes_query = f"""
+        SELECT pp.match_id, pp.player_id, pp.x_end, pp.y_end
+        FROM player_passes pp
+        JOIN player_match_stats pms ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
+        JOIN matches m ON pp.match_id = m.match_id
+        WHERE pms.team_id = ? AND m.status = 'played' AND pp.is_successful = 1
+          AND pp.player_id IN ({placeholders})
+          {tourn_clause}
+    """
+    passes_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else [])
+    passes_rows = db.execute(passes_query, passes_params).fetchall()
+
+    edges_dict = defaultdict(int)
+    for p in passes_rows:
+        passer_id = p["player_id"]
+        m_id = p["match_id"]
+        x_end = p["x_end"]
+        y_end = p["y_end"]
+        if x_end is None or y_end is None:
+            continue
+
+        # Candidates are strictly other XI players who were active in that match
+        candidates = [pid for pid in match_players.get(m_id, set()) if pid != passer_id]
+        if not candidates:
+            # Fallback to other XI players
+            candidates = [pid for pid in xi_id_set if pid != passer_id]
+
+        best_cand = None
+        min_d = float("inf")
+        for cand in candidates:
+            cx, cy = coords[cand]
+            d = (cx - x_end) ** 2 + (cy - y_end) ** 2
+            if d < min_d:
+                min_d = d
+                best_cand = cand
+        if best_cand is not None:
+            edges_dict[(passer_id, best_cand)] += 1
+
+    edges = [
+        {
+            "passer_id": k[0],
+            "receiver_id": k[1],
+            "pass_count": v
+        }
+        for k, v in edges_dict.items()
+        if v >= 1
+    ]
+    edges.sort(key=lambda x: x["pass_count"], reverse=True)
+
+    return {
+        "team_id": team_id,
+        "tournament": normalized_tourn,
+        "nodes": nodes,
+        "edges": edges
+    }
+

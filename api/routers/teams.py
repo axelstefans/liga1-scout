@@ -3,7 +3,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
 from ..core.database import get_db
-from ..schemas.team import RosterPlayer, TeamNextMatch, TeamProfile, TeamMetricEntry, TeamShotZonesResponse
+from ..schemas.team import (
+    RosterPlayer, TeamNextMatch, TeamProfile, TeamMetricEntry, 
+    TeamShotZonesResponse, TeamPassNetworkResponse
+)
 from ..repositories import team_repo
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
@@ -32,6 +35,18 @@ def get_team_shot_zones(
     if not zones:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
     return zones
+
+@router.get("/{team_id}/pass-network", response_model=TeamPassNetworkResponse)
+def get_team_pass_network(
+    team_id: int,
+    tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get pass network (nodes and edges) for a team's Base XI."""
+    network = team_repo.get_team_pass_network(db, team_id, tournament)
+    if not network:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
+    return network
 
 @router.get("/{team_id}/roster", response_model=List[RosterPlayer])
 def get_team_roster(team_id: int, db: sqlite3.Connection = Depends(get_db)):
