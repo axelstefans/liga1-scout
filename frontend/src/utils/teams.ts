@@ -65,3 +65,49 @@ export const getTeamThemeColor = (teamName?: string | null, primaryColor?: strin
   }
   return color;
 };
+
+export const TEAM_TRICODES: Record<number, string> = {
+  2311: 'ALI',
+  2305: 'UNI',
+  2302: 'CRI',
+  2308: 'MEL',
+  63760: 'CUS',
+  2301: 'CIE',
+  335557: 'ADT',
+  282538: 'GRA',
+  2307: 'AAT',
+  2312: 'SBO',
+  33895: 'SHU',
+  252254: 'CHA',
+  458584: 'GAR',
+  87854: 'UTC',
+  213609: 'COM',
+  511206: 'JPA',
+  1082002: 'CAJ',
+  492848: 'MOQ',
+};
+
+export const getTeamTricode = (teamId?: number | null, teamName?: string | null): string => {
+  if (teamId && TEAM_TRICODES[teamId]) return TEAM_TRICODES[teamId];
+  if (!teamName) return 'L1';
+  const name = teamName.toLowerCase();
+  if (name.includes('alianza lima')) return 'ALI';
+  if (name.includes('universitario')) return 'UNI';
+  if (name.includes('cristal')) return 'CRI';
+  if (name.includes('melgar')) return 'MEL';
+  if (name.includes('cusco')) return 'CUS';
+  if (name.includes('cienciano')) return 'CIE';
+  if (name.includes('adt') || name.includes('tarma')) return 'ADT';
+  if (name.includes('grau')) return 'GRA';
+  if (name.includes('sullana') || name.includes('atlético')) return 'AAT';
+  if (name.includes('boys')) return 'SBO';
+  if (name.includes('huancayo')) return 'SHU';
+  if (name.includes('chankas')) return 'CHA';
+  if (name.includes('garcilaso')) return 'GAR';
+  if (name.includes('utc')) return 'UTC';
+  if (name.includes('comerciantes')) return 'COM';
+  if (name.includes('juan pablo')) return 'JPA';
+  if (name.includes('cajamarca')) return 'CAJ';
+  if (name.includes('moquegua')) return 'MOQ';
+  return teamName.substring(0, 3).toUpperCase();
+};

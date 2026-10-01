@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 class TeamProfile(BaseModel):
     team_id: int
@@ -23,3 +23,106 @@ class TeamNextMatch(BaseModel):
     opponent_logo_url: Optional[str] = None
     home_away: str
     match_id: int
+
+class TeamMetricEntry(BaseModel):
+    # Standings & Club Info
+    team_id: int
+    name: str
+    short_name: Optional[str] = None
+    primary_color: Optional[str] = None
+    logo_url: Optional[str] = None
+    matches_played: int
+    wins: int
+    draws: int
+    losses: int
+    points: int
+    points_per_match: Optional[float] = None
+    goals_conceded: int
+    goal_difference: int
+
+    # A. Ofensivas / Tiro (10 metrics)
+    total_shots: int
+    shots_on_target: int
+    shots_inside_box: int
+    shots_outside_box: int
+    goals_scored: int
+    xg: float
+    npxg: float
+    xg_per_shot: Optional[float] = None
+    goals_minus_xg: Optional[float] = None
+    conversion_rate_pct: Optional[float] = None
+
+    # B. Circulación y Progresión (9 metrics)
+    possession_pct: Optional[float] = None
+    passes_completed: int
+    pass_accuracy_pct: Optional[float] = None
+    progressive_passes: int
+    passes_into_final_third: int
+    passes_into_box: int
+    crosses_completed: int
+    progressive_carries: int
+    successful_dribbles: int
+
+    # C. Dominio Territorial y Estilo (3 metrics)
+    field_tilt: Optional[float] = None
+    verticality_ratio_pct: Optional[float] = None
+    avg_shot_distance: Optional[float] = None
+
+    # D. Presión y Fase Defensiva (6 metrics)
+    ppda: Optional[float] = None
+    high_recoveries: int
+    defensive_actions: int
+    tackles: int
+    interceptions: int
+    clearances: int
+
+    # E. Concesión / Rival (6 metrics)
+    shots_conceded: int
+    shots_on_target_conceded: int
+    shots_conceded_inside_box: int
+    xga: float
+    xgd: float
+    defensive_resistance_ratio: Optional[float] = None
+
+    # Backwards compatibility / convenience extras
+    passes_total: Optional[int] = None
+    xg_per_match: Optional[float] = None
+    xga_per_match: Optional[float] = None
+    field_tilt_pct: Optional[float] = None
+    conversion_ratio: Optional[float] = None
+
+class ShotZoneCell(BaseModel):
+    zone_id: int
+    row: int
+    col: int
+    x_min: float
+    x_max: float
+    y_min: float
+    y_max: float
+    count: int
+    xg: float
+    xg_per_shot: float
+    pct_of_total: float
+    goals: int
+
+class ShotTacticsSummary(BaseModel):
+    total_shots: int
+    non_penalty_shots: int
+    avg_distance_m: float
+    pct_inside_box: float
+    pct_set_piece: float
+    pct_fast_break: float
+
+class TeamShotZonesResponse(BaseModel):
+    team_id: int
+    team_name: str
+    tournament: Optional[str] = None
+    total_shots_taken: int
+    total_xg_taken: float
+    total_shots_conceded: int
+    total_xg_conceded: float
+    grid: Dict[str, int]
+    shots_taken: List[ShotZoneCell]
+    shots_conceded: List[ShotZoneCell]
+    tactics_taken: Optional[ShotTacticsSummary] = None
+    tactics_conceded: Optional[ShotTacticsSummary] = None

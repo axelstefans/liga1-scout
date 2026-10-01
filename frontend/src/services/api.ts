@@ -267,6 +267,116 @@ export const rankingsApi = {
   }
 };
 
+export interface TeamMetricEntry {
+  // Standings & Club Info
+  team_id: number;
+  name: string;
+  short_name: string | null;
+  primary_color: string | null;
+  logo_url: string | null;
+  matches_played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  points_per_match: number | null;
+  goals_scored: number;
+  goals_conceded: number;
+  goal_difference: number;
+
+  // A. Ofensivas / Tiro (10 metrics)
+  total_shots: number;
+  shots_on_target: number;
+  shots_inside_box: number;
+  shots_outside_box: number;
+  xg: number;
+  npxg: number;
+  xg_per_shot: number | null;
+  goals_minus_xg: number | null;
+  conversion_rate_pct: number | null;
+
+  // B. Circulación y Progresión (9 metrics)
+  possession_pct: number | null;
+  passes_completed: number;
+  pass_accuracy_pct: number | null;
+  progressive_passes: number;
+  passes_into_final_third: number;
+  passes_into_box: number;
+  crosses_completed: number;
+  progressive_carries: number;
+  successful_dribbles: number;
+
+  // C. Dominio Territorial y Estilo (3 metrics)
+  field_tilt: number | null;
+  verticality_ratio_pct: number | null;
+  avg_shot_distance: number | null;
+
+  // D. Presión y Fase Defensiva (6 metrics)
+  ppda: number | null;
+  high_recoveries: number;
+  defensive_actions: number;
+  tackles: number;
+  interceptions: number;
+  clearances: number;
+
+  // E. Concesión / Rival (6 metrics)
+  shots_conceded: number;
+  shots_on_target_conceded: number;
+  shots_conceded_inside_box: number;
+  xga: number;
+  xgd: number;
+  defensive_resistance_ratio: number | null;
+
+  // Backwards compatibility / convenience extras
+  passes_total: number;
+  xg_per_match: number | null;
+  xga_per_match: number | null;
+  field_tilt_pct: number | null;
+  conversion_ratio: number | null;
+}
+
+export interface ShotZoneCell {
+  zone_id: number;
+  row: number;
+  col: number;
+  x_min: number;
+  x_max: number;
+  y_min: number;
+  y_max: number;
+  count: number;
+  xg: number;
+  xg_per_shot: number;
+  pct_of_total: number;
+  goals: number;
+}
+
+export interface ShotTacticsSummary {
+  total_shots: number;
+  non_penalty_shots: number;
+  avg_distance_m: number;
+  pct_inside_box: number;
+  pct_set_piece: number;
+  pct_fast_break: number;
+}
+
+export interface TeamShotZonesResponse {
+  team_id: number;
+  team_name: string;
+  tournament: string | null;
+  total_shots_taken: number;
+  total_xg_taken: number;
+  total_shots_conceded: number;
+  total_xg_conceded: number;
+  grid: {
+    rows: number;
+    cols: number;
+  };
+  shots_taken: ShotZoneCell[];
+  shots_conceded: ShotZoneCell[];
+  tactics_taken?: ShotTacticsSummary | null;
+  tactics_conceded?: ShotTacticsSummary | null;
+}
+
 export const teamsApi = {
   getAll: async (): Promise<TeamBase[]> => {
     const response = await apiClient.get(`/teams/`);
@@ -275,6 +385,17 @@ export const teamsApi = {
   getNextMatch: async (teamId: number): Promise<TeamNextMatch> => {
     const response = await apiClient.get(`/teams/${teamId}/next-match`);
     return response.data;
+  },
+  getMetrics: async (tournament?: 'Apertura' | 'Clausura'): Promise<TeamMetricEntry[]> => {
+    const url = tournament ? `/teams/metrics?tournament=${tournament}` : `/teams/metrics`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getShotZones: async (teamId: number, tournament?: 'Apertura' | 'Clausura'): Promise<TeamShotZonesResponse> => {
+    const url = tournament ? `/teams/${teamId}/shot-zones?tournament=${tournament}` : `/teams/${teamId}/shot-zones`;
+    const response = await apiClient.get(url);
+    return response.data;
   }
 };
+
 
