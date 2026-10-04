@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from ..core.database import get_db
 from ..schemas.team import (
     RosterPlayer, TeamNextMatch, TeamProfile, TeamMetricEntry, 
-    TeamShotZonesResponse, TeamPassNetworkResponse
+    TeamShotZonesResponse, TeamPassNetworkResponse, TeamMatchItem,
+    TeamDefensiveActionsResponse
 )
 from ..repositories import team_repo
 
@@ -24,6 +25,18 @@ def get_team_metrics(
     """Get aggregated metrics for all 18 Liga 1 clubs, supporting optional tournament filter."""
     return team_repo.get_team_metrics(db, tournament)
 
+@router.get("/{team_id}/matches", response_model=List[TeamMatchItem])
+def get_team_matches(
+    team_id: int,
+    tournament: Optional[str] = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get all played matches for a team, optionally filtered by tournament."""
+    matches = team_repo.get_team_matches(db, team_id, tournament)
+    if matches is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
+    return matches
+
 @router.get("/{team_id}/shot-zones", response_model=TeamShotZonesResponse)
 def get_team_shot_zones(
     team_id: int,
@@ -40,12 +53,13 @@ def get_team_shot_zones(
 def get_team_pass_network(
     team_id: int,
     tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    match_id: Optional[int] = Query(None, description="Filter by a specific fixture match_id"),
     db: sqlite3.Connection = Depends(get_db)
 ):
-    """Get pass network (nodes and edges) for a team's Base XI."""
-    network = team_repo.get_team_pass_network(db, team_id, tournament)
+    """Get pass network (nodes and edges) for a team's Base XI or a single fixture."""
+    network = team_repo.get_team_pass_network(db, team_id, tournament, match_id=match_id)
     if not network:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found or match not found")
     return network
 
 @router.get("/{team_id}/roster", response_model=List[RosterPlayer])
@@ -64,3 +78,20 @@ def get_team_next_match(team_id: int, db: sqlite3.Connection = Depends(get_db)):
     if not match:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Next match not found")
     return match
+
+@router.get("/{team_id}/defensive-actions", response_model=TeamDefensiveActionsResponse)
+def get_team_defensive_actions(
+    team_id: int,
+    tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    match_id: Optional[int] = Query(None, description="Filter by a specific fixture match_id"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get defensive actions (tackles, interceptions, recoveries, fouls) and block height metrics."""
+    data = team_repo.get_team_defensive_actions(db, team_id, tournament, match_id=match_id)
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Team {team_id} not found or match {match_id} not found for this team"
+        )
+    return data
+

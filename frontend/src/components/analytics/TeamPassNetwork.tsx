@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { TeamMetricEntry, PassNetworkNode } from '../../services/api';
-import { useTeamPassNetwork } from '../../hooks/useTeam';
+import { useTeamPassNetwork, useTeamMatches } from '../../hooks/useTeam';
 import { getTeamThemeColor } from '../../utils/teams';
 
 export interface TeamPassNetworkProps {
@@ -41,6 +41,8 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [viewMode, setViewMode] = useState<'cumulative' | 'match'>('cumulative');
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const [minPassThreshold, setMinPassThreshold] = useState<number>(10);
   const [hoveredNode, setHoveredNode] = useState<PassNetworkNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
@@ -51,11 +53,51 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
     [activeTeam]
   );
 
-  // Fetch Pass Network data from API
-  const { data, isLoading, isError, error, refetch } = useTeamPassNetwork(
+  // Fetch matches list for the team & tournament
+  const { data: matches, isLoading: isLoadingMatches } = useTeamMatches(
     activeTeam.team_id,
     tournament
   );
+
+  // Reset selected match when switching clubs or tournament to prevent race condition
+  useEffect(() => {
+    setSelectedMatchId(null);
+  }, [activeTeam.team_id, tournament]);
+
+  // Check if selectedMatchId is valid for the currently loaded matches
+  const isMatchValidForTeam = useMemo(() => {
+    if (viewMode !== 'match') return true;
+    if (!selectedMatchId || !matches) return false;
+    return matches.some((m) => m.match_id === selectedMatchId);
+  }, [viewMode, matches, selectedMatchId]);
+
+  // Auto-select most recent match when in match mode and matches finish loading
+  useEffect(() => {
+    if (viewMode === 'match' && matches && matches.length > 0) {
+      if (!selectedMatchId || !matches.some((m) => m.match_id === selectedMatchId)) {
+        setSelectedMatchId(matches[0].match_id);
+      }
+    }
+  }, [viewMode, matches, selectedMatchId]);
+
+  const activeMatch = useMemo(() => {
+    if (!matches || !selectedMatchId || !isMatchValidForTeam) return null;
+    return matches.find((m) => m.match_id === selectedMatchId) || null;
+  }, [matches, selectedMatchId, isMatchValidForTeam]);
+
+  // Only enable query if in cumulative mode, or in match mode with a validated matchId
+  const isPassNetworkEnabled = viewMode === 'cumulative' || (viewMode === 'match' && isMatchValidForTeam);
+
+  // Fetch Pass Network data from API (cumulative or single match)
+  const { data, isLoading, isError, error, refetch } = useTeamPassNetwork(
+    activeTeam.team_id,
+    tournament,
+    viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
+    isPassNetworkEnabled
+  );
+
+  const isWaitingForMatch = viewMode === 'match' && (!isMatchValidForTeam || isLoadingMatches);
+  const showLoading = isLoading || isWaitingForMatch;
 
   const nodes = data?.nodes || [];
   const edges = data?.edges || [];
@@ -287,8 +329,13 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
       });
       const link = document.createElement('a');
       const cleanName = activeTeam.name.replace(/\s+/g, '_');
-      const cleanTourn = tournament === 'all' ? 'Temporada' : tournament;
-      link.download = `Red_Pases_${cleanName}_${cleanTourn}.png`;
+      const cleanScope =
+        viewMode === 'match' && activeMatch
+          ? `F${activeMatch.round}_vs_${activeMatch.opponent_tricode}`
+          : tournament === 'all'
+          ? 'Temporada'
+          : tournament;
+      link.download = `Red_Pases_${cleanName}_${cleanScope}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
@@ -303,56 +350,118 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
       ref={cardRef}
       className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-5 sm:p-6 relative select-none flex flex-col justify-between h-full"
     >
-      {/* 1. Header Strip with Title, Subtitle, Filter Pills, and Export */}
+      {/* 1. Header Strip with Title, Subtitle, Mode Toggle, Match Selector, Filter Pills, and Export */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 tracking-tight flex items-center gap-2">
               Red de Pases e Interacciones
             </h2>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Posición media y circuitos del XI base ({tournament === 'all' ? 'Temporada Completa' : tournament})
+              {viewMode === 'cumulative'
+                ? `Posición media y circuitos del XI base (${tournament === 'all' ? 'Temporada Completa' : tournament})`
+                : `XI Titular y circuitos específicos — ${activeMatch ? activeMatch.label : 'Cargando partido...'}`}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-start xl:self-auto">
+            {/* Mode Selector Toggle */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('cumulative');
+                  setSelectedMatchId(null);
+                  setMinPassThreshold(10);
+                }}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  viewMode === 'cumulative'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Acumulado
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('match');
+                  setMinPassThreshold(5);
+                  if (matches && matches.length > 0 && !selectedMatchId) {
+                    setSelectedMatchId(matches[0].match_id);
+                  }
+                }}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  viewMode === 'match'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Por Partido
+              </button>
+            </div>
+
+            {/* Match Select Dropdown when in 'match' mode */}
+            {viewMode === 'match' && (
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedMatchId || ''}
+                  onChange={(e) => setSelectedMatchId(Number(e.target.value))}
+                  className="bg-white border border-slate-200 text-slate-800 text-xs font-medium rounded-lg px-2.5 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-xs cursor-pointer max-w-[190px] sm:max-w-[230px] truncate"
+                  disabled={isLoadingMatches || !matches || matches.length === 0}
+                >
+                  {isLoadingMatches ? (
+                    <option value="">Cargando partidos...</option>
+                  ) : matches && matches.length > 0 ? (
+                    matches.map((m) => (
+                      <option key={m.match_id} value={m.match_id}>
+                        {m.label} ({m.date})
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Sin partidos registrados</option>
+                  )}
+                </select>
+              </div>
+            )}
+
             {/* Filter Pills for Low-Volume Connections */}
             <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
               <button
                 type="button"
                 onClick={() => setMinPassThreshold(5)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                className={`px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   minPassThreshold === 5
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
                 title="Mostrar conexiones con al menos 5 pases"
               >
-                ≥ 5 pases
+                ≥ 5
               </button>
               <button
                 type="button"
                 onClick={() => setMinPassThreshold(10)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                className={`px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   minPassThreshold === 10
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
                 title="Mostrar conexiones con al menos 10 pases"
               >
-                ≥ 10 pases
+                ≥ 10
               </button>
               <button
                 type="button"
                 onClick={() => setMinPassThreshold(15)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                className={`px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   minPassThreshold === 15
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
                 title="Mostrar conexiones con al menos 15 pases"
               >
-                ≥ 15 pases
+                ≥ 15
               </button>
             </div>
 
@@ -361,7 +470,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               type="button"
               onClick={handleExportPNG}
               disabled={isExporting}
-              className="export-ignore inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-lg text-xs font-medium transition-all shadow-2xs cursor-pointer"
+              className="export-ignore inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-lg text-xs font-medium transition-all shadow-2xs cursor-pointer"
               title="Descargar imagen en alta resolución (2x)"
             >
               {isExporting ? (
@@ -377,11 +486,13 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
 
       {/* 2. Main Pitch Canvas (Vertical Orientation) */}
       <div className="relative w-full flex items-center justify-center my-auto py-2">
-        {isLoading ? (
+        {showLoading ? (
           <div className="flex flex-col items-center justify-center py-24 w-full">
             <Loader2 className="w-8 h-8 text-slate-400 animate-spin mb-2" />
             <span className="text-xs text-slate-500 font-medium">
-              Calculando red de pases del XI base...
+              {viewMode === 'match'
+                ? 'Calculando red de pases del partido...'
+                : 'Calculando red de pases del XI base...'}
             </span>
           </div>
         ) : isError ? (
@@ -812,7 +923,9 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
         </div>
         <div className="flex items-center gap-3">
           <span>
-            {filteredEdges.length} conexiones ({nodes.length} titulares)
+            {filteredEdges.length} conexiones (
+            {viewMode === 'match' ? '11 titulares en cancha' : `${nodes.length} titulares acumulados`}
+            )
           </span>
         </div>
       </div>

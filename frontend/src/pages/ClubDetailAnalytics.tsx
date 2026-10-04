@@ -7,6 +7,7 @@ import { useTeamMetrics } from '../hooks/useTeam';
 import { getTeamCrestUrl, getTeamTricode } from '../utils/teams';
 import TeamTacticalRadar from '../components/analytics/TeamTacticalRadar';
 import TeamPassNetwork from '../components/analytics/TeamPassNetwork';
+import TeamDefensiveTerritory from '../components/analytics/TeamDefensiveTerritory';
 
 type TournamentFilter = 'all' | 'Apertura' | 'Clausura';
 
@@ -212,6 +213,11 @@ export const ClubDetailAnalytics: React.FC = () => {
               tournament={selectedTournament}
             />
             <TeamPassNetwork
+              teams={teams}
+              activeTeam={activeTeam}
+              tournament={selectedTournament}
+            />
+            <TeamDefensiveTerritory
               teams={teams}
               activeTeam={activeTeam}
               tournament={selectedTournament}

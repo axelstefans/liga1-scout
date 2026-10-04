@@ -143,6 +143,54 @@ class PassNetworkEdge(BaseModel):
 class TeamPassNetworkResponse(BaseModel):
     team_id: int
     tournament: str
+    match_id: Optional[int] = None
     nodes: List[PassNetworkNode]
     edges: List[PassNetworkEdge]
+
+class TeamMatchItem(BaseModel):
+    match_id: int
+    round: Optional[int] = None
+    tournament: str
+    date: str
+    opponent_id: int
+    opponent_name: str
+    opponent_tricode: str
+    is_home: bool
+    team_score: Optional[int] = None
+    opponent_score: Optional[int] = None
+    label: str
+
+class DefensiveEventItem(BaseModel):
+    event_id: int
+    type: str  # 'won_tackle' | 'lost_tackle' | 'interception' | 'clearance' | 'blocked_pass' | 'recovery' | 'foul'
+    x: float
+    y: float
+    is_success: bool
+    player_name: str
+    jersey: Optional[int] = None
+
+class DefensiveSummary(BaseModel):
+    total_events: int
+    won_tackles: int = 0
+    lost_tackles: int = 0
+    interceptions: int = 0
+    clearances: int = 0
+    blocked_passes: int = 0
+    recoveries: int = 0
+    high_recoveries: int = 0
+    tackles_won_pct: float = 0.0
+
+class TeamDefensiveActionsResponse(BaseModel):
+    team_id: int
+    tournament: str
+    match_id: Optional[int] = None
+    block_height_pct: float
+    block_height_m: float
+    block_classification: str
+    summary: DefensiveSummary
+    events: List[DefensiveEventItem]
+    avg_x: Optional[float] = None
+    tactical_classification: Optional[str] = None
+
+
 

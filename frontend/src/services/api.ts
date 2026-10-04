@@ -392,11 +392,60 @@ export interface PassNetworkEdge {
   pass_count: number;
 }
 
+export interface TeamMatchItem {
+  match_id: number;
+  round: number;
+  tournament: string;
+  date: string;
+  opponent_id: number;
+  opponent_name: string;
+  opponent_tricode: string;
+  is_home: boolean;
+  team_score: number;
+  opponent_score: number;
+  label: string;
+}
+
 export interface TeamPassNetworkResponse {
   team_id: number;
   tournament: string;
+  match_id?: number | null;
   nodes: PassNetworkNode[];
   edges: PassNetworkEdge[];
+}
+
+export interface DefensiveEventItem {
+  event_id: number;
+  type: 'won_tackle' | 'lost_tackle' | 'interception' | 'clearance' | 'blocked_pass' | 'recovery' | 'foul';
+  x: number;
+  y: number;
+  is_success: boolean;
+  player_name: string;
+  jersey: number | null;
+}
+
+export interface DefensiveSummary {
+  total_events: number;
+  won_tackles: number;
+  lost_tackles: number;
+  interceptions: number;
+  clearances: number;
+  blocked_passes: number;
+  recoveries: number;
+  high_recoveries: number;
+  tackles_won_pct: number;
+  fouls?: number;
+}
+
+export interface TeamDefensiveActionsResponse {
+  team_id: number;
+  tournament: string;
+  match_id: number | null;
+  block_height_pct: number;
+  block_height_m: number;
+  block_classification: string;
+  summary: DefensiveSummary;
+  events: DefensiveEventItem[];
 }
 
 export const teamsApi = {
@@ -418,13 +467,50 @@ export const teamsApi = {
     const response = await apiClient.get(url);
     return response.data;
   },
-  getPassNetwork: async (teamId: number, tournament?: 'Apertura' | 'Clausura' | 'all'): Promise<TeamPassNetworkResponse> => {
+  getTeamMatches: async (teamId: number, tournament?: 'Apertura' | 'Clausura' | 'all'): Promise<TeamMatchItem[]> => {
     const url = tournament && tournament !== 'all'
-      ? `/teams/${teamId}/pass-network?tournament=${tournament}`
-      : `/teams/${teamId}/pass-network`;
+      ? `/teams/${teamId}/matches?tournament=${tournament}`
+      : `/teams/${teamId}/matches`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getPassNetwork: async (
+    teamId: number,
+    tournament?: 'Apertura' | 'Clausura' | 'all',
+    matchId?: number | null
+  ): Promise<TeamPassNetworkResponse> => {
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    if (matchId) {
+      params.append('match_id', matchId.toString());
+    }
+    const queryString = params.toString();
+    const url = queryString ? `/teams/${teamId}/pass-network?${queryString}` : `/teams/${teamId}/pass-network`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getDefensiveActions: async (
+    teamId: number,
+    tournament: string = 'all',
+    matchId?: number | null
+  ): Promise<TeamDefensiveActionsResponse> => {
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    if (matchId) {
+      params.append('match_id', matchId.toString());
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/teams/${teamId}/defensive-actions?${queryString}`
+      : `/teams/${teamId}/defensive-actions`;
     const response = await apiClient.get(url);
     return response.data;
   }
 };
+
 
 

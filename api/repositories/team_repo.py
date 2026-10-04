@@ -280,19 +280,267 @@ def get_team_shot_zones(
         "tactics_conceded": compute_tactics(shots_conceded_raw)
     }
 
-def get_team_pass_network(
+TEAM_TRICODES: Dict[int, str] = {
+    2311: "ALI",
+    2305: "UNI",
+    2302: "CRI",
+    2308: "MEL",
+    63760: "CUS",
+    2301: "CIE",
+    335557: "ADT",
+    282538: "GRA",
+    2307: "AAT",
+    2312: "SBO",
+    33895: "SHU",
+    252254: "CHA",
+    458584: "GAR",
+    87854: "UTC",
+    213609: "COM",
+    511206: "JPA",
+    1082002: "CAJ",
+    492848: "MOQ",
+}
+
+def get_team_tricode(team_id: Optional[int], team_name: Optional[str]) -> str:
+    """Resolve 3-letter uppercase tricode for a team."""
+    if team_id and team_id in TEAM_TRICODES:
+        return TEAM_TRICODES[team_id]
+    if not team_name:
+        return "L1"
+    name = team_name.lower()
+    if "alianza lima" in name: return "ALI"
+    if "universitario" in name: return "UNI"
+    if "cristal" in name: return "CRI"
+    if "melgar" in name: return "MEL"
+    if "cusco" in name: return "CUS"
+    if "cienciano" in name: return "CIE"
+    if "adt" in name or "tarma" in name: return "ADT"
+    if "grau" in name: return "GRA"
+    if "sullana" in name or "atlético" in name or "atletico" in name: return "AAT"
+    if "boys" in name: return "SBO"
+    if "huancayo" in name: return "SHU"
+    if "chankas" in name: return "CHA"
+    if "garcilaso" in name: return "GAR"
+    if "utc" in name: return "UTC"
+    if "comerciantes" in name: return "COM"
+    if "juan pablo" in name: return "JPA"
+    if "cajamarca" in name: return "CAJ"
+    if "moquegua" in name: return "MOQ"
+    return team_name[:3].upper()
+
+def get_team_matches(
     db: sqlite3.Connection,
     team_id: int,
     tournament: Optional[str] = "all"
+) -> Optional[List[Dict[str, Any]]]:
+    """Fetch all played matches for a team with scores, opponent info, and formatted labels."""
+    team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
+    if not team_row:
+        return None
+
+    tourn_clause = ""
+    params: List[Any] = [team_id, team_id]
+    if tournament and tournament.strip().lower() in ("apertura", "clausura"):
+        norm_tourn = "Apertura" if tournament.strip().lower() == "apertura" else "Clausura"
+        tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+        params.append(norm_tourn)
+
+    query = f"""
+        SELECT 
+            m.match_id,
+            m.round,
+            m.match_date,
+            m.home_team_id,
+            m.away_team_id,
+            m.home_score,
+            m.away_score,
+            CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END as tournament,
+            ht.name as ht_name,
+            ht.short_name as ht_short_name,
+            at.name as at_name,
+            at.short_name as at_short_name
+        FROM matches m
+        JOIN teams ht ON m.home_team_id = ht.team_id
+        JOIN teams at ON m.away_team_id = at.team_id
+        WHERE (m.home_team_id = ? OR m.away_team_id = ?) 
+          AND m.status = 'played'
+          AND m.season_id = 88529
+          {tourn_clause}
+        ORDER BY m.match_date DESC, m.round DESC
+    """
+    rows = db.execute(query, params).fetchall()
+
+    results = []
+    for r in rows:
+        is_home = (r["home_team_id"] == team_id)
+        opp_id = r["away_team_id"] if is_home else r["home_team_id"]
+        opp_name = (r["at_short_name"] or r["at_name"]) if is_home else (r["ht_short_name"] or r["ht_name"])
+        opp_tri = get_team_tricode(opp_id, opp_name)
+        team_score = r["home_score"] if is_home else r["away_score"]
+        opp_score = r["away_score"] if is_home else r["home_score"]
+
+        rnd = r["round"]
+        prefix = f"F{rnd}: " if rnd is not None else ""
+        score_str = f" ({team_score}-{opp_score})" if team_score is not None and opp_score is not None else ""
+        label = f"{prefix}vs {opp_name}{score_str}"
+
+        date_str = r["match_date"][:10] if r["match_date"] else ""
+
+        results.append({
+            "match_id": r["match_id"],
+            "round": rnd,
+            "tournament": r["tournament"],
+            "date": date_str,
+            "opponent_id": opp_id,
+            "opponent_name": opp_name,
+            "opponent_tricode": opp_tri,
+            "is_home": is_home,
+            "team_score": team_score,
+            "opponent_score": opp_score,
+            "label": label
+        })
+
+    return results
+
+def get_team_pass_network(
+    db: sqlite3.Connection,
+    team_id: int,
+    tournament: Optional[str] = "all",
+    match_id: Optional[int] = None
 ) -> Optional[Dict[str, Any]]:
     """
-    Compute pass network for a team's Base XI (strictly top 11 players by total minutes played).
+    Compute pass network for a team's Base XI (cumulative tournament scope)
+    or for a single match (exact 11 starters of that fixture).
     Calculates average (x, y) coordinates for nodes and successful pass volume between pairs.
     """
     team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
     if not team_row:
         return None
 
+    # Case A: Single match pass network
+    if match_id is not None:
+        match_row = db.execute("""
+            SELECT match_id, match_date, home_team_id, away_team_id,
+                   CASE WHEN strftime('%m', match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END as tournament
+            FROM matches
+            WHERE match_id = ? AND (home_team_id = ? OR away_team_id = ?) AND status = 'played'
+        """, (match_id, team_id, team_id)).fetchone()
+        if not match_row:
+            return None
+        match_tourn = match_row["tournament"]
+
+        # Select exact 11 starters of that specific fixture (ordered by minutes played & pass count)
+        xi_query = """
+            SELECT 
+                pms.player_id,
+                p.name,
+                p.shirt_number,
+                pms.minutes_played
+            FROM player_match_stats pms
+            JOIN players p ON pms.player_id = p.player_id
+            WHERE pms.match_id = ? AND pms.team_id = ?
+            ORDER BY 
+                pms.minutes_played DESC,
+                (SELECT COUNT(*) FROM player_passes pp WHERE pp.match_id = pms.match_id AND pp.player_id = pms.player_id) DESC,
+                pms.player_id ASC
+            LIMIT 11
+        """
+        xi_rows = db.execute(xi_query, (match_id, team_id)).fetchall()
+        if not xi_rows:
+            return {
+                "team_id": team_id,
+                "tournament": match_tourn,
+                "match_id": match_id,
+                "nodes": [],
+                "edges": []
+            }
+
+        xi_ids = [r["player_id"] for r in xi_rows]
+        placeholders = ",".join("?" * len(xi_ids))
+
+        # Query spatial pass statistics ONLY for those 11 players in this match
+        stats_query = f"""
+            SELECT 
+                pp.player_id,
+                COUNT(pp.id) as total_passes_attempted,
+                SUM(CASE WHEN pp.is_successful = 1 THEN 1 ELSE 0 END) as successful_passes,
+                ROUND(AVG(pp.x_start), 1) as x,
+                ROUND(AVG(pp.y_start), 1) as y
+            FROM player_passes pp
+            WHERE pp.match_id = ? AND pp.player_id IN ({placeholders})
+            GROUP BY pp.player_id
+        """
+        stats_rows = db.execute(stats_query, [match_id] + xi_ids).fetchall()
+        stats_map = {r["player_id"]: dict(r) for r in stats_rows}
+
+        nodes = []
+        coords = {}
+        for r in xi_rows:
+            pid = r["player_id"]
+            st = stats_map.get(pid, {})
+            node_x = float(st.get("x")) if st.get("x") is not None else 50.0
+            node_y = float(st.get("y")) if st.get("y") is not None else 50.0
+            succ_passes = int(st.get("successful_passes") or 0)
+
+            nodes.append({
+                "player_id": pid,
+                "name": r["name"],
+                "jersey": int(r["shirt_number"]) if r["shirt_number"] is not None and r["shirt_number"] > 0 else None,
+                "x": node_x,
+                "y": node_y,
+                "total_passes": succ_passes
+            })
+            coords[pid] = (node_x, node_y)
+
+        # Successful passes made ONLY by those 11 players in this match
+        passes_query = f"""
+            SELECT pp.player_id, pp.x_end, pp.y_end
+            FROM player_passes pp
+            WHERE pp.match_id = ? AND pp.is_successful = 1
+              AND pp.player_id IN ({placeholders})
+        """
+        passes_rows = db.execute(passes_query, [match_id] + xi_ids).fetchall()
+
+        edges_dict = defaultdict(int)
+        for p in passes_rows:
+            passer_id = p["player_id"]
+            x_end = p["x_end"]
+            y_end = p["y_end"]
+            if x_end is None or y_end is None:
+                continue
+
+            candidates = [pid for pid in xi_ids if pid != passer_id]
+            best_cand = None
+            min_d = float("inf")
+            for cand in candidates:
+                cx, cy = coords[cand]
+                d = (cx - x_end) ** 2 + (cy - y_end) ** 2
+                if d < min_d:
+                    min_d = d
+                    best_cand = cand
+            if best_cand is not None:
+                edges_dict[(passer_id, best_cand)] += 1
+
+        edges = [
+            {
+                "passer_id": k[0],
+                "receiver_id": k[1],
+                "pass_count": v
+            }
+            for k, v in edges_dict.items()
+            if v >= 1
+        ]
+        edges.sort(key=lambda x: x["pass_count"], reverse=True)
+
+        return {
+            "team_id": team_id,
+            "tournament": match_tourn,
+            "match_id": match_id,
+            "nodes": nodes,
+            "edges": edges
+        }
+
+    # Case B: Cumulative tournament scope (default)
     tourn_clause = ""
     params: List[Any] = [team_id]
     normalized_tourn = "all"
@@ -301,7 +549,7 @@ def get_team_pass_network(
         tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
         params.append(normalized_tourn)
 
-    # 1. Strictly query Top 11 players by total minutes played (without Cartesian join explosion)
+    # 1. Strictly query Top 11 players by total minutes played
     xi_query = f"""
         SELECT 
             pms.player_id,
@@ -322,6 +570,7 @@ def get_team_pass_network(
         return {
             "team_id": team_id,
             "tournament": normalized_tourn,
+            "match_id": None,
             "nodes": [],
             "edges": []
         }
@@ -435,7 +684,241 @@ def get_team_pass_network(
     return {
         "team_id": team_id,
         "tournament": normalized_tourn,
+        "match_id": None,
         "nodes": nodes,
         "edges": edges
     }
+
+
+def _get_team_defensive_actions_impl(
+    db: sqlite3.Connection,
+    team_id: int,
+    tournament: str = "all",
+    match_id: Optional[int] = None
+) -> Optional[Dict[str, Any]]:
+    """Internal implementation for defensive data retrieval and block height calculations."""
+    team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
+    if not team_row:
+        return None
+
+    # Case A: Single match defensive actions
+    if match_id is not None:
+        match_row = db.execute("""
+            SELECT match_id, match_date, home_team_id, away_team_id,
+                   CASE WHEN strftime('%m', match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END as tournament
+            FROM matches
+            WHERE match_id = ? AND (home_team_id = ? OR away_team_id = ?) AND status = 'played'
+        """, (match_id, team_id, team_id)).fetchone()
+        if not match_row:
+            return None
+        scope_tournament = match_row["tournament"]
+        scope_match_id = match_id
+
+        query = """
+            SELECT 
+                pda.id as event_id,
+                pda.action_type,
+                pda.x,
+                pda.y,
+                p.name as player_name,
+                p.shirt_number as jersey,
+                p.position_group
+            FROM player_defensive_actions pda
+            JOIN player_match_stats pms ON pda.match_id = pms.match_id AND pda.player_id = pms.player_id
+            JOIN players p ON pda.player_id = p.player_id
+            JOIN matches m ON pda.match_id = m.match_id
+            WHERE pms.team_id = ? AND pda.match_id = ?
+              AND m.status = 'played'
+              AND LOWER(pda.action_type) IN (
+                  'tackle', 'won_tackle', 'lost_tackle', 'interception', 'clearance',
+                  'block', 'blocked_pass', 'ball-recovery', 'recovery', 'foul', 'foul-committed', 'foul_committed'
+              )
+            ORDER BY pda.id ASC
+        """
+        rows = db.execute(query, (team_id, match_id)).fetchall()
+
+    # Case B: Cumulative tournament scope
+    else:
+        tourn_clause = ""
+        params: List[Any] = [team_id]
+        normalized_tourn = "all"
+        if tournament and tournament.strip().lower() in ("apertura", "clausura"):
+            normalized_tourn = "Apertura" if tournament.strip().lower() == "apertura" else "Clausura"
+            tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+            params.append(normalized_tourn)
+
+        scope_tournament = normalized_tourn
+        scope_match_id = None
+
+        query = f"""
+            SELECT 
+                pda.id as event_id,
+                pda.action_type,
+                pda.x,
+                pda.y,
+                p.name as player_name,
+                p.shirt_number as jersey,
+                p.position_group
+            FROM player_defensive_actions pda
+            JOIN player_match_stats pms ON pda.match_id = pms.match_id AND pda.player_id = pms.player_id
+            JOIN players p ON pda.player_id = p.player_id
+            JOIN matches m ON pda.match_id = m.match_id
+            WHERE pms.team_id = ?
+              AND m.status = 'played'
+              AND LOWER(pda.action_type) IN (
+                  'tackle', 'won_tackle', 'lost_tackle', 'interception', 'clearance',
+                  'block', 'blocked_pass', 'ball-recovery', 'recovery', 'foul', 'foul-committed', 'foul_committed'
+              )
+              {tourn_clause}
+            ORDER BY pda.id ASC
+        """
+        rows = db.execute(query, params).fetchall()
+
+    events = []
+    gk_flags = []
+    for r in rows:
+        raw_action = (r["action_type"] or "").strip().lower()
+        is_gk = (r["position_group"] or "").strip().lower() == "goalkeeper"
+        is_success = True
+
+        if raw_action in ("won_tackle", "tackle"):
+            ev_type = "won_tackle"
+            is_success = True
+        elif raw_action == "lost_tackle":
+            ev_type = "lost_tackle"
+            is_success = False
+        elif raw_action == "interception":
+            ev_type = "interception"
+            is_success = True
+        elif raw_action == "clearance":
+            ev_type = "clearance"
+            is_success = True
+        elif raw_action in ("block", "blocked_pass"):
+            ev_type = "blocked_pass"
+            is_success = True
+        elif "recovery" in raw_action:
+            ev_type = "recovery"
+            is_success = True
+        elif "foul" in raw_action:
+            ev_type = "foul"
+            is_success = False
+        else:
+            continue
+
+        norm_x = round(max(0.0, min(100.0, float(r["x"]))), 1) if r["x"] is not None else 50.0
+        norm_y = round(max(0.0, min(100.0, float(r["y"]))), 1) if r["y"] is not None else 50.0
+        jersey = int(r["jersey"]) if r["jersey"] is not None and r["jersey"] > 0 else None
+
+        events.append({
+            "event_id": r["event_id"],
+            "type": ev_type,
+            "x": norm_x,
+            "y": norm_y,
+            "is_success": is_success,
+            "player_name": r["player_name"],
+            "jersey": jersey
+        })
+        gk_flags.append(is_gk)
+
+    # Opta Line of Engagement / Block Height methodology:
+    # 1. Exclude clearances (type != 'clearance')
+    # 2. Exclude passive goalkeeper recoveries deep in the 6-yard box (x <= 6.0)
+    engagement_x = []
+    for ev, is_gk_flag in zip(events, gk_flags):
+        if ev["type"] == "clearance":
+            continue
+        if ev["type"] == "recovery" and is_gk_flag and ev["x"] <= 6.0:
+            continue
+        engagement_x.append(ev["x"])
+
+    if engagement_x:
+        avg_x = round(sum(engagement_x) / len(engagement_x), 1)
+    elif events:
+        non_clearances = [e["x"] for e in events if e["type"] != "clearance"]
+        avg_x = round(sum(non_clearances) / len(non_clearances), 1) if non_clearances else round(sum(e["x"] for e in events) / len(events), 1)
+    else:
+        avg_x = 0.0
+
+    block_height_m = round((avg_x / 100.0) * 105.0, 1)
+
+    if avg_x >= 46.0:
+        block_classification = "Presión Alta / Bloque Alto"
+    elif avg_x >= 38.0:
+        block_classification = "Bloque Medio"
+    else:
+        block_classification = "Bloque Bajo / Repliegue"
+
+    total_events = len(events)
+    won_tackles = sum(1 for e in events if e["type"] == "won_tackle")
+    lost_tackles = sum(1 for e in events if e["type"] == "lost_tackle")
+    interceptions = sum(1 for e in events if e["type"] == "interception")
+    clearances = sum(1 for e in events if e["type"] == "clearance")
+    blocked_passes = sum(1 for e in events if e["type"] == "blocked_pass")
+    recoveries = sum(1 for e in events if e["type"] == "recovery")
+    high_recoveries = sum(1 for e in events if e["type"] == "recovery" and e["x"] > 65.0)
+
+    total_tackles = won_tackles + lost_tackles
+    tackles_won_pct = round((won_tackles / total_tackles) * 100.0, 1) if total_tackles > 0 else 0.0
+
+    summary = {
+        "total_events": total_events,
+        "won_tackles": won_tackles,
+        "lost_tackles": lost_tackles,
+        "interceptions": interceptions,
+        "clearances": clearances,
+        "blocked_passes": blocked_passes,
+        "recoveries": recoveries,
+        "high_recoveries": high_recoveries,
+        "tackles_won_pct": tackles_won_pct
+    }
+
+    return {
+        "team_id": team_id,
+        "tournament": scope_tournament,
+        "match_id": scope_match_id,
+        "events": events,
+        "avg_x": avg_x,
+        "block_height_pct": avg_x,
+        "block_height_m": block_height_m,
+        "tactical_classification": block_classification,
+        "block_classification": block_classification,
+        "summary": summary
+    }
+
+
+def get_team_defensive_actions(
+    db: Any,
+    team_id: Optional[int] = None,
+    tournament: str = "all",
+    match_id: Optional[int] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve defensive actions (tackles, interceptions, recoveries, fouls)
+    and compute block height and defensive summary metrics.
+
+    Supports both signatures:
+    - get_team_defensive_actions(db, team_id, tournament='all', match_id=None)
+    - get_team_defensive_actions(team_id, tournament='all', match_id=None)
+    """
+    if isinstance(db, int):
+        actual_team_id = db
+        if isinstance(team_id, str):
+            actual_tournament = team_id
+        else:
+            actual_tournament = tournament
+
+        if isinstance(team_id, int):
+            actual_match_id = team_id
+        elif isinstance(tournament, int):
+            actual_match_id = tournament
+        else:
+            actual_match_id = match_id
+
+        from ..core.config import settings
+        with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as local_db:
+            local_db.row_factory = sqlite3.Row
+            return _get_team_defensive_actions_impl(local_db, actual_team_id, actual_tournament, actual_match_id)
+    else:
+        return _get_team_defensive_actions_impl(db, team_id, tournament, match_id)
+
 
