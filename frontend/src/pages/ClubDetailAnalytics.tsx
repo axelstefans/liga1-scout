@@ -8,6 +8,7 @@ import { getTeamCrestUrl, getTeamTricode } from '../utils/teams';
 import TeamTacticalRadar from '../components/analytics/TeamTacticalRadar';
 import TeamPassNetwork from '../components/analytics/TeamPassNetwork';
 import TeamDefensiveTerritory from '../components/analytics/TeamDefensiveTerritory';
+import TeamShotMap from '../components/analytics/TeamShotMap';
 
 type TournamentFilter = 'all' | 'Apertura' | 'Clausura';
 
@@ -218,6 +219,11 @@ export const ClubDetailAnalytics: React.FC = () => {
               tournament={selectedTournament}
             />
             <TeamDefensiveTerritory
+              teams={teams}
+              activeTeam={activeTeam}
+              tournament={selectedTournament}
+            />
+            <TeamShotMap
               teams={teams}
               activeTeam={activeTeam}
               tournament={selectedTournament}

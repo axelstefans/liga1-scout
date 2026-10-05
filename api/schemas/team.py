@@ -193,4 +193,37 @@ class TeamDefensiveActionsResponse(BaseModel):
     tactical_classification: Optional[str] = None
 
 
+class ShotItem(BaseModel):
+    shot_id: int
+    minute: Optional[int] = None
+    x: float
+    y: float
+    xg: float
+    result: str  # 'goal' | 'saved' | 'miss' | 'blocked'
+    body_part: Optional[str] = None
+    situation: Optional[str] = None
+    player_name: str
+    player_jersey: Optional[int] = None
+
+
+class ShotMapSummary(BaseModel):
+    total_shots: int
+    goals: int
+    total_xg: float
+    xg_per_shot: float
+    shots_on_target: int
+    on_target_pct: float
+    xg_difference: float
+
+
+class TeamShotMapResponse(BaseModel):
+    team_id: int
+    mode: str  # 'for' | 'against'
+    tournament: str
+    match_id: Optional[int] = None
+    summary: ShotMapSummary
+    shots: List[ShotItem]
+
+
+
 

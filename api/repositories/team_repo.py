@@ -559,7 +559,9 @@ def get_team_pass_network(
         FROM player_match_stats pms
         JOIN players p ON pms.player_id = p.player_id
         JOIN matches m ON pms.match_id = m.match_id
-        WHERE pms.team_id = ? AND m.status = 'played' {tourn_clause}
+        WHERE pms.team_id = ? AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
         GROUP BY pms.player_id, p.name, p.shirt_number
         HAVING SUM(pms.minutes_played) > 0
         ORDER BY total_minutes DESC
@@ -590,7 +592,9 @@ def get_team_pass_network(
         FROM player_passes pp
         JOIN player_match_stats pms ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
         JOIN matches m ON pp.match_id = m.match_id
-        WHERE pms.team_id = ? AND m.status = 'played' AND pp.player_id IN ({placeholders})
+        WHERE pms.team_id = ? AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          AND pp.player_id IN ({placeholders})
           {tourn_clause}
         GROUP BY pp.player_id
     """
@@ -623,7 +627,9 @@ def get_team_pass_network(
         FROM player_match_stats pms
         JOIN matches m ON pms.match_id = m.match_id
         WHERE pms.team_id = ? AND pms.player_id IN ({placeholders})
-          AND pms.minutes_played > 0 AND m.status = 'played' {tourn_clause}
+          AND pms.minutes_played > 0 AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
     """
     mp_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else [])
     mp_rows = db.execute(mp_query, mp_params).fetchall()
@@ -638,6 +644,7 @@ def get_team_pass_network(
         JOIN player_match_stats pms ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
         JOIN matches m ON pp.match_id = m.match_id
         WHERE pms.team_id = ? AND m.status = 'played' AND pp.is_successful = 1
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           AND pp.player_id IN ({placeholders})
           {tourn_clause}
     """
@@ -765,6 +772,7 @@ def _get_team_defensive_actions_impl(
             JOIN matches m ON pda.match_id = m.match_id
             WHERE pms.team_id = ?
               AND m.status = 'played'
+              AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
               AND LOWER(pda.action_type) IN (
                   'tackle', 'won_tackle', 'lost_tackle', 'interception', 'clearance',
                   'block', 'blocked_pass', 'ball-recovery', 'recovery', 'foul', 'foul-committed', 'foul_committed'
@@ -920,5 +928,225 @@ def get_team_defensive_actions(
             return _get_team_defensive_actions_impl(local_db, actual_team_id, actual_tournament, actual_match_id)
     else:
         return _get_team_defensive_actions_impl(db, team_id, tournament, match_id)
+
+
+def _get_team_shot_map_impl(
+    db: sqlite3.Connection,
+    team_id: int,
+    tournament: str = "all",
+    match_id: Optional[int] = None,
+    mode: str = "for"
+) -> Optional[Dict[str, Any]]:
+    """Internal implementation for shot map data extraction and summary calculations."""
+    team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
+    if not team_row:
+        return None
+
+    norm_mode = mode.lower().strip() if mode else "for"
+    if norm_mode not in ("for", "against"):
+        norm_mode = "for"
+
+    # Case A: Single match filter
+    if match_id is not None:
+        match_row = db.execute("""
+            SELECT match_id, match_date, home_team_id, away_team_id,
+                   CASE WHEN strftime('%m', match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END as tournament
+            FROM matches
+            WHERE match_id = ? AND (home_team_id = ? OR away_team_id = ?) AND status = 'played'
+        """, (match_id, team_id, team_id)).fetchone()
+        if not match_row:
+            return None
+        scope_tournament = match_row["tournament"]
+        scope_match_id = match_id
+        filter_clause = "AND m.match_id = ?"
+        filter_params: List[Any] = [team_id, team_id, match_id]
+
+    # Case B: Cumulative tournament scope
+    else:
+        tourn_clause = ""
+        filter_params = [team_id, team_id]
+        normalized_tourn = "all"
+        if tournament and tournament.strip().lower() in ("apertura", "clausura"):
+            normalized_tourn = "Apertura" if tournament.strip().lower() == "apertura" else "Clausura"
+            tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+            filter_params.append(normalized_tourn)
+
+        scope_tournament = normalized_tourn
+        scope_match_id = None
+        filter_clause = f"AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026') {tourn_clause}"
+
+    query = f"""
+        SELECT 
+            ps.shot_id,
+            ps.coord_x,
+            ps.coord_y,
+            ps.distance_m,
+            ps.shot_type,
+            ps.situation,
+            ps.body_part,
+            COALESCE(psx.calculated_xg, 0.0) as xg,
+            p.name as player_name,
+            p.shirt_number as player_jersey,
+            CASE WHEN ps.is_home = 1 THEN m.home_team_id ELSE m.away_team_id END as shooting_team_id,
+            CASE WHEN ps.is_home = 1 THEN m.away_team_id ELSE m.home_team_id END as defending_team_id
+        FROM player_shots ps
+        JOIN matches m ON ps.match_id = m.match_id
+        LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
+        LEFT JOIN players p ON ps.player_id = p.player_id
+        WHERE m.status = 'played'
+          AND (m.home_team_id = ? OR m.away_team_id = ?)
+          {filter_clause}
+        ORDER BY ps.shot_id ASC
+    """
+    rows = db.execute(query, filter_params).fetchall()
+
+    if norm_mode == "for":
+        matched_rows = [r for r in rows if r["shooting_team_id"] == team_id]
+    else:
+        matched_rows = [r for r in rows if r["defending_team_id"] == team_id]
+
+    shots = []
+    for r in matched_rows:
+        # Longitudinal coordinate normalization:
+        # In player_shots, coord_x represents distance in meters from target goal line (0 = goal line).
+        # We normalize to 0-100 scale where 0 is own goal line and 100 is target goal line.
+        if r["coord_x"] is not None:
+            raw_x = float(r["coord_x"])
+            norm_x = round(max(0.0, min(100.0, 100.0 - (raw_x / 105.0) * 100.0)), 1)
+        else:
+            norm_x = 85.0
+
+        # Lateral coordinate: 0-100 scale
+        if r["coord_y"] is not None:
+            norm_y = round(max(0.0, min(100.0, float(r["coord_y"]))), 1)
+        else:
+            norm_y = 50.0
+
+        # Shot result mapping
+        raw_type = str(r["shot_type"] or "").strip().lower()
+        if raw_type == "goal":
+            result = "goal"
+        elif raw_type in ("save", "saved"):
+            result = "saved"
+        elif raw_type in ("block", "blocked"):
+            result = "blocked"
+        else:
+            result = "miss"
+
+        # Body part mapping
+        raw_bp = str(r["body_part"] or "").strip().lower()
+        if "right" in raw_bp:
+            body_part = "right_foot"
+        elif "left" in raw_bp:
+            body_part = "left_foot"
+        elif "head" in raw_bp:
+            body_part = "head"
+        else:
+            body_part = "other"
+
+        # Situation mapping
+        raw_sit = str(r["situation"] or "").strip().lower()
+        if "fast-break" in raw_sit or "fast_break" in raw_sit:
+            situation = "fast_break"
+        elif "penalty" in raw_sit:
+            situation = "penalty"
+        elif "corner" in raw_sit:
+            situation = "corner"
+        elif any(k in raw_sit for k in ("set-piece", "set_piece", "free-kick", "throw-in")):
+            situation = "set_piece"
+        else:
+            situation = "open_play"
+
+        jersey = int(r["player_jersey"]) if r["player_jersey"] is not None and r["player_jersey"] > 0 else None
+        player_name = r["player_name"] or "Jugador"
+        xg_val = round(float(r["xg"]), 3)
+
+        shots.append({
+            "shot_id": int(r["shot_id"]),
+            "minute": None,
+            "x": norm_x,
+            "y": norm_y,
+            "xg": xg_val,
+            "result": result,
+            "body_part": body_part,
+            "situation": situation,
+            "player_name": player_name,
+            "player_jersey": jersey
+        })
+
+    total_shots = len(shots)
+    goals = sum(1 for s in shots if s["result"] == "goal")
+    total_xg = round(sum(s["xg"] for s in shots), 2)
+    xg_per_shot = round(total_xg / total_shots, 3) if total_shots > 0 else 0.0
+    shots_on_target = sum(1 for s in shots if s["result"] in ("goal", "saved"))
+    on_target_pct = round((shots_on_target / total_shots) * 100.0, 1) if total_shots > 0 else 0.0
+    xg_difference = round(goals - total_xg, 2)
+
+    summary = {
+        "total_shots": total_shots,
+        "goals": goals,
+        "total_xg": total_xg,
+        "xg_per_shot": xg_per_shot,
+        "shots_on_target": shots_on_target,
+        "on_target_pct": on_target_pct,
+        "xg_difference": xg_difference
+    }
+
+    return {
+        "team_id": team_id,
+        "mode": norm_mode,
+        "tournament": scope_tournament,
+        "match_id": scope_match_id,
+        "summary": summary,
+        "shots": shots
+    }
+
+
+def get_team_shot_map(
+    db: Any,
+    team_id: Optional[int] = None,
+    tournament: str = "all",
+    match_id: Optional[int] = None,
+    mode: str = "for"
+) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve shot events for a team and compute summary metrics.
+    Supports both modes:
+    - 'for': shots taken by team_id
+    - 'against': shots conceded by team_id (taken by opponents)
+
+    Supports both signatures:
+    - get_team_shot_map(db, team_id, tournament='all', match_id=None, mode='for')
+    - get_team_shot_map(team_id, tournament='all', match_id=None, mode='for')
+    """
+    if isinstance(db, int):
+        actual_team_id = db
+        actual_tournament = tournament
+        actual_match_id = match_id
+        actual_mode = mode
+
+        if isinstance(team_id, str):
+            if team_id.lower() in ("for", "against"):
+                actual_mode = team_id
+            elif team_id.lower() in ("all", "apertura", "clausura"):
+                actual_tournament = team_id
+        elif isinstance(team_id, int):
+            actual_match_id = team_id
+
+        if isinstance(tournament, int):
+            actual_match_id = tournament
+        elif isinstance(tournament, str) and tournament.lower() in ("for", "against"):
+            actual_mode = tournament
+
+        if isinstance(match_id, str) and match_id.lower() in ("for", "against"):
+            actual_mode = match_id
+
+        from ..core.config import settings
+        with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as local_db:
+            local_db.row_factory = sqlite3.Row
+            return _get_team_shot_map_impl(local_db, actual_team_id, actual_tournament, actual_match_id, actual_mode)
+    else:
+        return _get_team_shot_map_impl(db, team_id, tournament, match_id, mode)
+
 
 

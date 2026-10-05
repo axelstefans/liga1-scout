@@ -448,6 +448,38 @@ export interface TeamDefensiveActionsResponse {
   events: DefensiveEventItem[];
 }
 
+export interface ShotItem {
+  shot_id: number;
+  minute: number | null;
+  x: number;
+  y: number;
+  xg: number;
+  result: 'goal' | 'saved' | 'miss' | 'blocked';
+  body_part?: string | null;
+  situation?: string | null;
+  player_name: string;
+  player_jersey?: number | null;
+}
+
+export interface ShotMapSummary {
+  total_shots: number;
+  goals: number;
+  total_xg: number;
+  xg_per_shot: number;
+  shots_on_target: number;
+  on_target_pct: number;
+  xg_difference: number;
+}
+
+export interface TeamShotMapResponse {
+  team_id: number;
+  mode: 'for' | 'against';
+  tournament: string;
+  match_id: number | null;
+  summary: ShotMapSummary;
+  shots: ShotItem[];
+}
+
 export const teamsApi = {
   getAll: async (): Promise<TeamBase[]> => {
     const response = await apiClient.get(`/teams/`);
@@ -507,6 +539,29 @@ export const teamsApi = {
     const url = queryString
       ? `/teams/${teamId}/defensive-actions?${queryString}`
       : `/teams/${teamId}/defensive-actions`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getShotMap: async (
+    teamId: number,
+    tournament?: string,
+    matchId?: number | null,
+    mode: 'for' | 'against' = 'for'
+  ): Promise<TeamShotMapResponse> => {
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    if (matchId) {
+      params.append('match_id', matchId.toString());
+    }
+    if (mode) {
+      params.append('mode', mode);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/teams/${teamId}/shot-map?${queryString}`
+      : `/teams/${teamId}/shot-map`;
     const response = await apiClient.get(url);
     return response.data;
   }

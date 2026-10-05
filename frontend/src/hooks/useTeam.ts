@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   teamsApi, TeamMetricEntry, TeamShotZonesResponse, 
   TeamPassNetworkResponse, TeamMatchItem, TeamBase,
-  TeamDefensiveActionsResponse
+  TeamDefensiveActionsResponse, TeamShotMapResponse
 } from '../services/api';
 
 export const useTeamMetrics = (tournament?: 'Apertura' | 'Clausura') => {
@@ -66,5 +66,21 @@ export const useTeamsList = () => {
     staleTime: 1000 * 60 * 30, // 30 minutes
   });
 };
+
+export const useTeamShotMap = (
+  teamId?: number,
+  tournament?: string,
+  matchId?: number | null,
+  mode: 'for' | 'against' = 'for',
+  enabled: boolean = true
+) => {
+  return useQuery<TeamShotMapResponse>({
+    queryKey: ['teamShotMap', teamId, tournament || 'all', matchId ?? 'cumulative', mode],
+    queryFn: () => teamsApi.getShotMap(teamId!, tournament, matchId, mode),
+    enabled: Boolean(teamId) && enabled,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+  });
+};
+
 
 

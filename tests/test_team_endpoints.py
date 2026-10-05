@@ -510,7 +510,182 @@ def test_get_team_defensive_actions_endpoint():
     resp_bad_match = client.get("/api/teams/2311/defensive-actions?match_id=999999999")
     assert resp_bad_match.status_code == 404
 
+def test_get_team_shot_map_repo():
+    import sqlite3
+    from api.core.config import settings
+    from api.repositories import team_repo
+
+    with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as db:
+        db.row_factory = sqlite3.Row
+
+        # 1. Mode 'for' (shots taken by team)
+        res_for = team_repo.get_team_shot_map(db, team_id=2311, tournament="all", mode="for")
+        assert res_for is not None
+        assert res_for["team_id"] == 2311
+        assert res_for["mode"] == "for"
+        assert res_for["tournament"] == "all"
+        assert res_for["match_id"] is None
+        assert len(res_for["shots"]) > 0
+
+        # Validate summary metrics
+        summary_for = res_for["summary"]
+        assert summary_for["total_shots"] == len(res_for["shots"])
+        assert summary_for["goals"] == sum(1 for s in res_for["shots"] if s["result"] == "goal")
+        assert summary_for["total_xg"] == round(sum(s["xg"] for s in res_for["shots"]), 2)
+        assert summary_for["xg_per_shot"] == round(summary_for["total_xg"] / summary_for["total_shots"], 3)
+        expected_sot = sum(1 for s in res_for["shots"] if s["result"] in ("goal", "saved"))
+        assert summary_for["shots_on_target"] == expected_sot
+        assert summary_for["on_target_pct"] == round((expected_sot / summary_for["total_shots"]) * 100.0, 1)
+        assert summary_for["xg_difference"] == round(summary_for["goals"] - summary_for["total_xg"], 2)
+
+        # Validate shot event fields & normalization
+        for s in res_for["shots"][:30]:
+            assert isinstance(s["shot_id"], int)
+            assert s["minute"] is None
+            assert 0.0 <= s["x"] <= 100.0
+            assert 0.0 <= s["y"] <= 100.0
+            assert isinstance(s["xg"], float)
+            assert s["result"] in ("goal", "saved", "miss", "blocked")
+            assert s["body_part"] in ("right_foot", "left_foot", "head", "other")
+            assert s["situation"] in ("open_play", "set_piece", "corner", "penalty", "fast_break")
+            assert s["player_name"] and len(s["player_name"]) > 0
+            if s["player_jersey"] is not None:
+                assert isinstance(s["player_jersey"], int)
+
+        # 2. Mode 'against' (shots conceded by team)
+        res_against = team_repo.get_team_shot_map(db, team_id=2311, tournament="all", mode="against")
+        assert res_against is not None
+        assert res_against["team_id"] == 2311
+        assert res_against["mode"] == "against"
+        assert len(res_against["shots"]) > 0
+        assert res_against["summary"]["total_shots"] == len(res_against["shots"])
+
+        # 3. Tournament filtering ('Apertura' and 'Clausura')
+        res_ap = team_repo.get_team_shot_map(db, team_id=2311, tournament="Apertura", mode="for")
+        assert res_ap is not None
+        assert res_ap["tournament"] == "Apertura"
+        assert len(res_ap["shots"]) > 0
+
+        res_cl = team_repo.get_team_shot_map(db, team_id=2311, tournament="Clausura", mode="for")
+        assert res_cl is not None
+        assert res_cl["tournament"] == "Clausura"
+        assert len(res_cl["shots"]) > 0
+        assert len(res_ap["shots"]) + len(res_cl["shots"]) == len(res_for["shots"])
+
+        # 4. Single match filtering with match_id
+        matches = team_repo.get_team_matches(db, 2311)
+        assert matches and len(matches) > 0
+        target_match_id = matches[0]["match_id"]
+
+        res_match = team_repo.get_team_shot_map(db, team_id=2311, match_id=target_match_id, mode="for")
+        assert res_match is not None
+        assert res_match["team_id"] == 2311
+        assert res_match["match_id"] == target_match_id
+        assert len(res_match["shots"]) > 0
+        assert res_match["summary"]["total_shots"] == len(res_match["shots"])
+
+        # 5. Dual signature support (without explicit db connection passed)
+        res_standalone = team_repo.get_team_shot_map(2311, tournament="Apertura", mode="for")
+        assert res_standalone is not None
+        assert res_standalone["team_id"] == 2311
+        assert len(res_standalone["shots"]) == len(res_ap["shots"])
+
+        # 6. Non-existent team returns None
+        assert team_repo.get_team_shot_map(db, 9999999) is None
+        assert team_repo.get_team_shot_map(9999999) is None
+
+def test_get_team_shot_map_endpoint():
+    # 1. Cumulative scope (default / all, mode='for')
+    resp = client.get("/api/teams/2311/shot-map")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["team_id"] == 2311
+    assert data["mode"] == "for"
+    assert data["tournament"] == "all"
+    assert data["match_id"] is None
+
+    # Validate summary fields
+    summary = data["summary"]
+    for key in (
+        "total_shots", "goals", "total_xg", "xg_per_shot",
+        "shots_on_target", "on_target_pct", "xg_difference"
+    ):
+        assert key in summary
+
+    assert len(data["shots"]) > 0
+    first_shot = data["shots"][0]
+    for key in (
+        "shot_id", "minute", "x", "y", "xg", "result",
+        "body_part", "situation", "player_name", "player_jersey"
+    ):
+        assert key in first_shot
+
+    assert first_shot["result"] in ("goal", "saved", "miss", "blocked")
+    assert 0.0 <= first_shot["x"] <= 100.0
+    assert 0.0 <= first_shot["y"] <= 100.0
+
+    # Test /api/v1 prefix parity
+    resp_v1 = client.get("/api/v1/teams/2311/shot-map")
+    assert resp_v1.status_code == 200
+    assert resp_v1.json()["summary"]["total_shots"] == data["summary"]["total_shots"]
+    assert len(resp_v1.json()["shots"]) == len(data["shots"])
+
+    # 2. Mode 'against' (shots conceded)
+    resp_against = client.get("/api/teams/2311/shot-map?mode=against")
+    assert resp_against.status_code == 200
+    data_against = resp_against.json()
+    assert data_against["team_id"] == 2311
+    assert data_against["mode"] == "against"
+    assert len(data_against["shots"]) > 0
+    assert data_against["summary"]["total_shots"] == len(data_against["shots"])
+
+    # 3. Tournament filtering (Apertura / Clausura)
+    resp_ap = client.get("/api/teams/2311/shot-map?tournament=Apertura")
+    assert resp_ap.status_code == 200
+    data_ap = resp_ap.json()
+    assert data_ap["tournament"] == "Apertura"
+    assert len(data_ap["shots"]) > 0
+
+    resp_cl = client.get("/api/teams/2311/shot-map?tournament=Clausura")
+    assert resp_cl.status_code == 200
+    data_cl = resp_cl.json()
+    assert data_cl["tournament"] == "Clausura"
+    assert len(data_cl["shots"]) > 0
+
+    assert len(data_ap["shots"]) + len(data_cl["shots"]) == len(data["shots"])
+
+    # 4. Single match with match_id
+    matches_resp = client.get("/api/teams/2311/matches")
+    assert matches_resp.status_code == 200
+    matches = matches_resp.json()
+    assert len(matches) > 0
+    target_match_id = matches[0]["match_id"]
+
+    resp_match = client.get(f"/api/teams/2311/shot-map?match_id={target_match_id}")
+    assert resp_match.status_code == 200
+    data_match = resp_match.json()
+    assert data_match["team_id"] == 2311
+    assert data_match["match_id"] == target_match_id
+    assert len(data_match["shots"]) > 0
+    assert data_match["summary"]["total_shots"] == len(data_match["shots"])
+
+    # 5. Error handling
+    # Non-existent team -> 404
+    resp_bad_team = client.get("/api/teams/9999999/shot-map")
+    assert resp_bad_team.status_code == 404
+
+    # Non-existent match -> 404
+    resp_bad_match = client.get("/api/teams/2311/shot-map?match_id=999999999")
+    assert resp_bad_match.status_code == 404
+
+    # Invalid mode regex validation -> 422
+    resp_bad_mode = client.get("/api/teams/2311/shot-map?mode=invalid")
+    assert resp_bad_mode.status_code == 422
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
 
 
