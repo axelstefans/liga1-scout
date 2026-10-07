@@ -480,6 +480,39 @@ export interface TeamShotMapResponse {
   shots: ShotItem[];
 }
 
+export interface AttackZoneTopPlayer {
+  name: string;
+  actions_count: number;
+}
+
+export interface AttackZoneChannel {
+  channel_id: 'left_flank' | 'left_half_space' | 'center' | 'right_half_space' | 'right_flank';
+  channel_name: string;
+  entries_count: number;
+  share_pct: number;
+  box_infiltrations: number;
+  threat_xg: number;
+  threat_pct: number;
+  top_players: AttackZoneTopPlayer[];
+}
+
+export interface AttackZonesSummary {
+  total_entries: number;
+  box_entries_total: number;
+  box_entry_conversion_pct: number;
+  dominant_channel: string;
+  most_dangerous_channel: string;
+}
+
+export interface TeamAttackZonesResponse {
+  team_id: number;
+  mode: 'for' | 'against';
+  tournament: string;
+  match_id: number | null;
+  summary: AttackZonesSummary;
+  channels: AttackZoneChannel[];
+}
+
 export const teamsApi = {
   getAll: async (): Promise<TeamBase[]> => {
     const response = await apiClient.get(`/teams/`);
@@ -562,6 +595,29 @@ export const teamsApi = {
     const url = queryString
       ? `/teams/${teamId}/shot-map?${queryString}`
       : `/teams/${teamId}/shot-map`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getAttackZones: async (
+    teamId: number,
+    tournament?: string,
+    matchId?: number | null,
+    mode: 'for' | 'against' = 'for'
+  ): Promise<TeamAttackZonesResponse> => {
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    if (matchId) {
+      params.append('match_id', matchId.toString());
+    }
+    if (mode) {
+      params.append('mode', mode);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/teams/${teamId}/attack-zones?${queryString}`
+      : `/teams/${teamId}/attack-zones`;
     const response = await apiClient.get(url);
     return response.data;
   }

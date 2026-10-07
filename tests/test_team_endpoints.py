@@ -683,8 +683,228 @@ def test_get_team_shot_map_endpoint():
     resp_bad_mode = client.get("/api/teams/2311/shot-map?mode=invalid")
     assert resp_bad_mode.status_code == 422
 
+
+def test_get_team_attack_zones_repo():
+    import sqlite3
+    from api.core.config import settings
+    from api.repositories import team_repo
+
+    with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as db:
+        db.row_factory = sqlite3.Row
+
+        # 1. Mode 'for' (actions performed by team_id)
+        res_for = team_repo.get_team_attack_zones(db, team_id=2311, tournament="all", mode="for")
+        assert res_for is not None
+        assert res_for["team_id"] == 2311
+        assert res_for["mode"] == "for"
+        assert res_for["tournament"] == "all"
+        assert res_for["match_id"] is None
+        assert len(res_for["channels"]) == 5
+
+        channel_ids = [c["channel_id"] for c in res_for["channels"]]
+        expected_channels = ["left_flank", "left_half_space", "center", "right_half_space", "right_flank"]
+        assert channel_ids == expected_channels
+
+        # Validate channel fields and 100% percentage sums
+        for ch in res_for["channels"]:
+            assert ch["channel_id"] in expected_channels
+            assert ch["channel_name"] in (
+                "Banda Izquierda", "Medio-Espacio Izquierdo", "Carril Central",
+                "Medio-Espacio Derecho", "Banda Derecha"
+            )
+            assert ch["entries_count"] >= 0
+            assert 0.0 <= ch["share_pct"] <= 100.0
+            assert ch["box_infiltrations"] >= 0
+            assert ch["threat_xg"] >= 0.0
+            assert 0.0 <= ch["threat_pct"] <= 100.0
+            assert isinstance(ch["top_players"], list)
+            assert len(ch["top_players"]) <= 2
+            for p in ch["top_players"]:
+                assert "name" in p and len(p["name"]) > 0
+                assert "actions_count" in p and p["actions_count"] > 0
+
+        # Channel percentage sums equal 100% (within rounding)
+        share_pct_sum = sum(c["share_pct"] for c in res_for["channels"])
+        assert abs(share_pct_sum - 100.0) <= 0.5, f"Expected share_pct sum ~100%, got {share_pct_sum}"
+
+        threat_pct_sum = sum(c["threat_pct"] for c in res_for["channels"])
+        assert abs(threat_pct_sum - 100.0) <= 0.5, f"Expected threat_pct sum ~100%, got {threat_pct_sum}"
+
+        # Summary metrics verification
+        summary = res_for["summary"]
+        assert summary["total_entries"] == sum(c["entries_count"] for c in res_for["channels"])
+        assert summary["box_entries_total"] == sum(c["box_infiltrations"] for c in res_for["channels"])
+        expected_conv = round((summary["box_entries_total"] / summary["total_entries"]) * 100.0, 1)
+        assert summary["box_entry_conversion_pct"] == expected_conv
+        assert summary["dominant_channel"] in expected_channels
+        assert summary["most_dangerous_channel"] in expected_channels
+
+        # Top-level metric parity
+        assert res_for["total_entries"] == summary["total_entries"]
+        assert res_for["box_entries_total"] == summary["box_entries_total"]
+        assert res_for["box_entry_conversion_pct"] == summary["box_entry_conversion_pct"]
+        assert res_for["dominant_channel"] == summary["dominant_channel"]
+        assert res_for["most_dangerous_channel"] == summary["most_dangerous_channel"]
+
+        # 2. Mode 'against' (actions conceded to opponents)
+        res_against = team_repo.get_team_attack_zones(db, team_id=2311, tournament="all", mode="against")
+        assert res_against is not None
+        assert res_against["team_id"] == 2311
+        assert res_against["mode"] == "against"
+        assert len(res_against["channels"]) == 5
+        assert res_against["total_entries"] > 0
+        assert res_against["box_entries_total"] > 0
+
+        share_against_sum = sum(c["share_pct"] for c in res_against["channels"])
+        assert abs(share_against_sum - 100.0) <= 0.5, f"Expected share_pct sum ~100%, got {share_against_sum}"
+
+        threat_against_sum = sum(c["threat_pct"] for c in res_against["channels"])
+        assert abs(threat_against_sum - 100.0) <= 0.5, f"Expected threat_pct sum ~100%, got {threat_against_sum}"
+
+        # 3. 2026 Season isolation enforcement
+        # Querying an old non-2026 season fixture should return None
+        old_match = db.execute("""
+            SELECT match_id FROM matches 
+            WHERE (home_team_id = 2311 OR away_team_id = 2311) 
+              AND season_id != 88529 AND strftime('%Y', match_date) != '2026'
+            LIMIT 1
+        """).fetchone()
+        if old_match:
+            old_match_id = old_match["match_id"]
+            assert team_repo.get_team_attack_zones(db, team_id=2311, match_id=old_match_id) is None
+
+        # 4. Tournament filtering ('Apertura' and 'Clausura')
+        res_ap = team_repo.get_team_attack_zones(db, team_id=2311, tournament="Apertura", mode="for")
+        assert res_ap is not None
+        assert res_ap["tournament"] == "Apertura"
+        assert res_ap["total_entries"] > 0
+        ap_sum = sum(c["share_pct"] for c in res_ap["channels"])
+        assert abs(ap_sum - 100.0) <= 0.5
+
+        res_cl = team_repo.get_team_attack_zones(db, team_id=2311, tournament="Clausura", mode="for")
+        assert res_cl is not None
+        assert res_cl["tournament"] == "Clausura"
+        assert res_cl["total_entries"] > 0
+        cl_sum = sum(c["share_pct"] for c in res_cl["channels"])
+        assert abs(cl_sum - 100.0) <= 0.5
+
+        assert res_ap["total_entries"] + res_cl["total_entries"] == res_for["total_entries"]
+
+        # 5. Single match fixture filter
+        matches = team_repo.get_team_matches(db, 2311)
+        assert matches and len(matches) > 0
+        target_match_id = matches[0]["match_id"]
+
+        res_match = team_repo.get_team_attack_zones(db, team_id=2311, match_id=target_match_id, mode="for")
+        assert res_match is not None
+        assert res_match["team_id"] == 2311
+        assert res_match["match_id"] == target_match_id
+        assert len(res_match["channels"]) == 5
+
+        # 6. Dual signature verification (without explicit db connection)
+        res_standalone_for = team_repo.get_team_attack_zones(2311, tournament="Apertura", mode="for")
+        assert res_standalone_for is not None
+        assert res_standalone_for["team_id"] == 2311
+        assert res_standalone_for["total_entries"] == res_ap["total_entries"]
+
+        res_standalone_against = team_repo.get_team_attack_zones(2311, mode="against")
+        assert res_standalone_against is not None
+        assert res_standalone_against["team_id"] == 2311
+        assert res_standalone_against["mode"] == "against"
+        assert res_standalone_against["total_entries"] == res_against["total_entries"]
+
+        # 7. Non-existent team returns None
+        assert team_repo.get_team_attack_zones(db, 9999999) is None
+        assert team_repo.get_team_attack_zones(9999999) is None
+
+
+def test_get_team_attack_zones_endpoint():
+    # 1. Cumulative scope (default / all, mode='for')
+    resp = client.get("/api/teams/2311/attack-zones")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["team_id"] == 2311
+    assert data["mode"] == "for"
+    assert data["tournament"] == "all"
+    assert data["match_id"] is None
+
+    # Validate summary fields
+    summary = data["summary"]
+    for key in (
+        "total_entries", "box_entries_total", "box_entry_conversion_pct",
+        "dominant_channel", "most_dangerous_channel"
+    ):
+        assert key in summary
+
+    assert len(data["channels"]) == 5
+    for ch in data["channels"]:
+        for key in (
+            "channel_id", "channel_name", "entries_count", "share_pct",
+            "box_infiltrations", "threat_xg", "threat_pct", "top_players"
+        ):
+            assert key in ch
+
+    # Test /api/v1 prefix parity
+    resp_v1 = client.get("/api/v1/teams/2311/attack-zones")
+    assert resp_v1.status_code == 200
+    assert resp_v1.json()["total_entries"] == data["total_entries"]
+    assert len(resp_v1.json()["channels"]) == len(data["channels"])
+
+    # 2. Mode 'against' (actions conceded)
+    resp_against = client.get("/api/teams/2311/attack-zones?mode=against")
+    assert resp_against.status_code == 200
+    data_against = resp_against.json()
+    assert data_against["team_id"] == 2311
+    assert data_against["mode"] == "against"
+    assert data_against["total_entries"] > 0
+
+    # 3. Tournament filtering (Apertura / Clausura)
+    resp_ap = client.get("/api/teams/2311/attack-zones?tournament=Apertura")
+    assert resp_ap.status_code == 200
+    data_ap = resp_ap.json()
+    assert data_ap["tournament"] == "Apertura"
+    assert data_ap["total_entries"] > 0
+
+    resp_cl = client.get("/api/teams/2311/attack-zones?tournament=Clausura")
+    assert resp_cl.status_code == 200
+    data_cl = resp_cl.json()
+    assert data_cl["tournament"] == "Clausura"
+    assert data_cl["total_entries"] > 0
+
+    assert data_ap["total_entries"] + data_cl["total_entries"] == data["total_entries"]
+
+    # 4. Single match with match_id
+    matches_resp = client.get("/api/teams/2311/matches")
+    assert matches_resp.status_code == 200
+    matches = matches_resp.json()
+    assert len(matches) > 0
+    target_match_id = matches[0]["match_id"]
+
+    resp_match = client.get(f"/api/teams/2311/attack-zones?match_id={target_match_id}")
+    assert resp_match.status_code == 200
+    data_match = resp_match.json()
+    assert data_match["team_id"] == 2311
+    assert data_match["match_id"] == target_match_id
+    assert len(data_match["channels"]) == 5
+
+    # 5. Error handling
+    # Non-existent team -> 404
+    resp_bad_team = client.get("/api/teams/9999999/attack-zones")
+    assert resp_bad_team.status_code == 404
+
+    # Non-existent match -> 404
+    resp_bad_match = client.get("/api/teams/2311/attack-zones?match_id=999999999")
+    assert resp_bad_match.status_code == 404
+
+    # Invalid mode regex validation -> 422
+    resp_bad_mode = client.get("/api/teams/2311/attack-zones?mode=invalid")
+    assert resp_bad_mode.status_code == 422
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
 
 
 

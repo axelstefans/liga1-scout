@@ -1149,4 +1149,358 @@ def get_team_shot_map(
         return _get_team_shot_map_impl(db, team_id, tournament, match_id, mode)
 
 
+def _is_in_penalty_box(x: Optional[float], y: Optional[float]) -> bool:
+    """Check if spatial point (x, y) is inside the opponent 18-yard box."""
+    if x is None or y is None:
+        return False
+    return float(x) >= 83.5 and 21.1 <= float(y) <= 78.9
+
+
+def _get_tactical_channel_id(y: Optional[float]) -> str:
+    """Map lateral coordinate y (0-100) to one of the 5 standard tactical channels."""
+    if y is None:
+        return "center"
+    val = float(y)
+    if val < 20.0:
+        return "left_flank"
+    elif val < 40.0:
+        return "left_half_space"
+    elif val < 60.0:
+        return "center"
+    elif val < 80.0:
+        return "right_half_space"
+    else:
+        return "right_flank"
+
+
+def _get_team_attack_zones_impl(
+    db: sqlite3.Connection,
+    team_id: int,
+    tournament: str = "all",
+    match_id: Optional[int] = None,
+    mode: str = "for"
+) -> Optional[Dict[str, Any]]:
+    """Internal implementation for Attack & Threat Infiltration Zones."""
+    team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
+    if not team_row:
+        return None
+    team_name = team_row["name"]
+
+    norm_mode = mode.lower().strip() if mode else "for"
+    if norm_mode not in ("for", "against"):
+        norm_mode = "for"
+
+    # Match scoping
+    if match_id is not None:
+        match_row = db.execute("""
+            SELECT match_id, match_date, home_team_id, away_team_id,
+                   CASE WHEN strftime('%m', match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END as tournament
+            FROM matches
+            WHERE match_id = ? AND (home_team_id = ? OR away_team_id = ?) AND status = 'played'
+              AND (season_id = 88529 OR strftime('%Y', match_date) = '2026')
+        """, (match_id, team_id, team_id)).fetchone()
+        if not match_row:
+            return None
+        scope_tournament = match_row["tournament"]
+        scope_match_id = match_id
+        match_ids = [match_id]
+    else:
+        tourn_clause = ""
+        params: List[Any] = [team_id, team_id]
+        normalized_tourn = "all"
+        if tournament and tournament.strip().lower() in ("apertura", "clausura"):
+            normalized_tourn = "Apertura" if tournament.strip().lower() == "apertura" else "Clausura"
+            tourn_clause = "AND CASE WHEN strftime('%m', match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+            params.append(normalized_tourn)
+
+        scope_tournament = normalized_tourn
+        scope_match_id = None
+
+        m_rows = db.execute(f"""
+            SELECT match_id
+            FROM matches
+            WHERE (home_team_id = ? OR away_team_id = ?)
+              AND status = 'played'
+              AND (season_id = 88529 OR strftime('%Y', match_date) = '2026')
+              {tourn_clause}
+        """, params).fetchall()
+        match_ids = [r["match_id"] for r in m_rows]
+
+    CHANNELS_META = [
+        {"channel_id": "left_flank", "channel_name": "Banda Izquierda"},
+        {"channel_id": "left_half_space", "channel_name": "Medio-Espacio Izquierdo"},
+        {"channel_id": "center", "channel_name": "Carril Central"},
+        {"channel_id": "right_half_space", "channel_name": "Medio-Espacio Derecho"},
+        {"channel_id": "right_flank", "channel_name": "Banda Derecha"},
+    ]
+
+    if not match_ids:
+        empty_channels = [
+            {
+                "channel_id": meta["channel_id"],
+                "channel_name": meta["channel_name"],
+                "entries_count": 0,
+                "share_pct": 0.0,
+                "box_infiltrations": 0,
+                "threat_xg": 0.0,
+                "threat_pct": 0.0,
+                "top_players": []
+            }
+            for meta in CHANNELS_META
+        ]
+        summary = {
+            "total_entries": 0,
+            "box_entries_total": 0,
+            "box_entry_conversion_pct": 0.0,
+            "dominant_channel": "center",
+            "most_dangerous_channel": "center"
+        }
+        return {
+            "team_id": team_id,
+            "team_name": team_name,
+            "mode": norm_mode,
+            "tournament": scope_tournament,
+            "match_id": scope_match_id,
+            "total_entries": 0,
+            "box_entries_total": 0,
+            "box_entry_conversion_pct": 0.0,
+            "dominant_channel": "center",
+            "most_dangerous_channel": "center",
+            "summary": summary,
+            "channels": empty_channels
+        }
+
+    placeholders = ",".join("?" * len(match_ids))
+    team_op = "= ?" if norm_mode == "for" else "!= ?"
+
+    # 1. Passes
+    passes_query = f"""
+        SELECT 
+            pp.player_id,
+            p.name as player_name,
+            pp.x_start,
+            pp.y_start,
+            pp.x_end,
+            pp.y_end
+        FROM player_passes pp
+        JOIN player_match_stats pms ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
+        JOIN players p ON pp.player_id = p.player_id
+        WHERE pp.match_id IN ({placeholders})
+          AND pms.team_id {team_op}
+          AND pp.is_successful = 1
+          AND pp.x_start IS NOT NULL AND pp.x_end IS NOT NULL
+          AND pp.y_start IS NOT NULL AND pp.y_end IS NOT NULL
+    """
+    passes_rows = db.execute(passes_query, match_ids + [team_id]).fetchall()
+
+    # 2. Ball carries
+    carries_query = f"""
+        SELECT 
+            pbc.player_id,
+            p.name as player_name,
+            pbc.x_start,
+            pbc.y_start,
+            pbc.x_end,
+            pbc.y_end
+        FROM player_ball_carries pbc
+        JOIN player_match_stats pms ON pbc.match_id = pms.match_id AND pbc.player_id = pms.player_id
+        JOIN players p ON pbc.player_id = p.player_id
+        WHERE pbc.match_id IN ({placeholders})
+          AND pms.team_id {team_op}
+          AND pbc.x_start IS NOT NULL AND pbc.x_end IS NOT NULL
+          AND pbc.y_start IS NOT NULL AND pbc.y_end IS NOT NULL
+    """
+    carries_rows = db.execute(carries_query, match_ids + [team_id]).fetchall()
+
+    # 3. Dribbles / take-ons in attacking final third (x >= 65.0)
+    dribbles_query = f"""
+        SELECT 
+            pd.player_id,
+            p.name as player_name,
+            pd.x,
+            pd.y
+        FROM player_dribbles pd
+        JOIN player_match_stats pms ON pd.match_id = pms.match_id AND pd.player_id = pms.player_id
+        JOIN players p ON pd.player_id = p.player_id
+        WHERE pd.match_id IN ({placeholders})
+          AND pms.team_id {team_op}
+          AND pd.is_successful = 1
+          AND pd.x >= 65.0
+          AND pd.y IS NOT NULL
+    """
+    dribbles_rows = db.execute(dribbles_query, match_ids + [team_id]).fetchall()
+
+    # 4. Shots and threat xG
+    shot_team_cond = (
+        "AND (CASE WHEN ps.is_home = 1 THEN m.home_team_id ELSE m.away_team_id END) = ?"
+        if norm_mode == "for"
+        else "AND (CASE WHEN ps.is_home = 1 THEN m.away_team_id ELSE m.home_team_id END) = ?"
+    )
+    shots_query = f"""
+        SELECT 
+            ps.shot_id,
+            ps.player_id,
+            p.name as player_name,
+            ps.coord_x,
+            ps.coord_y,
+            COALESCE(psx.calculated_xg, 0.0) as xg
+        FROM player_shots ps
+        JOIN matches m ON ps.match_id = m.match_id
+        LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
+        LEFT JOIN players p ON ps.player_id = p.player_id
+        WHERE ps.match_id IN ({placeholders})
+          {shot_team_cond}
+    """
+    shots_rows = db.execute(shots_query, match_ids + [team_id]).fetchall()
+
+    # Aggregations per channel
+    entries_by_channel = defaultdict(int)
+    box_by_channel = defaultdict(int)
+    xg_by_channel = defaultdict(float)
+    player_actions_by_channel = defaultdict(lambda: defaultdict(int))
+
+    # Process passes and carries
+    for row in list(passes_rows) + list(carries_rows):
+        x_s, y_s = float(row["x_start"]), float(row["y_start"])
+        x_e, y_e = float(row["x_end"]), float(row["y_end"])
+        player_name = row["player_name"] or "Jugador"
+
+        enters_final_third = (x_s < 65.0 and x_e >= 65.0)
+        enters_box = (not _is_in_penalty_box(x_s, y_s) and _is_in_penalty_box(x_e, y_e))
+
+        if enters_final_third or enters_box:
+            ch = _get_tactical_channel_id(y_s)
+            entries_by_channel[ch] += 1
+            player_actions_by_channel[ch][player_name] += 1
+
+        if enters_box:
+            ch = _get_tactical_channel_id(y_s)
+            box_by_channel[ch] += 1
+
+    # Process dribbles / take-ons
+    for row in dribbles_rows:
+        y_val = float(row["y"])
+        ch = _get_tactical_channel_id(y_val)
+        player_name = row["player_name"] or "Jugador"
+        player_actions_by_channel[ch][player_name] += 1
+
+    # Process shots
+    for row in shots_rows:
+        y_val = float(row["coord_y"]) if row["coord_y"] is not None else 50.0
+        ch = _get_tactical_channel_id(y_val)
+        xg = float(row["xg"])
+        xg_by_channel[ch] += xg
+        player_name = row["player_name"] or "Jugador"
+        player_actions_by_channel[ch][player_name] += 1
+
+    total_entries = sum(entries_by_channel.values())
+    box_entries_total = sum(box_by_channel.values())
+    total_threat_xg = round(sum(xg_by_channel.values()), 3)
+
+    channels_data = []
+    for meta in CHANNELS_META:
+        cid = meta["channel_id"]
+        cname = meta["channel_name"]
+
+        e_count = entries_by_channel[cid]
+        b_count = box_by_channel[cid]
+        c_xg = round(xg_by_channel[cid], 3)
+
+        share_pct = round((e_count / total_entries * 100.0), 1) if total_entries > 0 else 0.0
+        threat_pct = round((c_xg / total_threat_xg * 100.0), 1) if total_threat_xg > 0 else 0.0
+
+        sorted_players = sorted(
+            player_actions_by_channel[cid].items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:2]
+        top_players = [{"name": name, "actions_count": count} for name, count in sorted_players]
+
+        channels_data.append({
+            "channel_id": cid,
+            "channel_name": cname,
+            "entries_count": e_count,
+            "share_pct": share_pct,
+            "box_infiltrations": b_count,
+            "threat_xg": c_xg,
+            "threat_pct": threat_pct,
+            "top_players": top_players
+        })
+
+    box_entry_conversion_pct = (
+        round((box_entries_total / total_entries) * 100.0, 1) if total_entries > 0 else 0.0
+    )
+
+    dominant_channel = max(channels_data, key=lambda c: (c["entries_count"], c["box_infiltrations"]))["channel_id"]
+    most_dangerous_channel = max(channels_data, key=lambda c: (c["threat_xg"], c["entries_count"]))["channel_id"]
+
+    summary = {
+        "total_entries": total_entries,
+        "box_entries_total": box_entries_total,
+        "box_entry_conversion_pct": box_entry_conversion_pct,
+        "dominant_channel": dominant_channel,
+        "most_dangerous_channel": most_dangerous_channel
+    }
+
+    return {
+        "team_id": team_id,
+        "team_name": team_name,
+        "mode": norm_mode,
+        "tournament": scope_tournament,
+        "match_id": scope_match_id,
+        "total_entries": total_entries,
+        "box_entries_total": box_entries_total,
+        "box_entry_conversion_pct": box_entry_conversion_pct,
+        "dominant_channel": dominant_channel,
+        "most_dangerous_channel": most_dangerous_channel,
+        "summary": summary,
+        "channels": channels_data
+    }
+
+
+def get_team_attack_zones(
+    db: Any,
+    team_id: Optional[int] = None,
+    tournament: str = "all",
+    match_id: Optional[int] = None,
+    mode: str = "for"
+) -> Optional[Dict[str, Any]]:
+    """
+    Calculate and aggregate Attack & Threat Infiltration Zones for a team in the 2026 season.
+
+    Supports both signatures:
+    - get_team_attack_zones(db, team_id, tournament='all', match_id=None, mode='for')
+    - get_team_attack_zones(team_id, tournament='all', match_id=None, mode='for')
+    """
+    if isinstance(db, int):
+        actual_team_id = db
+        actual_tournament = tournament
+        actual_match_id = match_id
+        actual_mode = mode
+
+        if isinstance(team_id, str):
+            if team_id.lower() in ("for", "against"):
+                actual_mode = team_id
+            elif team_id.lower() in ("all", "apertura", "clausura"):
+                actual_tournament = team_id
+        elif isinstance(team_id, int):
+            actual_match_id = team_id
+
+        if isinstance(tournament, int):
+            actual_match_id = tournament
+        elif isinstance(tournament, str) and tournament.lower() in ("for", "against"):
+            actual_mode = tournament
+
+        if isinstance(match_id, str) and match_id.lower() in ("for", "against"):
+            actual_mode = match_id
+
+        from ..core.config import settings
+        with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as local_db:
+            local_db.row_factory = sqlite3.Row
+            return _get_team_attack_zones_impl(local_db, actual_team_id, actual_tournament, actual_match_id, actual_mode)
+    else:
+        return _get_team_attack_zones_impl(db, team_id, tournament, match_id, mode)
+
+
+
 

@@ -6,7 +6,7 @@ from ..core.database import get_db
 from ..schemas.team import (
     RosterPlayer, TeamNextMatch, TeamProfile, TeamMetricEntry, 
     TeamShotZonesResponse, TeamPassNetworkResponse, TeamMatchItem,
-    TeamDefensiveActionsResponse, TeamShotMapResponse
+    TeamDefensiveActionsResponse, TeamShotMapResponse, TeamAttackZonesResponse
 )
 from ..repositories import team_repo
 
@@ -111,5 +111,24 @@ def get_team_shot_map(
             detail=f"Team {team_id} not found or match {match_id} not found for this team"
         )
     return data
+
+
+@router.get("/{team_id}/attack-zones", response_model=TeamAttackZonesResponse)
+def get_team_attack_zones(
+    team_id: int,
+    tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    match_id: Optional[int] = Query(None, description="Filter by a specific fixture match_id"),
+    mode: str = Query("for", pattern="^(for|against)$", description="Mode: 'for' (actions performed) or 'against' (actions conceded)"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get attack & threat infiltration zones per channel and summary metrics."""
+    data = team_repo.get_team_attack_zones(db, team_id, tournament=tournament, match_id=match_id, mode=mode)
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Team {team_id} not found or match {match_id} not found for this team"
+        )
+    return data
+
 
 

@@ -9,6 +9,7 @@ import TeamTacticalRadar from '../components/analytics/TeamTacticalRadar';
 import TeamPassNetwork from '../components/analytics/TeamPassNetwork';
 import TeamDefensiveTerritory from '../components/analytics/TeamDefensiveTerritory';
 import TeamShotMap from '../components/analytics/TeamShotMap';
+import TeamAttackZones from '../components/analytics/TeamAttackZones';
 
 type TournamentFilter = 'all' | 'Apertura' | 'Clausura';
 
@@ -16,7 +17,7 @@ export const ClubDetailAnalytics: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
 
-  const [selectedTournament, setSelectedTournament] = useState<TournamentFilter>('all');
+  const [selectedTournament, setSelectedTournament] = useState<TournamentFilter>('Clausura');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(
     id ? parseInt(id, 10) : null
   );
@@ -224,6 +225,11 @@ export const ClubDetailAnalytics: React.FC = () => {
               tournament={selectedTournament}
             />
             <TeamShotMap
+              teams={teams}
+              activeTeam={activeTeam}
+              tournament={selectedTournament}
+            />
+            <TeamAttackZones
               teams={teams}
               activeTeam={activeTeam}
               tournament={selectedTournament}

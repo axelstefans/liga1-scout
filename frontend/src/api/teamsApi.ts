@@ -5,7 +5,11 @@ import {
   TeamDefensiveActionsResponse,
   ShotItem,
   ShotMapSummary,
-  TeamShotMapResponse
+  TeamShotMapResponse,
+  AttackZoneTopPlayer,
+  AttackZoneChannel,
+  AttackZonesSummary,
+  TeamAttackZonesResponse
 } from '../services/api';
 
 export type { 
@@ -14,8 +18,12 @@ export type {
   TeamDefensiveActionsResponse,
   ShotItem,
   ShotMapSummary,
-  TeamShotMapResponse
+  TeamShotMapResponse,
+  AttackZoneTopPlayer,
+  AttackZoneChannel,
+  AttackZonesSummary,
+  TeamAttackZonesResponse
 };
+export const getAttackZones = teamsApi.getAttackZones;
 export { teamsApi };
 export default teamsApi;
-

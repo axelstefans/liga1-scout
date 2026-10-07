@@ -225,5 +225,45 @@ class TeamShotMapResponse(BaseModel):
     shots: List[ShotItem]
 
 
+class AttackZoneTopPlayer(BaseModel):
+    name: str
+    actions_count: int
+
+
+class AttackZoneChannel(BaseModel):
+    channel_id: str  # 'left_flank' | 'left_half_space' | 'center' | 'right_half_space' | 'right_flank'
+    channel_name: str
+    entries_count: int
+    share_pct: float
+    box_infiltrations: int
+    threat_xg: float
+    threat_pct: float
+    top_players: List[AttackZoneTopPlayer]
+
+
+class AttackZonesSummary(BaseModel):
+    total_entries: int
+    box_entries_total: int
+    box_entry_conversion_pct: float
+    dominant_channel: str
+    most_dangerous_channel: str
+
+
+class TeamAttackZonesResponse(BaseModel):
+    team_id: int
+    team_name: Optional[str] = None
+    mode: str
+    tournament: str
+    match_id: Optional[int] = None
+    total_entries: int
+    box_entries_total: int
+    box_entry_conversion_pct: float
+    dominant_channel: str
+    most_dangerous_channel: str
+    summary: AttackZonesSummary
+    channels: List[AttackZoneChannel]
+
+
+
 
 
