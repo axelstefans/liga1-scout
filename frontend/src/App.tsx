@@ -61,7 +61,7 @@ function AppContent() {
           </Link>
         </nav>
       </header>
-      <main className={isScouting ? 'flex-grow' : 'flex-grow p-4 md:p-8'}>
+      <main className={isScouting || isClubs ? 'flex-grow' : 'flex-grow p-4 md:p-8'}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/player/:id" element={<PlayerDashboard />} />

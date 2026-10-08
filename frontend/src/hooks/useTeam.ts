@@ -3,7 +3,7 @@ import {
   teamsApi, TeamMetricEntry, TeamShotZonesResponse, 
   TeamPassNetworkResponse, TeamMatchItem, TeamBase,
   TeamDefensiveActionsResponse, TeamShotMapResponse,
-  TeamAttackZonesResponse
+  TeamAttackZonesResponse, TeamPeriodMetricsResponse
 } from '../services/api';
 
 export const useTeamMetrics = (tournament?: 'Apertura' | 'Clausura') => {
@@ -98,6 +98,42 @@ export const useTeamAttackZones = (
   });
 };
 
+export const useTeamMostUsedXI = (
+  teamId?: number,
+  tournament?: 'Apertura' | 'Clausura' | 'all',
+  enabled: boolean = true
+) => {
+  return useQuery({
+    queryKey: ['teamMostUsedXI', teamId, tournament || 'all'],
+    queryFn: () => teamsApi.getMostUsedXI(teamId!, tournament),
+    enabled: Boolean(teamId) && enabled,
+    staleTime: 1000 * 60 * 10,
+  });
+};
 
+export const useTeamGoalContributions = (
+  teamId?: number,
+  tournament?: 'Apertura' | 'Clausura' | 'all',
+  limit: number = 8,
+  enabled: boolean = true
+) => {
+  return useQuery({
+    queryKey: ['teamGoalContributions', teamId, tournament || 'all', limit],
+    queryFn: () => teamsApi.getGoalContributions(teamId!, tournament, limit),
+    enabled: Boolean(teamId) && enabled,
+    staleTime: 1000 * 60 * 10,
+  });
+};
 
-
+export const useTeamPeriodMetrics = (
+  teamId?: number,
+  tournament?: 'Apertura' | 'Clausura' | 'all',
+  enabled: boolean = true
+) => {
+  return useQuery<TeamPeriodMetricsResponse>({
+    queryKey: ['teamPeriodMetrics', teamId, tournament || 'all'],
+    queryFn: () => teamsApi.getPeriodMetrics(teamId!, tournament),
+    enabled: Boolean(teamId) && enabled,
+    staleTime: 1000 * 60 * 10,
+  });
+};

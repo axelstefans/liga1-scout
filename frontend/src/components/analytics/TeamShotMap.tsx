@@ -8,9 +8,13 @@ import { TeamMetricEntry, ShotItem } from '../../services/api';
 import { useTeamShotMap, useTeamMatches } from '../../hooks/useTeam';
 
 export interface TeamShotMapProps {
-  teams: TeamMetricEntry[];
+  teams?: TeamMetricEntry[];
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  mode?: ShotMode;
+  viewMode?: 'cumulative' | 'match';
+  selectedMatchId?: number | null;
+  selectedPlayer?: string;
 }
 
 type ShotMode = 'for' | 'against';
@@ -130,15 +134,19 @@ function getShotRadius(xg: number, isCumulative: boolean): number {
 export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   activeTeam,
   tournament = 'all',
+  mode: propMode,
+  viewMode: propViewMode,
+  selectedMatchId: propSelectedMatchId,
+  selectedPlayer: propSelectedPlayer,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [mode, setMode] = useState<ShotMode>('for');
-  const [viewMode, setViewMode] = useState<'cumulative' | 'match'>('cumulative');
-  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
+  const [internalMode, setInternalMode] = useState<ShotMode>('for');
+  const [internalViewMode, setInternalViewMode] = useState<'cumulative' | 'match'>('cumulative');
+  const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number | null>(null);
   const [resultFilter, setResultFilter] = useState<ResultFilterType>('all');
-  const [selectedPlayer, setSelectedPlayer] = useState<string>('all');
+  const [internalSelectedPlayer, setInternalSelectedPlayer] = useState<string>('all');
   const [hoveredShot, setHoveredShot] = useState<ShotItem | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{
     x: number;
@@ -148,21 +156,39 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
     svgY: number;
   } | null>(null);
 
+  const mode = propMode ?? internalMode;
+  const viewMode = propViewMode ?? internalViewMode;
+  const selectedMatchId = propSelectedMatchId !== undefined ? propSelectedMatchId : internalSelectedMatchId;
+  const selectedPlayer = propSelectedPlayer ?? internalSelectedPlayer;
+
+  // Helper setters that safely update state when uncontrolled
+  const handleSetSelectedMatchId = (val: number | null) => {
+    if (propSelectedMatchId === undefined) {
+      setInternalSelectedMatchId(val);
+    }
+  };
+
+  const handleSetSelectedPlayer = (val: string) => {
+    if (propSelectedPlayer === undefined) {
+      setInternalSelectedPlayer(val);
+    }
+  };
+
   // Matches list for the active team & tournament
   const { data: matches, isLoading: isLoadingMatches } = useTeamMatches(
-    activeTeam.team_id,
+    activeTeam?.team_id,
     tournament
   );
 
   // Reset match & player selection when active club or tournament changes
   useEffect(() => {
-    setSelectedMatchId(null);
-    setSelectedPlayer('all');
-  }, [activeTeam.team_id, tournament]);
+    handleSetSelectedMatchId(null);
+    handleSetSelectedPlayer('all');
+  }, [activeTeam?.team_id, tournament]);
 
   // Reset player filter when mode or match changes
   useEffect(() => {
-    setSelectedPlayer('all');
+    handleSetSelectedPlayer('all');
   }, [mode, selectedMatchId]);
 
   // Check if selected match belongs to currently loaded matches
@@ -176,7 +202,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   useEffect(() => {
     if (viewMode === 'match' && matches && matches.length > 0) {
       if (!selectedMatchId || !matches.some((m) => m.match_id === selectedMatchId)) {
-        setSelectedMatchId(matches[0].match_id);
+        handleSetSelectedMatchId(matches[0].match_id);
       }
     }
   }, [viewMode, matches, selectedMatchId]);
@@ -190,7 +216,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
 
   // Fetch Shot Map data from API
   const { data, isLoading, isError, error, refetch } = useTeamShotMap(
-    activeTeam.team_id,
+    activeTeam?.team_id,
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     mode,
@@ -598,124 +624,25 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   return (
     <div
       ref={cardRef}
-      className="lg:col-span-2 bg-white border border-slate-200/80 rounded-xl shadow-xs p-4 sm:p-5 flex flex-col justify-between transition-all"
+      className="flex flex-col justify-between h-full min-h-[650px] bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4 relative select-none transition-all"
     >
       {/* 1. Header & Controls */}
-      <div className="flex flex-col gap-3 pb-3 border-b border-slate-100">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col gap-2.5 pb-2.5 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           {/* Title Header */}
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
               <Target className="w-4 h-4 text-slate-700" />
               Mapa de Tiros y Calidad (xG)
             </h3>
-            <span className="text-xs text-slate-400 font-normal">
-              • {mode === 'for' ? 'Ofensivo (A Favor)' : 'Defensivo (Concedidos)'}
-            </span>
           </div>
 
-          {/* Controls: Mode Toggle, Scope Toggle & Match Selector */}
-          <div className="flex flex-wrap items-center gap-2 export-ignore">
-            {/* Shot Direction Toggle: A Favor / Concedidos */}
-            <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200/70 text-xs">
-              <button
-                type="button"
-                onClick={() => setMode('for')}
-                className={`px-2.5 py-1 font-semibold rounded-md transition-all cursor-pointer ${
-                  mode === 'for'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                A Favor
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('against')}
-                className={`px-2.5 py-1 font-semibold rounded-md transition-all cursor-pointer ${
-                  mode === 'against'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                Concedidos
-              </button>
-            </div>
-
-            {/* Scope Toggle: Acumulado / Por Partido */}
-            <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200/70 text-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('cumulative')}
-                className={`px-2.5 py-1 font-semibold rounded-md transition-all cursor-pointer ${
-                  viewMode === 'cumulative'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                Acumulado
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('match')}
-                className={`px-2.5 py-1 font-semibold rounded-md transition-all cursor-pointer ${
-                  viewMode === 'match'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                Por Partido
-              </button>
-            </div>
-
-            {/* Match Dropdown */}
-            {viewMode === 'match' && (
-              <div className="relative">
-                <select
-                  value={selectedMatchId ?? ''}
-                  onChange={(e) => setSelectedMatchId(Number(e.target.value))}
-                  disabled={isLoadingMatches || !matches || matches.length === 0}
-                  className="appearance-none pl-2.5 pr-7 py-1 text-xs font-semibold bg-white border border-slate-200 rounded-lg text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer disabled:opacity-50"
-                >
-                  {isLoadingMatches ? (
-                    <option value="">Cargando partidos...</option>
-                  ) : !matches || matches.length === 0 ? (
-                    <option value="">Sin partidos jugados</option>
-                  ) : (
-                    matches.map((m) => {
-                      const roundPrefix = m.round ? `F${m.round} ` : '';
-                      const venue = m.is_home ? 'Local' : 'Visita';
-                      const score =
-                        m.team_score !== null &&
-                        m.team_score !== undefined &&
-                        m.opponent_score !== null &&
-                        m.opponent_score !== undefined
-                          ? ` · ${m.team_score}-${m.opponent_score}`
-                          : '';
-                      return (
-                        <option key={m.match_id} value={m.match_id}>
-                          {roundPrefix}vs {m.opponent_name} · {venue}{score}
-                        </option>
-                      );
-                    })
-                  )}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Filter Row: Result Chips & Player Filter Dropdown */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 export-ignore">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-slate-400 mr-1 uppercase tracking-wider">
-              Filtrar:
-            </span>
+          {/* Filter Row: Result Chips */}
+          <div className="flex flex-wrap items-center gap-1.5 export-ignore">
             <button
               type="button"
               onClick={() => setResultFilter('all')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                 resultFilter === 'all'
                   ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -728,7 +655,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
             <button
               type="button"
               onClick={() => setResultFilter('goal')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                 resultFilter === 'goal'
                   ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                   : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
@@ -742,7 +669,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
             <button
               type="button"
               onClick={() => setResultFilter('saved')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                 resultFilter === 'saved'
                   ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                   : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
@@ -756,7 +683,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
             <button
               type="button"
               onClick={() => setResultFilter('blocked')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                 resultFilter === 'blocked'
                   ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
                   : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
@@ -770,7 +697,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
             <button
               type="button"
               onClick={() => setResultFilter('miss')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                 resultFilter === 'miss'
                   ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
                   : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
@@ -781,118 +708,64 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
               <span className="text-[10px] opacity-75">({counts.miss})</span>
             </button>
           </div>
-
-          {/* Player Filter Dropdown */}
-          {uniquePlayers.length > 0 && (
-            <div className="relative flex items-center">
-              <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
-              <select
-                value={selectedPlayer}
-                onChange={(e) => setSelectedPlayer(e.target.value)}
-                className="appearance-none pl-7 pr-7 py-1 text-xs font-semibold bg-white border border-slate-200 rounded-lg text-slate-800 shadow-xs hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer max-w-[210px] truncate"
-              >
-                <option value="all">
-                  {mode === 'against'
-                    ? `Rivales (${uniquePlayers.length})`
-                    : `Plantel (${uniquePlayers.length})`}
-                </option>
-                {uniquePlayers.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name} ({p.count} tiros)
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          )}
         </div>
 
-        {/* Streamlined Editorial Metrics Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-lg text-xs">
-          {/* 1. Remates Totales */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Remates Totales:</span>
-            <span className="font-bold text-slate-900 text-sm">{activeSummary.total_shots}</span>
+        {/* Clean Single-Row KPI Summary Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-lg text-xs">
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500 font-medium">Remates:</span>
+            <span className="font-bold text-slate-900">{activeSummary?.total_shots ?? 0}</span>
           </div>
-          <span className="text-slate-200 hidden sm:inline">|</span>
+          <span className="text-slate-300">•</span>
 
-          {/* 2. Goles / Goles Concedidos */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">
-              {mode === 'against' ? 'Goles Concedidos:' : 'Goles:'}
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500 font-medium">{mode === 'against' ? 'GC:' : 'Goles:'}</span>
+            <span className="font-bold text-slate-900">{activeSummary?.goals ?? 0}</span>
+          </div>
+          <span className="text-slate-300">•</span>
+
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500 font-medium">{mode === 'against' ? 'xGA:' : 'xG:'}</span>
+            <span className="font-bold text-slate-900">{(activeSummary?.total_xg ?? 0).toFixed(2)}</span>
+          </div>
+          <span className="text-slate-300">•</span>
+
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500 font-medium">Dif:</span>
+            <span
+              className={`font-bold ${
+                mode === 'against'
+                  ? (activeSummary?.xg_difference ?? 0) > 0
+                    ? 'text-rose-700'
+                    : 'text-emerald-700'
+                  : (activeSummary?.xg_difference ?? 0) > 0
+                  ? 'text-emerald-700'
+                  : (activeSummary?.xg_difference ?? 0) < 0
+                  ? 'text-rose-700'
+                  : 'text-slate-700'
+              }`}
+            >
+              {(activeSummary?.xg_difference ?? 0) > 0 ? '+' : ''}
+              {(activeSummary?.xg_difference ?? 0).toFixed(2)}
             </span>
-            <span className="font-bold text-slate-900 text-sm">{activeSummary.goals}</span>
           </div>
-          <span className="text-slate-200 hidden sm:inline">|</span>
+          <span className="text-slate-300 hidden sm:inline">•</span>
 
-          {/* 3. xG Total / xGA Concedido */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">
-              {mode === 'against' ? 'xGA Concedido:' : 'xG Total:'}
-            </span>
-            <span className="font-bold text-slate-900 text-sm">{activeSummary.total_xg.toFixed(2)}</span>
+          <div className="hidden sm:flex items-center gap-1">
+            <span className="text-slate-500 font-medium">xG/Tiro:</span>
+            <span className="font-semibold text-slate-800">{(activeSummary?.xg_per_shot ?? 0).toFixed(2)}</span>
           </div>
-          <span className="text-slate-200 hidden sm:inline">|</span>
+          <span className="text-slate-300 hidden sm:inline">•</span>
 
-          {/* 4. xG / Tiro / xGA / Tiro */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">
-              {mode === 'against' ? 'xGA / Tiro:' : 'xG / Tiro:'}
-            </span>
-            <span className="font-bold text-slate-900 text-sm">{activeSummary.xg_per_shot.toFixed(2)}</span>
-          </div>
-          <span className="text-slate-200 hidden sm:inline">|</span>
-
-          {/* 5. % a puerta */}
-          <div className="flex items-center gap-1.5" title="Remates a puerta = Goles + Atajados">
+          <div className="hidden sm:flex items-center gap-1">
             <span className="text-slate-500 font-medium">% a puerta:</span>
-            <span className="font-bold text-slate-900 text-sm">{activeSummary.on_target_pct}%</span>
-          </div>
-          <span className="text-slate-200 hidden sm:inline">|</span>
-
-          {/* 6. ΔxG Rendimiento with Polarity Logic */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">
-              {mode === 'against' ? 'ΔxGA Rendimiento:' : 'ΔxG Rendimiento:'}
-            </span>
-            {isCumulative ? (
-              <span
-                className={`font-bold text-xs px-2 py-0.5 rounded-full border ${
-                  mode === 'against'
-                    ? activeSummary.xg_difference > 0
-                      ? 'text-rose-700 bg-rose-50 border-rose-200'
-                      : 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                    : activeSummary.xg_difference > 0
-                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                    : activeSummary.xg_difference < 0
-                    ? 'text-rose-700 bg-rose-50 border-rose-200'
-                    : 'text-slate-700 bg-slate-100 border-slate-200'
-                }`}
-              >
-                {activeSummary.xg_difference > 0 ? '+' : ''}
-                {activeSummary.xg_difference.toFixed(2)} (Acumulado)
-              </span>
-            ) : (
-              <span
-                title={
-                  mode === 'against'
-                    ? activeSummary.xg_difference > 0
-                      ? 'Concedió más goles de lo esperado según xGA rival (varianza de 90 min).'
-                      : 'Solidez o atajadas clave frente al xGA rival (varianza de 90 min).'
-                    : 'En muestras de un solo partido, el ΔxG puntual no constituye tendencia.'
-                }
-                className="font-semibold text-xs text-slate-600 cursor-help underline decoration-dotted decoration-slate-400"
-              >
-                {activeSummary.xg_difference > 0 ? '+' : ''}
-                {activeSummary.xg_difference.toFixed(2)}
-              </span>
-            )}
+            <span className="font-semibold text-slate-800">{activeSummary?.on_target_pct ?? 0}%</span>
           </div>
         </div>
       </div>
 
       {/* 2. Vertical Attacking Pitch Canvas & Shot Markers */}
-      <div className="relative w-full flex items-center justify-center my-auto py-2">
+      <div className="flex-1 flex items-center justify-center min-h-[460px] lg:min-h-[500px] w-full overflow-hidden relative my-auto py-1">
         {showLoading ? (
           <div className="flex flex-col items-center justify-center py-28 w-full">
             <Loader2 className="w-8 h-8 text-slate-400 animate-spin mb-2" />
@@ -921,10 +794,10 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
             No se registraron tiros para este club en el periodo seleccionado.
           </div>
         ) : (
-          <div className="relative w-full max-w-[500px] flex flex-col items-center">
+          <div className="relative w-full h-full flex flex-col items-center justify-center">
             <svg
               viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-              className="w-full h-auto overflow-visible select-none rounded-lg"
+              className="max-h-[480px] w-auto mx-auto overflow-visible select-none rounded-lg"
             >
               <defs>
                 <filter id="shotGoalHalo" x="-50%" y="-50%" width="200%" height="200%">
@@ -1232,7 +1105,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
       })()}
 
       {/* 5. Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs text-slate-500">
+      <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <span className="font-medium text-slate-400">Liga 1 Scout | Datos Oficiales</span>
 
         {/* Action Buttons: Copiar Resumen & Exportar PNG */}

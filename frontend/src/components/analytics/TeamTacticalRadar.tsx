@@ -119,7 +119,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
 
   // Active club styling
   const teamColor = useMemo(
-    () => getTeamThemeColor(activeTeam.name, activeTeam.primary_color),
+    () => activeTeam ? getTeamThemeColor(activeTeam.name, activeTeam.primary_color) : '#0284c7',
     [activeTeam]
   );
 
@@ -133,7 +133,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
 
   // Calculate cohort percentiles and SVG coordinate layout
   const computedDimensions = useMemo<DimensionComputed[]>(() => {
-    if (!teams || teams.length === 0) return [];
+    if (!teams || teams.length === 0 || !activeTeam) return [];
 
     return TACTICAL_DIMENSIONS.map((dim, i) => {
       // 1. Extract values for all teams
@@ -262,7 +262,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
   return (
     <div
       ref={cardRef}
-      className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-5 sm:p-6 relative select-none flex flex-col justify-between"
+      className="flex flex-col justify-between h-full min-h-[650px] bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4 relative select-none"
     >
       {/* Card Header Strip */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-100">
@@ -293,10 +293,10 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
       </div>
 
       {/* Radar SVG Canvas */}
-      <div className="relative w-full flex items-center justify-center overflow-visible">
+      <div className="flex-1 flex items-center justify-center min-h-[460px] lg:min-h-[500px] w-full overflow-hidden relative my-auto">
         <svg
           viewBox="0 0 640 530"
-          className="w-full max-w-[620px] h-auto overflow-visible select-none"
+          className="max-h-[480px] w-auto mx-auto overflow-visible select-none"
         >
           {/* Concentric Guideline Octagons */}
           {/* 25% Ring */}
@@ -527,7 +527,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
       </div>
 
       {/* Tactical Diagnostic Strip below Radar */}
-      <div className="mt-2 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 font-normal">
+      <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 font-normal">
         <div className="flex items-center gap-1.5">
           <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <span>Línea segmentada central = P50 (Mediana de la liga). Los percentiles van de P0 (mínimo) a P100 (líder).</span>

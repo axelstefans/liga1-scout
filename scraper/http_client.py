@@ -63,10 +63,20 @@ class SofaScoreAPIClient:
         endpoint = f"api/v1/event/{event_id}/player/{player_id}/rating-breakdown"
         return self._polite_get(endpoint)
 
+    def get_match_statistics(self, match_id: int) -> dict:
+        """Fetch period-by-period team stats (ALL, 1ST, 2ND) including corners, fouls."""
+        endpoint = f"api/v1/event/{match_id}/statistics"
+        return self._polite_get(endpoint)
+
+    def get_match_incidents(self, match_id: int) -> dict:
+        """Fetch chronological events (goals with minute/addedTime, cards, substitutions)."""
+        endpoint = f"api/v1/event/{match_id}/incidents"
+        return self._polite_get(endpoint)
+
     def close(self):
         """Closes the underlying browser if needed."""
-        if hasattr(self.sofascore, 'driver') and self.sofascore.driver:
+        if hasattr(self.sofascore, 'close'):
             try:
-                self.sofascore.driver.quit()
+                self.sofascore.close()
             except Exception:
                 pass

@@ -620,8 +620,157 @@ export const teamsApi = {
       : `/teams/${teamId}/attack-zones`;
     const response = await apiClient.get(url);
     return response.data;
+  },
+  getMostUsedXI: async (
+    teamId: number,
+    tournament?: 'Apertura' | 'Clausura' | 'all'
+  ): Promise<MostUsedXIResponse> => {
+    const url = tournament && tournament !== 'all'
+      ? `/teams/${teamId}/most-used-xi?tournament=${tournament}`
+      : `/teams/${teamId}/most-used-xi`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getGoalContributions: async (
+    teamId: number,
+    tournament?: 'Apertura' | 'Clausura' | 'all',
+    limit: number = 8
+  ): Promise<GoalContributionsResponse> => {
+    const url = tournament && tournament !== 'all'
+      ? `/teams/${teamId}/goal-contributions?tournament=${tournament}&limit=${limit}`
+      : `/teams/${teamId}/goal-contributions?limit=${limit}`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getPeriodMetrics: async (
+    teamId: number,
+    tournament?: 'Apertura' | 'Clausura' | 'all'
+  ): Promise<TeamPeriodMetricsResponse> => {
+    const url = tournament && tournament !== 'all'
+      ? `/teams/${teamId}/period-metrics?tournament=${tournament}`
+      : `/teams/${teamId}/period-metrics`;
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  getSetPieces: async (
+    teamId: number,
+    tournament?: 'Apertura' | 'Clausura' | 'all'
+  ): Promise<any> => {
+    const url = tournament && tournament !== 'all'
+      ? `/teams/${teamId}/set-pieces?tournament=${tournament}`
+      : `/teams/${teamId}/set-pieces`;
+    const response = await apiClient.get(url);
+    return response.data;
   }
 };
 
+export interface MostUsedXIPlayer {
+  player_id: number;
+  name: string;
+  shirt_number: number | null;
+  position_group: string;
+  age: number | null;
+  appearances: number;
+  minutes_played: number;
+  minutes_pct: number;
+  goals: number;
+  assists: number;
+  goal_contributions: number;
+  avg_x: number;
+  avg_y: number;
+}
 
+export interface MostUsedXIResponse {
+  team_id: number;
+  tournament: string;
+  total_matches: number;
+  max_minutes: number;
+  players: MostUsedXIPlayer[];
+}
 
+export interface GoalContributorItem {
+  player_id: number;
+  name: string;
+  shirt_number: number | null;
+  position_group: string;
+  minutes_played: number;
+  matches_played: number;
+  goals: number;
+  assists: number;
+  actual_total: number;
+  xg: number;
+  xa: number;
+  expected_total: number;
+}
+
+export interface GoalContributionsResponse {
+  team_id: number;
+  tournament: string;
+  contributors: GoalContributorItem[];
+  set_piece_summary: {
+    total_goals: number;
+    corner_goals: number;
+    corner_goals_pct: number;
+    peak_interval: string;
+    peak_goals: number;
+  };
+}
+
+export interface TeamPeriodStatsItem {
+  matches_count: number;
+  avg_corner_kicks: number;
+  avg_fouls: number;
+  avg_possession: number;
+  total_goals: number;
+  avg_goals: number;
+  total_yellow_cards: number;
+  avg_yellow_cards: number;
+  total_red_cards: number;
+  avg_red_cards: number;
+  goals_conceded: number;
+  avg_goals_conceded: number;
+  avg_corners_against?: number;
+  avg_fouls_received?: number;
+  avg_corners_home?: number;
+  avg_corners_away?: number;
+  avg_xg?: number;
+}
+
+export interface TeamSetPieceDetail {
+  corner_goals: number;
+  corner_goals_per_match: number;
+  corner_goals_pct: number;
+  set_piece_shots: number;
+  set_piece_goals: number;
+  set_piece_goals_per_match: number;
+  set_piece_xg: number;
+  set_piece_xg_per_match: number;
+}
+
+export interface GoalIntervalItem {
+  interval: string;
+  goals: number;
+  corner_goals: number;
+  percentage: number;
+}
+
+export interface GoalDistributionDetail {
+  total_goals: number;
+  intervals: GoalIntervalItem[];
+  peak_interval: string;
+  peak_goals: number;
+  peak_pct: number;
+}
+
+export interface TeamPeriodMetricsResponse {
+  team_id: number;
+  tournament: string;
+  matches_count: number;
+  periods: {
+    '1ST': TeamPeriodStatsItem;
+    '2ND': TeamPeriodStatsItem;
+    'ALL': TeamPeriodStatsItem;
+  };
+  set_pieces: TeamSetPieceDetail;
+  goal_distribution: GoalDistributionDetail;
+}

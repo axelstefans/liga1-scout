@@ -6,9 +6,11 @@ import { useTeamDefensiveActions, useTeamMatches } from '../../hooks/useTeam';
 import { getTeamThemeColor } from '../../utils/teams';
 
 export interface TeamDefensiveTerritoryProps {
-  teams: TeamMetricEntry[];
+  teams?: TeamMetricEntry[];
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  viewMode?: 'cumulative' | 'match';
+  selectedMatchId?: number | null;
 }
 
 type ActionFilterType = 'all' | 'tackle' | 'interception' | 'recovery' | 'clearance' | 'blocked_pass' | 'foul';
@@ -249,31 +251,42 @@ function formatPlayerName(fullName: string): string {
 export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
   activeTeam,
   tournament = 'all',
+  viewMode: propViewMode,
+  selectedMatchId: propSelectedMatchId,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState<'cumulative' | 'match'>('cumulative');
-  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
+  const [internalViewMode, setInternalViewMode] = useState<'cumulative' | 'match'>('cumulative');
+  const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number | null>(null);
   const [selectedAction, setSelectedAction] = useState<ActionFilterType>('all');
   const [hoveredEvent, setHoveredEvent] = useState<DefensiveEventItem | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
+  const viewMode = propViewMode ?? internalViewMode;
+  const selectedMatchId = propSelectedMatchId !== undefined ? propSelectedMatchId : internalSelectedMatchId;
+
+  const handleSetSelectedMatchId = (val: number | null) => {
+    if (propSelectedMatchId === undefined) {
+      setInternalSelectedMatchId(val);
+    }
+  };
+
   // Active club theme color
   const teamColor = useMemo(
-    () => getTeamThemeColor(activeTeam.name, activeTeam.primary_color),
+    () => activeTeam ? getTeamThemeColor(activeTeam.name, activeTeam.primary_color) : '#0284c7',
     [activeTeam]
   );
 
   // Matches list for the active team & tournament
   const { data: matches, isLoading: isLoadingMatches } = useTeamMatches(
-    activeTeam.team_id,
+    activeTeam?.team_id,
     tournament
   );
 
   // Reset match selection when active club or tournament changes
   useEffect(() => {
-    setSelectedMatchId(null);
-  }, [activeTeam.team_id, tournament]);
+    handleSetSelectedMatchId(null);
+  }, [activeTeam?.team_id, tournament]);
 
   // Check if selected match belongs to currently loaded matches
   const isMatchValidForTeam = useMemo(() => {
@@ -286,7 +299,7 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
   useEffect(() => {
     if (viewMode === 'match' && matches && matches.length > 0) {
       if (!selectedMatchId || !matches.some((m) => m.match_id === selectedMatchId)) {
-        setSelectedMatchId(matches[0].match_id);
+        handleSetSelectedMatchId(matches[0].match_id);
       }
     }
   }, [viewMode, matches, selectedMatchId]);
@@ -300,7 +313,7 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
 
   // Fetch Defensive Actions data from API
   const { data, isLoading, isError, error, refetch } = useTeamDefensiveActions(
-    activeTeam.team_id,
+    activeTeam?.team_id,
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     isQueryEnabled
@@ -447,7 +460,7 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
   return (
     <div
       ref={cardRef}
-      className="lg:col-span-2 bg-white border border-slate-200/80 rounded-xl shadow-xs p-4 sm:p-5 flex flex-col justify-between transition-all"
+      className="flex flex-col justify-between h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4 relative select-none transition-all"
     >
       {/* 1. Header & Minimalist Framing */}
       <div className="flex flex-col gap-3 pb-3 border-b border-slate-100">

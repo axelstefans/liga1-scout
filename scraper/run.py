@@ -25,6 +25,7 @@ from scraper.sources.spatial import scrape_and_store_spatial_events
 from scraper.sources.shotmap import scrape_and_store_shotmaps
 from scraper.sources.percentiles import compute_and_store_percentiles
 from scraper.sources.heatmap import scrape_and_store_heatmaps
+from scraper.sources.match_period_stats import scrape_and_store_match_period_stats
 
 import LanusStats as ls
 
@@ -43,6 +44,9 @@ def main():
     parser.add_argument("--shotmap-only", action="store_true", help="Run only the shotmap pipeline step")
     parser.add_argument("--percentiles-only", action="store_true", help="Run only the percentiles calculation pipeline step")
     parser.add_argument("--heatmaps-only", action="store_true", help="Run only the heatmaps pipeline step")
+    parser.add_argument("--period-stats-only", action="store_true", help="Run only the match period stats pipeline step")
+    parser.add_argument("--test-mode", action="store_true", help="Run step in test mode (e.g. process only 1 match)")
+    parser.add_argument("--target-match", type=int, help="Optional match ID to target for single match runs")
     parser.add_argument("--full", action="store_true", help="Run the full pipeline")
     
     args = parser.parse_args()
@@ -77,8 +81,10 @@ def main():
     if args.season_stats_only or args.full:
         scrape_and_store_season_stats(conn, api_client)
         
-    if args.matches_only or args.full or args.match_stats_only or args.rematch_stats or args.spatial_only or args.shotmap_only:
+    if args.matches_only or args.full or args.match_stats_only or args.rematch_stats or args.spatial_only or args.shotmap_only or args.period_stats_only:
         matches = scrape_and_store_matches(conn, api_client)
+        if args.target_match:
+            matches = [m for m in matches if m["match_id"] == args.target_match]
         
     if args.rematch_stats:
         logger.info("Clearing existing match stats data for re-scraping...")
@@ -88,6 +94,9 @@ def main():
         
     if args.match_stats_only or args.full:
         scrape_and_store_match_stats(conn, api_client.sofascore, matches)
+
+    if args.period_stats_only or args.full:
+        scrape_and_store_match_period_stats(conn, api_client, matches, test_mode=args.test_mode)
             
     if args.transfermarkt_only or args.full:
         logger.info("Initialising LanusStats Transfermarkt module...")

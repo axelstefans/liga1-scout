@@ -131,4 +131,59 @@ def get_team_attack_zones(
     return data
 
 
+@router.get("/{team_id}/period-metrics")
+def get_team_period_metrics(
+    team_id: int,
+    tournament: Optional[str] = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get team averages and totals grouped by period ('1ST', '2ND', 'ALL')."""
+    profile = team_repo.get_team_profile(db, team_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
+    return team_repo.get_team_period_metrics(db, team_id, tournament=tournament or "all")
+
+
+@router.get("/{team_id}/set-pieces")
+def get_team_set_piece_metrics(
+    team_id: int,
+    tournament: Optional[str] = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get set-piece metrics (corner origin goals and 15-minute goal distribution)."""
+    profile = team_repo.get_team_profile(db, team_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
+    return team_repo.get_team_set_piece_metrics(db, team_id, tournament=tournament or "all")
+
+
+@router.get("/{team_id}/most-used-xi")
+def get_team_most_used_xi(
+    team_id: int,
+    tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get the 11 players with the highest minutes played for a team."""
+    profile = team_repo.get_team_profile(db, team_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
+    return team_repo.get_team_most_used_xi(db, team_id, tournament)
+
+
+@router.get("/{team_id}/goal-contributions")
+def get_team_goal_contributions(
+    team_id: int,
+    tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
+    limit: int = Query(8, ge=1, le=20),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """Get the top goal & assist contributors (actual G+A vs expected xG+xA)."""
+    profile = team_repo.get_team_profile(db, team_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
+    return team_repo.get_team_goal_contributions(db, team_id, tournament, limit)
+
+
+
+
 

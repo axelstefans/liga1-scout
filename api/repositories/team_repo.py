@@ -1502,5 +1502,496 @@ def get_team_attack_zones(
         return _get_team_attack_zones_impl(db, team_id, tournament, match_id, mode)
 
 
+def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: str = "all") -> Dict[str, Any]:
+    """
+    Calculate comprehensive team averages and totals grouped by period ('1ST', '2ND', 'ALL') for:
+    - Average corners for and conceded (/PJ), home vs away corner splits
+    - Goals scored and conceded in 1T vs 2T (/PJ)
+    - Fouls committed vs received (/PJ)
+    - Yellow & red cards total and /PJ (including 1T vs 2T distribution)
+    - Average possession and expected goals (xG)
+    - Set-piece goals and 15-minute goal distribution
+    """
+    tourn_clause = ""
+    params: List[Any] = [team_id]
+    norm_tourn = tournament.strip().lower() if tournament else "all"
+    if norm_tourn in ("apertura", "clausura"):
+        target_tourn = "Apertura" if norm_tourn == "apertura" else "Clausura"
+        tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+        params.append(target_tourn)
+
+    # 1. Main team period query
+    query_team = f"""
+        SELECT
+            mps.period,
+            COUNT(DISTINCT mps.match_id) AS matches_count,
+            ROUND(AVG(COALESCE(mps.corner_kicks, 0)), 2) AS avg_corner_kicks,
+            ROUND(AVG(COALESCE(mps.fouls, 0)), 2) AS avg_fouls,
+            ROUND(AVG(COALESCE(mps.possession, 0.0)), 2) AS avg_possession,
+            COALESCE(SUM(mps.goals), 0) AS total_goals,
+            ROUND(CAST(COALESCE(SUM(mps.goals), 0) AS FLOAT) / NULLIF(COUNT(DISTINCT mps.match_id), 0), 2) AS avg_goals,
+            COALESCE(SUM(mps.yellow_cards), 0) AS total_yellow_cards,
+            ROUND(AVG(COALESCE(mps.yellow_cards, 0)), 2) AS avg_yellow_cards,
+            COALESCE(SUM(mps.red_cards), 0) AS total_red_cards,
+            ROUND(AVG(COALESCE(mps.red_cards, 0)), 2) AS avg_red_cards
+        FROM match_period_stats mps
+        JOIN matches m ON mps.match_id = m.match_id
+        WHERE mps.team_id = ? AND mps.period IN ('1ST', '2ND', 'ALL')
+          {tourn_clause}
+        GROUP BY mps.period
+    """
+    rows_team = db.execute(query_team, tuple(params)).fetchall()
+
+    periods_data: Dict[str, Dict[str, Any]] = {}
+    for r in rows_team:
+        row_dict = dict(r)
+        p = row_dict["period"]
+        periods_data[p] = {
+            "matches_count": row_dict["matches_count"],
+            "avg_corner_kicks": float(row_dict["avg_corner_kicks"] or 0.0),
+            "avg_fouls": float(row_dict["avg_fouls"] or 0.0),
+            "avg_possession": float(row_dict["avg_possession"] or 0.0),
+            "total_goals": int(row_dict["total_goals"] or 0),
+            "avg_goals": float(row_dict["avg_goals"] or 0.0),
+            "total_yellow_cards": int(row_dict["total_yellow_cards"] or 0),
+            "avg_yellow_cards": float(row_dict["avg_yellow_cards"] or 0.0),
+            "total_red_cards": int(row_dict["total_red_cards"] or 0),
+            "avg_red_cards": float(row_dict["avg_red_cards"] or 0.0),
+            "goals_conceded": 0,
+            "avg_goals_conceded": 0.0,
+            "avg_corners_against": 0.0,
+            "avg_fouls_received": 0.0,
+            "avg_corners_home": 0.0,
+            "avg_corners_away": 0.0,
+            "avg_xg": 0.0,
+        }
+
+    # Ensure all standard keys exist
+    for standard_period in ("1ST", "2ND", "ALL"):
+        if standard_period not in periods_data:
+            periods_data[standard_period] = {
+                "matches_count": 0,
+                "avg_corner_kicks": 0.0,
+                "avg_fouls": 0.0,
+                "avg_possession": 0.0,
+                "total_goals": 0,
+                "avg_goals": 0.0,
+                "total_yellow_cards": 0,
+                "avg_yellow_cards": 0.0,
+                "total_red_cards": 0,
+                "avg_red_cards": 0.0,
+                "goals_conceded": 0,
+                "avg_goals_conceded": 0.0,
+                "avg_corners_against": 0.0,
+                "avg_fouls_received": 0.0,
+                "avg_corners_home": 0.0,
+                "avg_corners_away": 0.0,
+                "avg_xg": 0.0,
+            }
+
+    # 2. Opponent period metrics (conceded goals, corners against, fouls received)
+    query_opp = f"""
+        SELECT
+            mps_opp.period,
+            COALESCE(SUM(mps_opp.goals), 0) AS goals_conceded,
+            ROUND(CAST(COALESCE(SUM(mps_opp.goals), 0) AS FLOAT) / NULLIF(COUNT(DISTINCT mps_opp.match_id), 0), 2) AS avg_goals_conceded,
+            ROUND(AVG(COALESCE(mps_opp.corner_kicks, 0)), 2) AS avg_corners_conceded,
+            ROUND(AVG(COALESCE(mps_opp.fouls, 0)), 2) AS avg_fouls_received
+        FROM match_period_stats mps_team
+        JOIN matches m ON mps_team.match_id = m.match_id
+        JOIN match_period_stats mps_opp 
+          ON mps_team.match_id = mps_opp.match_id 
+         AND mps_team.team_id != mps_opp.team_id
+         AND mps_team.period = mps_opp.period
+        WHERE mps_team.team_id = ? AND mps_team.period IN ('1ST', '2ND', 'ALL')
+          {tourn_clause}
+        GROUP BY mps_opp.period
+    """
+    rows_opp = db.execute(query_opp, tuple(params)).fetchall()
+    for r in rows_opp:
+        p = r["period"]
+        if p in periods_data:
+            periods_data[p]["goals_conceded"] = int(r["goals_conceded"] or 0)
+            periods_data[p]["avg_goals_conceded"] = float(r["avg_goals_conceded"] or 0.0)
+            periods_data[p]["avg_corners_against"] = float(r["avg_corners_conceded"] or 0.0)
+            periods_data[p]["avg_fouls_received"] = float(r["avg_fouls_received"] or 0.0)
+
+    # 3. Home vs Away corners for team
+    venue_params = [team_id, team_id] + ([params[1]] if len(params) > 1 else [])
+    query_venue = f"""
+        SELECT
+            CASE WHEN m.home_team_id = ? THEN 1 ELSE 0 END AS is_home,
+            ROUND(AVG(COALESCE(mps.corner_kicks, 0)), 2) AS avg_corners
+        FROM match_period_stats mps
+        JOIN matches m ON mps.match_id = m.match_id
+        WHERE mps.team_id = ? AND mps.period = 'ALL'
+          {tourn_clause}
+        GROUP BY is_home
+    """
+    rows_venue = db.execute(query_venue, tuple(venue_params)).fetchall()
+    for r in rows_venue:
+        if r["is_home"] == 1:
+            periods_data["ALL"]["avg_corners_home"] = float(r["avg_corners"] or 0.0)
+        else:
+            periods_data["ALL"]["avg_corners_away"] = float(r["avg_corners"] or 0.0)
+
+    # 4. Total xG from team_match_metrics to derive 1T vs 2T expected goals
+    tmm_clause = f"AND tournament = '{params[1]}'" if len(params) > 1 else ""
+    query_xg = f"""
+        SELECT 
+            COUNT(match_id) as matches_count,
+            ROUND(SUM(xg_for), 2) as total_xg,
+            ROUND(AVG(xg_for), 2) as avg_xg
+        FROM team_match_metrics
+        WHERE team_id = ?
+          {tmm_clause}
+    """
+    row_xg = db.execute(query_xg, (team_id,)).fetchone()
+    avg_xg_all = float(row_xg["avg_xg"] or 0.0) if row_xg and row_xg["avg_xg"] is not None else 0.0
+    periods_data["ALL"]["avg_xg"] = avg_xg_all
+
+    goals_1t = periods_data["1ST"]["total_goals"]
+    goals_2t = periods_data["2ND"]["total_goals"]
+    tot_goals = goals_1t + goals_2t
+    ratio_1t = 0.46 if tot_goals == 0 else max(0.25, min(0.75, (goals_1t + 1.0) / (tot_goals + 2.0)))
+    periods_data["1ST"]["avg_xg"] = round(avg_xg_all * ratio_1t, 2)
+    periods_data["2ND"]["avg_xg"] = round(max(0.0, avg_xg_all - periods_data["1ST"]["avg_xg"]), 2)
+
+    # 5. Set pieces metrics & 15-minute interval distribution
+    sp_params = [team_id, team_id] + ([params[1]] if len(params) > 1 else [])
+    query_sp = f"""
+        SELECT
+            COUNT(ps.shot_id) as set_piece_shots,
+            ROUND(COALESCE(SUM(psx.calculated_xg), 0.0), 2) as set_piece_xg,
+            COALESCE(SUM(CASE WHEN ps.shot_type = 'goal' THEN 1 ELSE 0 END), 0) as set_piece_goals
+        FROM matches m
+        JOIN player_shots ps ON m.match_id = ps.match_id
+        LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
+        WHERE ((ps.is_home = 1 AND m.home_team_id = ?) OR (ps.is_home = 0 AND m.away_team_id = ?))
+          AND ps.situation IN ('corner', 'set_piece')
+          {tourn_clause}
+    """
+    row_sp = db.execute(query_sp, tuple(sp_params)).fetchone()
+    sp_shots = int(row_sp["set_piece_shots"] or 0) if row_sp else 0
+    sp_xg = float(row_sp["set_piece_xg"] or 0.0) if row_sp else 0.0
+    sp_goals = int(row_sp["set_piece_goals"] or 0) if row_sp else 0
+
+    mgi_params = [team_id] + ([params[1]] if len(params) > 1 else [])
+    query_mgi = f"""
+        SELECT
+            COUNT(mgi.id) as total_goals,
+            COALESCE(SUM(CASE WHEN mgi.is_corner_origin = 1 THEN 1 ELSE 0 END), 0) as corner_goals
+        FROM match_goal_incidents mgi
+        JOIN matches m ON mgi.match_id = m.match_id
+        WHERE mgi.team_id = ?
+          {tourn_clause}
+    """
+    row_mgi = db.execute(query_mgi, tuple(mgi_params)).fetchone()
+    corner_goals = int(row_mgi["corner_goals"] or 0) if row_mgi else 0
+    mgi_total_goals = int(row_mgi["total_goals"] or 0) if row_mgi else 0
+
+    matches_count = periods_data["ALL"]["matches_count"]
+    corner_goals_per_match = round(float(corner_goals) / max(matches_count, 1), 2)
+    corner_goals_pct = round((float(corner_goals) * 100.0) / max(mgi_total_goals, 1), 1) if mgi_total_goals > 0 else 0.0
+    sp_xg_per_match = round(sp_xg / max(matches_count, 1), 2)
+
+    intervals = [
+        {"label": "0-15", "min_minute": 0, "max_minute": 15},
+        {"label": "16-30", "min_minute": 16, "max_minute": 30},
+        {"label": "31-45", "min_minute": 31, "max_minute": 45},
+        {"label": "46-60", "min_minute": 46, "max_minute": 60},
+        {"label": "61-75", "min_minute": 61, "max_minute": 75},
+        {"label": "76-90+", "min_minute": 76, "max_minute": 999},
+    ]
+
+    intervals_query = f"""
+        SELECT
+            CASE
+                WHEN mgi.minute BETWEEN 0 AND 15 THEN '0-15'
+                WHEN mgi.minute BETWEEN 16 AND 30 THEN '16-30'
+                WHEN mgi.minute BETWEEN 31 AND 45 THEN '31-45'
+                WHEN mgi.minute BETWEEN 46 AND 60 THEN '46-60'
+                WHEN mgi.minute BETWEEN 61 AND 75 THEN '61-75'
+                WHEN mgi.minute >= 76 THEN '76-90+'
+                ELSE 'unknown'
+            END AS interval_bucket,
+            COUNT(mgi.id) AS goals_count,
+            COALESCE(SUM(CASE WHEN mgi.is_corner_origin = 1 THEN 1 ELSE 0 END), 0) AS corner_goals_count
+        FROM match_goal_incidents mgi
+        JOIN matches m ON mgi.match_id = m.match_id
+        WHERE mgi.team_id = ?
+          {tourn_clause}
+        GROUP BY interval_bucket
+    """
+    interval_rows = db.execute(intervals_query, tuple(mgi_params)).fetchall()
+    counts_by_bucket = {row["interval_bucket"]: dict(row) for row in interval_rows}
+
+    distribution = []
+    peak_interval = "76-90+"
+    peak_goals = 0
+    peak_pct = 0.0
+
+    for interval in intervals:
+        label = interval["label"]
+        bucket_data = counts_by_bucket.get(label, {"goals_count": 0, "corner_goals_count": 0})
+        g_count = int(bucket_data["goals_count"] or 0)
+        cg_count = int(bucket_data["corner_goals_count"] or 0)
+        pct = round((float(g_count) * 100.0) / max(mgi_total_goals, 1), 1) if mgi_total_goals > 0 else 0.0
+
+        if g_count > peak_goals:
+            peak_goals = g_count
+            peak_interval = label
+            peak_pct = pct
+
+        distribution.append({
+            "interval": label,
+            "goals": g_count,
+            "corner_goals": cg_count,
+            "percentage": pct
+        })
+
+    return {
+        "team_id": team_id,
+        "tournament": tournament,
+        "matches_count": matches_count,
+        "periods": periods_data,
+        "set_pieces": {
+            "corner_goals": corner_goals,
+            "corner_goals_per_match": corner_goals_per_match,
+            "corner_goals_pct": corner_goals_pct,
+            "set_piece_shots": sp_shots,
+            "set_piece_goals": max(sp_goals, corner_goals),
+            "set_piece_goals_per_match": round(float(max(sp_goals, corner_goals)) / max(matches_count, 1), 2),
+            "set_piece_xg": sp_xg,
+            "set_piece_xg_per_match": sp_xg_per_match,
+        },
+        "goal_distribution": {
+            "total_goals": mgi_total_goals,
+            "intervals": distribution,
+            "peak_interval": peak_interval,
+            "peak_goals": peak_goals,
+            "peak_pct": peak_pct
+        }
+    }
+
+
+def get_team_set_piece_metrics(db: sqlite3.Connection, team_id: int, tournament: str = "all") -> Dict[str, Any]:
+    """
+    Returns set piece metrics and 15-minute goal distribution for team_id.
+    Delegates to get_team_period_metrics for unified computation.
+    """
+    full_data = get_team_period_metrics(db, team_id, tournament=tournament)
+    return {
+        "team_id": team_id,
+        "tournament": tournament,
+        "total_goals": full_data["goal_distribution"]["total_goals"],
+        "corner_goals": full_data["set_pieces"]["corner_goals"],
+        "corner_goals_pct": full_data["set_pieces"]["corner_goals_pct"],
+        "set_piece_xg": full_data["set_pieces"]["set_piece_xg"],
+        "set_piece_xg_per_match": full_data["set_pieces"]["set_piece_xg_per_match"],
+        "intervals": full_data["goal_distribution"]["intervals"],
+        "peak_interval": full_data["goal_distribution"]["peak_interval"],
+        "peak_goals": full_data["goal_distribution"]["peak_goals"],
+        "peak_pct": full_data["goal_distribution"]["peak_pct"]
+    }
+
+
+def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str = "all") -> Dict[str, Any]:
+    """
+    Returns the top 11 players with the most minutes played for the team,
+    including percentage of total available team minutes, appearances, age, and goals+assists.
+    """
+    tourn_clause = ""
+    params: List[Any] = [team_id]
+    norm_tourn = tournament.strip().lower() if tournament else "all"
+    if norm_tourn in ("apertura", "clausura"):
+        target_tourn = "Apertura" if norm_tourn == "apertura" else "Clausura"
+        tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+        params.append(target_tourn)
+
+    # 1. Total team matches played to calculate max possible team minutes (matches * 90)
+    matches_count_query = f"""
+        SELECT COUNT(DISTINCT m.match_id) as total_matches
+        FROM matches m
+        WHERE (m.home_team_id = ? OR m.away_team_id = ?)
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause.replace('pms.team_id = ? AND ', '')}
+    """
+    mc_params = [team_id, team_id] + ([params[1]] if len(params) > 1 else [])
+    mc_row = db.execute(matches_count_query, mc_params).fetchone()
+    total_matches = mc_row["total_matches"] if mc_row and mc_row["total_matches"] > 0 else 1
+    max_team_minutes = total_matches * 90
+
+    # 2. Query top 11 players by total minutes played
+    xi_query = f"""
+        SELECT 
+            pms.player_id,
+            p.name,
+            p.shirt_number,
+            p.position_group,
+            p.date_of_birth,
+            COUNT(DISTINCT pms.match_id) as appearances,
+            SUM(pms.minutes_played) as total_minutes,
+            COALESCE(SUM(pms.goals), 0) as goals,
+            COALESCE(SUM(pms.assists), 0) as assists,
+            ROUND(AVG(pp.x_start), 1) as avg_x,
+            ROUND(AVG(pp.y_start), 1) as avg_y
+        FROM player_match_stats pms
+        JOIN players p ON pms.player_id = p.player_id
+        JOIN matches m ON pms.match_id = m.match_id
+        LEFT JOIN player_passes pp ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
+        WHERE pms.team_id = ? AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
+        GROUP BY pms.player_id, p.name, p.shirt_number, p.position_group, p.date_of_birth
+        HAVING SUM(pms.minutes_played) > 0
+        ORDER BY total_minutes DESC
+        LIMIT 11
+    """
+    xi_rows = db.execute(xi_query, params).fetchall()
+
+    players_list = []
+    current_year = 2026
+    for r in xi_rows:
+        dob = r["date_of_birth"]
+        age = None
+        if dob:
+            try:
+                birth_year = int(dob.split("-")[0])
+                age = current_year - birth_year
+            except Exception:
+                age = None
+
+        mins = int(r["total_minutes"] or 0)
+        mins_pct = round((float(mins) / max_team_minutes) * 100.0, 1) if max_team_minutes > 0 else 0.0
+        # Cap visual percentage at 100%
+        mins_pct = min(mins_pct, 100.0)
+
+        g = int(r["goals"] or 0)
+        a = int(r["assists"] or 0)
+
+        players_list.append({
+            "player_id": r["player_id"],
+            "name": r["name"],
+            "shirt_number": r["shirt_number"],
+            "position_group": r["position_group"] or "Midfielder",
+            "age": age,
+            "appearances": r["appearances"],
+            "minutes_played": mins,
+            "minutes_pct": mins_pct,
+            "goals": g,
+            "assists": a,
+            "goal_contributions": g + a,
+            "avg_x": float(r["avg_x"]) if r["avg_x"] is not None else 50.0,
+            "avg_y": float(r["avg_y"]) if r["avg_y"] is not None else 50.0,
+        })
+
+    # Sort so Goalkeeper is first, then Defenders, Midfielders, Forwards
+    pos_order = {"Goalkeeper": 1, "Defender": 2, "Midfielder": 3, "Forward": 4}
+    players_list.sort(key=lambda p: (pos_order.get(p["position_group"], 5), -p["minutes_played"]))
+
+    return {
+        "team_id": team_id,
+        "tournament": tournament,
+        "total_matches": total_matches,
+        "max_minutes": max_team_minutes,
+        "players": players_list
+    }
+
+
+def get_team_goal_contributions(db: sqlite3.Connection, team_id: int, tournament: str = "all", limit: int = 8) -> Dict[str, Any]:
+    """
+    Returns the top goal and assist contributors for a team with actual (G+A) and expected (xG+xA),
+    alongside set-piece contextual metrics.
+    """
+    tourn_clause = ""
+    params: List[Any] = [team_id]
+    norm_tourn = tournament.strip().lower() if tournament else "all"
+    if norm_tourn in ("apertura", "clausura"):
+        target_tourn = "Apertura" if norm_tourn == "apertura" else "Clausura"
+        tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+        params.append(target_tourn)
+
+    # 1. Query top contributors from player_season_stats and player_match_stats
+    contrib_query = f"""
+        SELECT 
+            pms.player_id,
+            p.name,
+            p.shirt_number,
+            p.position_group,
+            SUM(pms.minutes_played) as minutes_played,
+            COUNT(DISTINCT pms.match_id) as matches_played,
+            COALESCE(SUM(pms.goals), 0) as goals,
+            COALESCE(SUM(pms.assists), 0) as assists,
+            COALESCE(SUM(ps.xg), 0.0) as expected_goals,
+            ROUND(COALESCE(SUM(pms.key_passes), 0) * 0.12, 2) as expected_assists
+        FROM player_match_stats pms
+        JOIN players p ON pms.player_id = p.player_id
+        JOIN matches m ON pms.match_id = m.match_id
+        LEFT JOIN player_shots ps ON ps.match_id = pms.match_id AND ps.player_id = pms.player_id
+        WHERE pms.team_id = ? AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
+        GROUP BY pms.player_id, p.name, p.shirt_number, p.position_group
+        HAVING (SUM(pms.goals) > 0 OR SUM(pms.assists) > 0 OR SUM(ps.xg) > 0.3)
+        ORDER BY (COALESCE(SUM(pms.goals), 0) + COALESCE(SUM(pms.assists), 0)) DESC, expected_goals DESC
+        LIMIT ?
+    """
+    c_params = params + [limit]
+    rows = db.execute(contrib_query, c_params).fetchall()
+
+    contributors = []
+    for r in rows:
+        g = int(r["goals"] or 0)
+        a = int(r["assists"] or 0)
+        xg = round(float(r["expected_goals"] or 0.0), 2)
+        xa = round(float(r["expected_assists"] or 0.0), 2)
+        actual_total = g + a
+        expected_total = round(xg + xa, 2)
+
+        contributors.append({
+            "player_id": r["player_id"],
+            "name": r["name"],
+            "shirt_number": r["shirt_number"],
+            "position_group": r["position_group"] or "Forward",
+            "minutes_played": int(r["minutes_played"] or 0),
+            "matches_played": int(r["matches_played"] or 0),
+            "goals": g,
+            "assists": a,
+            "actual_total": actual_total,
+            "xg": xg,
+            "xa": xa,
+            "expected_total": expected_total,
+        })
+
+    # 2. Set piece metrics for context
+    set_pieces = get_team_set_piece_metrics(db, team_id)
+
+    # Determine peak interval from intervals distribution
+    intervals = set_pieces.get("intervals", [])
+    peak_interval = "N/D"
+    peak_goals = 0
+    for it in intervals:
+        if it.get("goals", 0) > peak_goals:
+            peak_goals = it["goals"]
+            peak_interval = it["interval"]
+
+    return {
+        "team_id": team_id,
+        "tournament": tournament,
+        "contributors": contributors,
+        "set_piece_summary": {
+            "total_goals": set_pieces.get("total_goals", 0),
+            "corner_goals": set_pieces.get("corner_goals", 0),
+            "corner_goals_pct": set_pieces.get("corner_goals_pct", 0.0),
+            "peak_interval": peak_interval,
+            "peak_goals": peak_goals
+        }
+    }
+
+
+
+
 
 

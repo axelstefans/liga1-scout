@@ -8,9 +8,12 @@ import { TeamMetricEntry } from '../../services/api';
 import { useTeamAttackZones, useTeamMatches } from '../../hooks/useTeam';
 
 export interface TeamAttackZonesProps {
-  teams: TeamMetricEntry[];
+  teams?: TeamMetricEntry[];
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  mode?: AttackZoneMode;
+  viewMode?: ViewMode;
+  selectedMatchId?: number | null;
 }
 
 type AttackZoneMode = 'for' | 'against';
@@ -63,31 +66,44 @@ function formatPlayerName(fullName: string): string {
 export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
   activeTeam,
   tournament = 'Clausura',
+  mode: propMode,
+  viewMode: propViewMode,
+  selectedMatchId: propSelectedMatchId,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
 
-  const [mode, setMode] = useState<AttackZoneMode>('for');
-  const [viewMode, setViewMode] = useState<ViewMode>('cumulative');
-  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
+  const [internalMode, setInternalMode] = useState<AttackZoneMode>('for');
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>('cumulative');
+  const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number | null>(null);
+
+  const mode = propMode ?? internalMode;
+  const viewMode = propViewMode ?? internalViewMode;
+  const selectedMatchId = propSelectedMatchId !== undefined ? propSelectedMatchId : internalSelectedMatchId;
   const [hoveredChannel, setHoveredChannel] = useState<string | null>(null);
   const [lockedChannel, setLockedChannel] = useState<string | null>(null);
   const [tooltipCoords, setTooltipCoords] = useState<{ x: number; y: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
+  const handleSetSelectedMatchId = (val: number | null) => {
+    if (propSelectedMatchId === undefined) {
+      setInternalSelectedMatchId(val);
+    }
+  };
+
   // Fetch match list for the team
   const { data: matches, isLoading: isLoadingMatches } = useTeamMatches(
-    activeTeam.team_id,
+    activeTeam?.team_id,
     tournament
   );
 
   // Reset match selection when club or tournament changes
   useEffect(() => {
-    setSelectedMatchId(null);
+    handleSetSelectedMatchId(null);
     setHoveredChannel(null);
     setLockedChannel(null);
-  }, [activeTeam.team_id, tournament]);
+  }, [activeTeam?.team_id, tournament]);
 
   // Check if selected match is valid
   const isMatchValidForTeam = useMemo(() => {
@@ -100,7 +116,7 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
   useEffect(() => {
     if (viewMode === 'match' && matches && matches.length > 0) {
       if (!selectedMatchId || !matches.some((m) => m.match_id === selectedMatchId)) {
-        setSelectedMatchId(matches[0].match_id);
+        handleSetSelectedMatchId(matches[0].match_id);
       }
     }
   }, [viewMode, matches, selectedMatchId]);
@@ -114,7 +130,7 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
 
   // Fetch Attack Zones data
   const { data, isLoading, isError, error, refetch } = useTeamAttackZones(
-    activeTeam.team_id,
+    activeTeam?.team_id,
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     mode,
@@ -274,7 +290,7 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
   return (
     <div
       ref={cardRef}
-      className="lg:col-span-2 bg-white border border-slate-200/80 rounded-xl shadow-xs p-4 sm:p-5 flex flex-col justify-between transition-all"
+      className="flex flex-col justify-between h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4 relative select-none transition-all"
     >
       {/* 1. Header & Controls */}
       <div className="flex flex-col gap-3 pb-3 border-b border-slate-100">
