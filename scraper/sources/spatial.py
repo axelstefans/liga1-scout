@@ -38,14 +38,20 @@ def scrape_and_store_spatial_events(conn: sqlite3.Connection, api_client, matche
             conn.execute("DELETE FROM scrape_log WHERE resource_type = 'spatial_events' AND resource_key LIKE ?", (f"{match_id}_%",))
             conn.commit()
             
-        # Get players who played in this match
+        # Get players who participated or were in the lineup for this match
         players = conn.execute('''
-            SELECT player_id 
+            SELECT DISTINCT player_id 
             FROM player_match_stats 
-            WHERE match_id = ? AND minutes_played > 0
+            WHERE match_id = ? 
+              AND (
+                COALESCE(minutes_played, 0) > 0 
+                OR was_substitute = 0 
+                OR was_substitute IS NULL
+              )
         ''', (match_id,)).fetchall()
         
         if not players:
+            logger.warning(f"No lineup or participating players found for match {match_id}. Skipping and not marking as complete.")
             continue
             
         for player_row in players:

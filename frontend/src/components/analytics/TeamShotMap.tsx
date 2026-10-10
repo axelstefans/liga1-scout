@@ -1,16 +1,17 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Download, Loader2, AlertCircle, RefreshCw, 
-  ChevronDown, Target, User, Copy, Check 
+  Target, Copy, Check 
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry, ShotItem } from '../../services/api';
+import { TeamMetricEntry, ShotItem, VenueFilter } from '../../services/api';
 import { useTeamShotMap, useTeamMatches } from '../../hooks/useTeam';
 
 export interface TeamShotMapProps {
   teams?: TeamMetricEntry[];
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  venue?: VenueFilter;
   mode?: ShotMode;
   viewMode?: 'cumulative' | 'match';
   selectedMatchId?: number | null;
@@ -134,6 +135,7 @@ function getShotRadius(xg: number, isCumulative: boolean): number {
 export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   activeTeam,
   tournament = 'all',
+  venue = 'all',
   mode: propMode,
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
@@ -142,8 +144,8 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [internalMode, setInternalMode] = useState<ShotMode>('for');
-  const [internalViewMode, setInternalViewMode] = useState<'cumulative' | 'match'>('cumulative');
+  const [internalMode] = useState<ShotMode>('for');
+  const [internalViewMode] = useState<'cumulative' | 'match'>('cumulative');
   const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number | null>(null);
   const [resultFilter, setResultFilter] = useState<ResultFilterType>('all');
   const [internalSelectedPlayer, setInternalSelectedPlayer] = useState<string>('all');
@@ -220,6 +222,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     mode,
+    venue,
     isQueryEnabled
   );
 
@@ -227,18 +230,6 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   const showLoading = isLoading || isWaitingForMatch;
 
   const rawShots = data?.shots || [];
-
-  // Unique players list sorted alphabetically for player filter dropdown
-  const uniquePlayers = useMemo(() => {
-    const map = new Map<string, number>();
-    rawShots.forEach((s) => {
-      const name = s.player_name || 'Desconocido';
-      map.set(name, (map.get(name) || 0) + 1);
-    });
-    return Array.from(map.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [rawShots]);
 
   // 1. Filter shots by selected player
   const playerShots = useMemo(() => {

@@ -3,13 +3,14 @@ import {
   teamsApi, TeamMetricEntry, TeamShotZonesResponse, 
   TeamPassNetworkResponse, TeamMatchItem, TeamBase,
   TeamDefensiveActionsResponse, TeamShotMapResponse,
-  TeamAttackZonesResponse, TeamPeriodMetricsResponse
+  TeamAttackZonesResponse, TeamPeriodMetricsResponse,
+  VenueFilter
 } from '../services/api';
 
-export const useTeamMetrics = (tournament?: 'Apertura' | 'Clausura') => {
+export const useTeamMetrics = (tournament?: 'Apertura' | 'Clausura', venue: VenueFilter = 'all') => {
   return useQuery<TeamMetricEntry[]>({
-    queryKey: ['teams', 'metrics', tournament || 'all'],
-    queryFn: () => teamsApi.getMetrics(tournament),
+    queryKey: ['teams', 'metrics', tournament || 'all', venue],
+    queryFn: () => teamsApi.getMetrics(tournament, venue),
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
 };
@@ -23,10 +24,10 @@ export const useTeamShotZones = (teamId: number, tournament?: 'Apertura' | 'Clau
   });
 };
 
-export const useTeamMatches = (teamId: number, tournament?: 'Apertura' | 'Clausura' | 'all') => {
+export const useTeamMatches = (teamId?: number, tournament?: 'Apertura' | 'Clausura' | 'all') => {
   return useQuery<TeamMatchItem[]>({
     queryKey: ['teams', teamId, 'matches', tournament || 'all'],
-    queryFn: () => teamsApi.getTeamMatches(teamId, tournament),
+    queryFn: () => teamsApi.getTeamMatches(teamId!, tournament),
     enabled: !!teamId,
     staleTime: 1000 * 60 * 10,
   });
@@ -36,11 +37,12 @@ export const useTeamPassNetwork = (
   teamId: number,
   tournament?: 'Apertura' | 'Clausura' | 'all',
   matchId?: number | null,
+  venue: VenueFilter = 'all',
   enabled: boolean = true
 ) => {
   return useQuery<TeamPassNetworkResponse>({
-    queryKey: ['teams', teamId, 'passNetwork', tournament || 'all', matchId ?? 'cumulative'],
-    queryFn: () => teamsApi.getPassNetwork(teamId, tournament, matchId),
+    queryKey: ['teams', teamId, 'passNetwork', tournament || 'all', matchId ?? 'cumulative', venue],
+    queryFn: () => teamsApi.getPassNetwork(teamId, tournament, matchId, venue),
     enabled: !!teamId && enabled,
     staleTime: 1000 * 60 * 10,
   });
@@ -50,11 +52,12 @@ export const useTeamDefensiveActions = (
   teamId?: number,
   tournament: string = 'all',
   matchId?: number | null,
+  venue: VenueFilter = 'all',
   enabled: boolean = true
 ) => {
   return useQuery<TeamDefensiveActionsResponse>({
-    queryKey: ['teamDefensiveActions', teamId, tournament || 'all', matchId ?? 'cumulative'],
-    queryFn: () => teamsApi.getDefensiveActions(teamId!, tournament, matchId),
+    queryKey: ['teamDefensiveActions', teamId, tournament || 'all', matchId ?? 'cumulative', venue],
+    queryFn: () => teamsApi.getDefensiveActions(teamId!, tournament, matchId, venue),
     enabled: Boolean(teamId) && enabled,
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
@@ -73,11 +76,12 @@ export const useTeamShotMap = (
   tournament?: string,
   matchId?: number | null,
   mode: 'for' | 'against' = 'for',
+  venue: VenueFilter = 'all',
   enabled: boolean = true
 ) => {
   return useQuery<TeamShotMapResponse>({
-    queryKey: ['teamShotMap', teamId, tournament || 'all', matchId ?? 'cumulative', mode],
-    queryFn: () => teamsApi.getShotMap(teamId!, tournament, matchId, mode),
+    queryKey: ['teamShotMap', teamId, tournament || 'all', matchId ?? 'cumulative', mode, venue],
+    queryFn: () => teamsApi.getShotMap(teamId!, tournament, matchId, mode, venue),
     enabled: Boolean(teamId) && enabled,
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
@@ -88,11 +92,12 @@ export const useTeamAttackZones = (
   tournament?: string,
   matchId?: number | null,
   mode: 'for' | 'against' = 'for',
+  venue: VenueFilter = 'all',
   enabled: boolean = true
 ) => {
   return useQuery<TeamAttackZonesResponse>({
-    queryKey: ['teamAttackZones', teamId, tournament || 'all', matchId ?? 'cumulative', mode],
-    queryFn: () => teamsApi.getAttackZones(teamId!, tournament, matchId, mode),
+    queryKey: ['teamAttackZones', teamId, tournament || 'all', matchId ?? 'cumulative', mode, venue],
+    queryFn: () => teamsApi.getAttackZones(teamId!, tournament, matchId, mode, venue),
     enabled: Boolean(teamId) && enabled,
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
@@ -101,11 +106,12 @@ export const useTeamAttackZones = (
 export const useTeamMostUsedXI = (
   teamId?: number,
   tournament?: 'Apertura' | 'Clausura' | 'all',
+  venue: VenueFilter = 'all',
   enabled: boolean = true
 ) => {
   return useQuery({
-    queryKey: ['teamMostUsedXI', teamId, tournament || 'all'],
-    queryFn: () => teamsApi.getMostUsedXI(teamId!, tournament),
+    queryKey: ['teamMostUsedXI', teamId, tournament || 'all', venue],
+    queryFn: () => teamsApi.getMostUsedXI(teamId!, tournament, venue),
     enabled: Boolean(teamId) && enabled,
     staleTime: 1000 * 60 * 10,
   });
@@ -128,11 +134,12 @@ export const useTeamGoalContributions = (
 export const useTeamPeriodMetrics = (
   teamId?: number,
   tournament?: 'Apertura' | 'Clausura' | 'all',
+  venue: VenueFilter = 'all',
   enabled: boolean = true
 ) => {
   return useQuery<TeamPeriodMetricsResponse>({
-    queryKey: ['teamPeriodMetrics', teamId, tournament || 'all'],
-    queryFn: () => teamsApi.getPeriodMetrics(teamId!, tournament),
+    queryKey: ['teamPeriodMetrics', teamId, tournament || 'all', venue],
+    queryFn: () => teamsApi.getPeriodMetrics(teamId!, tournament, venue),
     enabled: Boolean(teamId) && enabled,
     staleTime: 1000 * 60 * 10,
   });

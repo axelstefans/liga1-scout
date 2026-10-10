@@ -134,4 +134,77 @@ def scrape_and_store_shotmaps(conn, api_client, test_mode=True) -> int:
             log_scrape(conn, resource_type, resource_key, 'failed', error_message=str(e))
             
     logger.info(f"Successfully stored {total_inserted} new shots.")
+
+    # Automatically calculate and store xG for all pending shots
+    calculate_and_store_pending_xg(conn)
+
     return total_inserted
+
+
+def calculate_and_store_pending_xg(conn, model_path: str = "xg_model_pipeline.pkl") -> int:
+    """
+    Calculate and store expected goals (xG) for any shots in player_shots
+    that lack an entry in player_shots_xg.
+    """
+    query = """
+        SELECT ps.shot_id, ps.distance_m, ps.angle_rad, ps.body_part, ps.situation
+        FROM player_shots ps
+        LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
+        WHERE psx.shot_id IS NULL;
+    """
+    rows = conn.execute(query).fetchall()
+
+    if not rows:
+        logger.info("All shots in player_shots already have calculated xG. No pending shots.")
+        return 0
+
+    import os
+    if not os.path.exists(model_path):
+        # Also check relative to workspace/project root if running from a different working directory
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        alt_model_path = os.path.join(project_root, "xg_model_pipeline.pkl")
+        if os.path.exists(alt_model_path):
+            model_path = alt_model_path
+        else:
+            logger.warning(f"xG model file not found at '{model_path}' or '{alt_model_path}'. Skipping xG calculation.")
+            return 0
+
+    logger.info(f"Found {len(rows)} pending shots without xG. Calculating xG using {model_path}...")
+
+    try:
+        import joblib
+        import pandas as pd
+
+        model = joblib.load(model_path)
+        df = pd.DataFrame([dict(r) for r in rows])
+
+        def group_situation(sit):
+            if sit == "fast-break":
+                return "regular"
+            elif sit == "throw-in-set-piece":
+                return "set-piece"
+            return sit
+
+        df["situation_grouped"] = df["situation"].apply(group_situation)
+        X_pred = df[["distance_m", "angle_rad", "body_part", "situation_grouped"]]
+
+        df["calculated_xg"] = model.predict_proba(X_pred)[:, 1].round(3)
+        now = datetime.utcnow().isoformat()
+
+        records = [
+            (int(row["shot_id"]), float(row["calculated_xg"]), "v1.0-pipeline", now)
+            for _, row in df.iterrows()
+        ]
+
+        with conn:
+            conn.executemany("""
+                INSERT OR REPLACE INTO player_shots_xg (shot_id, calculated_xg, model_version, calculated_at)
+                VALUES (?, ?, ?, ?);
+            """, records)
+
+        logger.info(f"Successfully calculated and stored xG for {len(records)} shots in player_shots_xg.")
+        return len(records)
+
+    except Exception as e:
+        logger.error(f"Failed to calculate xG for pending shots: {e}")
+        return 0

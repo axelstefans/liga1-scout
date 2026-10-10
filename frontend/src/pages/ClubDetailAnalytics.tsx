@@ -14,6 +14,7 @@ import TeamDefensiveTerritory from '../components/analytics/TeamDefensiveTerrito
 import TeamSetPiecesCard from '../components/analytics/TeamSetPiecesCard';
 import TeamPeriodMetricsCard from '../components/analytics/TeamPeriodMetricsCard';
 import TeamDisciplineCard from '../components/analytics/TeamDisciplineCard';
+import { VenueFilter } from '../services/api';
 
 type TournamentFilter = 'all' | 'Apertura' | 'Clausura';
 
@@ -58,6 +59,7 @@ export const ClubDetailAnalytics: React.FC = () => {
   // Global Tactical Toolbar states
   const [perspective, setPerspective] = useState<'for' | 'against'>('for');
   const [aggregationMode, setAggregationMode] = useState<'cumulative' | 'match'>('cumulative');
+  const [venue, setVenue] = useState<VenueFilter>('all');
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string>('all');
 
@@ -72,14 +74,14 @@ export const ClubDetailAnalytics: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch all 18 teams and their cohort stats for current tournament filter
+  // Fetch all 18 teams and their cohort stats for current tournament filter and venue
   const { 
     data: teams, 
     isLoading, 
     isError, 
     error, 
     refetch 
-  } = useTeamMetrics(selectedTournament === 'all' ? undefined : selectedTournament);
+  } = useTeamMetrics(selectedTournament === 'all' ? undefined : selectedTournament, venue);
 
   // Synchronize selectedTeamId when URL param changes or when teams load
   useEffect(() => {
@@ -183,7 +185,8 @@ export const ClubDetailAnalytics: React.FC = () => {
     activeTeam?.team_id,
     selectedTournament,
     aggregationMode === 'match' ? selectedMatchId : null,
-    perspective
+    perspective,
+    venue
   );
 
   // Unique players for dropdown
@@ -372,6 +375,45 @@ export const ClubDetailAnalytics: React.FC = () => {
               </button>
             </div>
 
+            {/* Venue segmented control: [ Todos | Local | Visitante ] (hidden in match mode) */}
+            {aggregationMode === 'cumulative' && (
+              <div className="inline-flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setVenue('all')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    venue === 'all'
+                      ? 'bg-white text-navy shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVenue('home')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    venue === 'home'
+                      ? 'bg-white text-navy shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Local
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVenue('away')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    venue === 'away'
+                      ? 'bg-white text-navy shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Visitante
+                </button>
+              </div>
+            )}
+
             {/* Match Selector Dropdown (visible when Por Partido is active) */}
             {aggregationMode === 'match' && (
               <div className="flex items-center">
@@ -388,7 +430,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                   ) : (
                     matches?.map((m) => (
                       <option key={`match-opt-${m.match_id}`} value={m.match_id}>
-                        {m.match_date ? `${m.match_date} - ` : ''}vs {m.opponent_name || 'Rival'} ({m.team_score ?? '?'}-{m.opponent_score ?? '?'})
+                        {m.date ? `${m.date} - ` : ''}vs {m.opponent_name || 'Rival'} ({m.team_score ?? '?'}-{m.opponent_score ?? '?'})
                       </option>
                     ))
                   )}
@@ -565,6 +607,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       tournament={selectedTournament}
                       viewMode={aggregationMode}
                       selectedMatchId={selectedMatchId}
+                      venue={venue}
                     />
                   </div>
                 )}
@@ -580,6 +623,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       viewMode={aggregationMode}
                       selectedMatchId={selectedMatchId}
                       selectedPlayer={selectedPlayer}
+                      venue={venue}
                     />
                   </div>
                 )}
@@ -593,14 +637,17 @@ export const ClubDetailAnalytics: React.FC = () => {
               <TeamSetPiecesCard
                 activeTeam={activeTeam}
                 tournament={selectedTournament}
+                venue={venue}
               />
               <TeamPeriodMetricsCard
                 activeTeam={activeTeam}
                 tournament={selectedTournament}
+                venue={venue}
               />
               <TeamDisciplineCard
                 activeTeam={activeTeam}
                 tournament={selectedTournament}
+                venue={venue}
               />
             </div>
 
@@ -625,6 +672,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       mode={perspective}
                       viewMode={aggregationMode}
                       selectedMatchId={selectedMatchId}
+                      venue={venue}
                     />
                   </div>
                 )}
@@ -638,6 +686,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       tournament={selectedTournament}
                       viewMode={aggregationMode}
                       selectedMatchId={selectedMatchId}
+                      venue={venue}
                     />
                   </div>
                 )}

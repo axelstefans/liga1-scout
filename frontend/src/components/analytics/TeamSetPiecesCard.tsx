@@ -1,20 +1,23 @@
 import React from 'react';
 import { Flag, Loader2 } from 'lucide-react';
-import { TeamMetricEntry } from '../../services/api';
+import { TeamMetricEntry, VenueFilter } from '../../services/api';
 import { useTeamPeriodMetrics } from '../../hooks/useTeam';
 
 export interface TeamSetPiecesCardProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  venue?: VenueFilter;
 }
 
 export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
   activeTeam,
   tournament = 'all',
+  venue = 'all',
 }) => {
   const { data, isLoading, isError } = useTeamPeriodMetrics(
     activeTeam?.team_id,
-    tournament
+    tournament,
+    venue
   );
 
   const allPeriod = data?.periods?.['ALL'];

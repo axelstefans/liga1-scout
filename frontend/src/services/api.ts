@@ -513,6 +513,8 @@ export interface TeamAttackZonesResponse {
   channels: AttackZoneChannel[];
 }
 
+export type VenueFilter = 'all' | 'home' | 'away';
+
 export const teamsApi = {
   getAll: async (): Promise<TeamBase[]> => {
     const response = await apiClient.get(`/teams/`);
@@ -522,8 +524,12 @@ export const teamsApi = {
     const response = await apiClient.get(`/teams/${teamId}/next-match`);
     return response.data;
   },
-  getMetrics: async (tournament?: 'Apertura' | 'Clausura'): Promise<TeamMetricEntry[]> => {
-    const url = tournament ? `/teams/metrics?tournament=${tournament}` : `/teams/metrics`;
+  getMetrics: async (tournament?: 'Apertura' | 'Clausura', venue?: VenueFilter): Promise<TeamMetricEntry[]> => {
+    const params = new URLSearchParams();
+    if (tournament) params.append('tournament', tournament);
+    if (venue && venue !== 'all') params.append('venue', venue);
+    const queryString = params.toString();
+    const url = queryString ? `/teams/metrics?${queryString}` : `/teams/metrics`;
     const response = await apiClient.get(url);
     return response.data;
   },
@@ -542,7 +548,8 @@ export const teamsApi = {
   getPassNetwork: async (
     teamId: number,
     tournament?: 'Apertura' | 'Clausura' | 'all',
-    matchId?: number | null
+    matchId?: number | null,
+    venue?: VenueFilter
   ): Promise<TeamPassNetworkResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -550,6 +557,9 @@ export const teamsApi = {
     }
     if (matchId) {
       params.append('match_id', matchId.toString());
+    }
+    if (venue && venue !== 'all') {
+      params.append('venue', venue);
     }
     const queryString = params.toString();
     const url = queryString ? `/teams/${teamId}/pass-network?${queryString}` : `/teams/${teamId}/pass-network`;
@@ -559,7 +569,8 @@ export const teamsApi = {
   getDefensiveActions: async (
     teamId: number,
     tournament: string = 'all',
-    matchId?: number | null
+    matchId?: number | null,
+    venue?: VenueFilter
   ): Promise<TeamDefensiveActionsResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -567,6 +578,9 @@ export const teamsApi = {
     }
     if (matchId) {
       params.append('match_id', matchId.toString());
+    }
+    if (venue && venue !== 'all') {
+      params.append('venue', venue);
     }
     const queryString = params.toString();
     const url = queryString
@@ -579,7 +593,8 @@ export const teamsApi = {
     teamId: number,
     tournament?: string,
     matchId?: number | null,
-    mode: 'for' | 'against' = 'for'
+    mode: 'for' | 'against' = 'for',
+    venue?: VenueFilter
   ): Promise<TeamShotMapResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -590,6 +605,9 @@ export const teamsApi = {
     }
     if (mode) {
       params.append('mode', mode);
+    }
+    if (venue && venue !== 'all') {
+      params.append('venue', venue);
     }
     const queryString = params.toString();
     const url = queryString
@@ -602,7 +620,8 @@ export const teamsApi = {
     teamId: number,
     tournament?: string,
     matchId?: number | null,
-    mode: 'for' | 'against' = 'for'
+    mode: 'for' | 'against' = 'for',
+    venue?: VenueFilter
   ): Promise<TeamAttackZonesResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -614,6 +633,9 @@ export const teamsApi = {
     if (mode) {
       params.append('mode', mode);
     }
+    if (venue && venue !== 'all') {
+      params.append('venue', venue);
+    }
     const queryString = params.toString();
     const url = queryString
       ? `/teams/${teamId}/attack-zones?${queryString}`
@@ -623,10 +645,19 @@ export const teamsApi = {
   },
   getMostUsedXI: async (
     teamId: number,
-    tournament?: 'Apertura' | 'Clausura' | 'all'
+    tournament?: 'Apertura' | 'Clausura' | 'all',
+    venue?: VenueFilter
   ): Promise<MostUsedXIResponse> => {
-    const url = tournament && tournament !== 'all'
-      ? `/teams/${teamId}/most-used-xi?tournament=${tournament}`
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    if (venue && venue !== 'all') {
+      params.append('venue', venue);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/teams/${teamId}/most-used-xi?${queryString}`
       : `/teams/${teamId}/most-used-xi`;
     const response = await apiClient.get(url);
     return response.data;
@@ -644,20 +675,38 @@ export const teamsApi = {
   },
   getPeriodMetrics: async (
     teamId: number,
-    tournament?: 'Apertura' | 'Clausura' | 'all'
+    tournament?: 'Apertura' | 'Clausura' | 'all',
+    venue?: VenueFilter
   ): Promise<TeamPeriodMetricsResponse> => {
-    const url = tournament && tournament !== 'all'
-      ? `/teams/${teamId}/period-metrics?tournament=${tournament}`
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    if (venue && venue !== 'all') {
+      params.append('venue', venue);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/teams/${teamId}/period-metrics?${queryString}`
       : `/teams/${teamId}/period-metrics`;
     const response = await apiClient.get(url);
     return response.data;
   },
   getSetPieces: async (
     teamId: number,
-    tournament?: 'Apertura' | 'Clausura' | 'all'
+    tournament?: 'Apertura' | 'Clausura' | 'all',
+    venue?: VenueFilter
   ): Promise<any> => {
-    const url = tournament && tournament !== 'all'
-      ? `/teams/${teamId}/set-pieces?tournament=${tournament}`
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    if (venue && venue !== 'all') {
+      params.append('venue', venue);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/teams/${teamId}/set-pieces?${queryString}`
       : `/teams/${teamId}/set-pieces`;
     const response = await apiClient.get(url);
     return response.data;

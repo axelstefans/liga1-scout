@@ -4,13 +4,14 @@ import {
   ChevronDown, Copy, Check, Download
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry } from '../../services/api';
+import { TeamMetricEntry, VenueFilter } from '../../services/api';
 import { useTeamAttackZones, useTeamMatches } from '../../hooks/useTeam';
 
 export interface TeamAttackZonesProps {
   teams?: TeamMetricEntry[];
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  venue?: VenueFilter;
   mode?: AttackZoneMode;
   viewMode?: ViewMode;
   selectedMatchId?: number | null;
@@ -66,6 +67,7 @@ function formatPlayerName(fullName: string): string {
 export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
   activeTeam,
   tournament = 'Clausura',
+  venue = 'all',
   mode: propMode,
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
@@ -86,11 +88,25 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleSetSelectedMatchId = (val: number | null) => {
+  const setMode = (m: AttackZoneMode) => {
+    if (propMode === undefined) {
+      setInternalMode(m);
+    }
+  };
+
+  const setViewMode = (vm: ViewMode) => {
+    if (propViewMode === undefined) {
+      setInternalViewMode(vm);
+    }
+  };
+
+  const setSelectedMatchId = (val: number | null) => {
     if (propSelectedMatchId === undefined) {
       setInternalSelectedMatchId(val);
     }
   };
+
+  const handleSetSelectedMatchId = setSelectedMatchId;
 
   // Fetch match list for the team
   const { data: matches, isLoading: isLoadingMatches } = useTeamMatches(
@@ -134,6 +150,7 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     mode,
+    venue,
     isQueryEnabled
   );
 

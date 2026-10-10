@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Download, Loader2, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry, DefensiveEventItem } from '../../services/api';
+import { TeamMetricEntry, DefensiveEventItem, VenueFilter } from '../../services/api';
 import { useTeamDefensiveActions, useTeamMatches } from '../../hooks/useTeam';
 import { getTeamThemeColor } from '../../utils/teams';
 
@@ -9,6 +9,7 @@ export interface TeamDefensiveTerritoryProps {
   teams?: TeamMetricEntry[];
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  venue?: VenueFilter;
   viewMode?: 'cumulative' | 'match';
   selectedMatchId?: number | null;
 }
@@ -251,6 +252,7 @@ function formatPlayerName(fullName: string): string {
 export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
   activeTeam,
   tournament = 'all',
+  venue = 'all',
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
 }) => {
@@ -265,11 +267,19 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
   const viewMode = propViewMode ?? internalViewMode;
   const selectedMatchId = propSelectedMatchId !== undefined ? propSelectedMatchId : internalSelectedMatchId;
 
-  const handleSetSelectedMatchId = (val: number | null) => {
+  const setViewMode = (vm: 'cumulative' | 'match') => {
+    if (propViewMode === undefined) {
+      setInternalViewMode(vm);
+    }
+  };
+
+  const setSelectedMatchId = (val: number | null) => {
     if (propSelectedMatchId === undefined) {
       setInternalSelectedMatchId(val);
     }
   };
+
+  const handleSetSelectedMatchId = setSelectedMatchId;
 
   // Active club theme color
   const teamColor = useMemo(
@@ -316,6 +326,7 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
     activeTeam?.team_id,
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
+    venue,
     isQueryEnabled
   );
 

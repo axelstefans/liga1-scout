@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry, PassNetworkNode } from '../../services/api';
+import { TeamMetricEntry, PassNetworkNode, VenueFilter } from '../../services/api';
 import { useTeamPassNetwork, useTeamMatches } from '../../hooks/useTeam';
 import { getTeamThemeColor } from '../../utils/teams';
 
@@ -9,6 +9,7 @@ export interface TeamPassNetworkProps {
   teams?: TeamMetricEntry[];
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
+  venue?: VenueFilter;
   viewMode?: 'cumulative' | 'match';
   selectedMatchId?: number | null;
 }
@@ -40,12 +41,13 @@ function formatOptaName(fullName: string): string {
 export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
   activeTeam,
   tournament = 'all',
+  venue = 'all',
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [internalViewMode, setInternalViewMode] = useState<'cumulative' | 'match'>('cumulative');
+  const [internalViewMode] = useState<'cumulative' | 'match'>('cumulative');
   const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number | null>(null);
   const [minPassThreshold, setMinPassThreshold] = useState<number>(10);
   const [hoveredNode, setHoveredNode] = useState<PassNetworkNode | null>(null);
@@ -106,6 +108,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
     activeTeam?.team_id,
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
+    venue,
     isPassNetworkEnabled
   );
 

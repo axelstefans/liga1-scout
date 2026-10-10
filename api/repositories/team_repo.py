@@ -1,6 +1,61 @@
 import sqlite3
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from collections import defaultdict
+
+# Empirical average coordinates (x: 0-100 pitch length, y: 0-100 pitch width) by tactical position / position group
+# Derived from Liga 1 pass event averages, avoiding clustering into flat midfielder lines
+POSITION_FALLBACK_COORDS: Dict[str, Tuple[float, float]] = {
+    # Goalkeepers
+    "GK": (10.5, 49.0),
+    "G": (10.5, 49.0),
+    "Goalkeeper": (10.5, 49.0),
+
+    # Defenders
+    "CB": (33.2, 45.6),
+    "LCB": (35.0, 69.2),
+    "RCB": (35.3, 30.8),
+    "LB": (49.0, 81.5),
+    "RB": (48.2, 17.9),
+    "LWB": (53.2, 84.4),
+    "RWB": (54.9, 16.8),
+    "D": (43.4, 50.0),
+    "Defender": (43.4, 50.0),
+
+    # Midfielders
+    "CDM": (46.2, 50.0),
+    "LDM": (49.5, 54.1),
+    "RDM": (49.1, 43.9),
+    "LCM": (53.2, 57.2),
+    "RCM": (52.7, 41.6),
+    "LM": (60.8, 72.4),
+    "RM": (60.7, 29.2),
+    "CAM": (59.5, 48.6),
+    "LAM": (61.5, 66.2),
+    "RAM": (62.6, 31.4),
+    "M": (54.5, 50.0),
+    "Midfielder": (54.5, 50.0),
+
+    # Forwards
+    "ST": (63.0, 50.0),
+    "LS": (63.2, 52.6),
+    "RS": (63.1, 47.9),
+    "LW": (62.6, 65.7),
+    "RW": (61.7, 34.4),
+    "F": (63.0, 50.0),
+    "Forward": (63.0, 50.0),
+}
+
+def get_position_fallback_coords(position_key: Optional[str]) -> Tuple[float, float]:
+    """Return standard formation coordinates for a given position string or group."""
+    if not position_key:
+        return (50.0, 50.0)
+    cleaned = str(position_key).strip()
+    if cleaned in POSITION_FALLBACK_COORDS:
+        return POSITION_FALLBACK_COORDS[cleaned]
+    upper = cleaned.upper()
+    if upper in POSITION_FALLBACK_COORDS:
+        return POSITION_FALLBACK_COORDS[upper]
+    return (50.0, 50.0)
 
 def get_team_profile(db: sqlite3.Connection, team_id: int) -> Optional[Dict[str, Any]]:
     """Fetch basic team information."""
@@ -61,91 +116,106 @@ def get_team_next_match(db: sqlite3.Connection, team_id: int) -> Optional[Dict[s
     row = db.execute(query, (team_id, team_id, team_id, team_id, team_id)).fetchone()
     return dict(row) if row else None
 
-def get_team_metrics(db: sqlite3.Connection, tournament: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_team_metrics(
+    db: sqlite3.Connection,
+    tournament: Optional[str] = None,
+    venue: str = "all"
+) -> List[Dict[str, Any]]:
     """
-    Fetch aggregate metrics for all 18 active Liga 1 teams, optionally filtered by tournament (Apertura | Clausura).
-    Returns metrics calculated from pre-aggregated team_match_metrics table & view under 10ms.
+    Fetch aggregate metrics for all 18 active Liga 1 teams, optionally filtered by tournament (Apertura | Clausura)
+    and venue (all | home | away).
+    Returns metrics calculated from pre-aggregated team_match_metrics table under 10ms.
     """
+    where_clauses = []
+    params: List[Any] = []
+
     if tournament and tournament.strip().lower() in ('apertura', 'clausura'):
         normalized_tourn = 'Apertura' if tournament.strip().lower() == 'apertura' else 'Clausura'
-        query = """
-            SELECT 
-                t.team_id,
-                t.name,
-                t.short_name,
-                t.primary_color,
-                t.logo_url,
-                COUNT(tmm.match_id) as matches_played,
-                SUM(CASE WHEN tmm.result = 'W' THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN tmm.result = 'D' THEN 1 ELSE 0 END) as draws,
-                SUM(CASE WHEN tmm.result = 'L' THEN 1 ELSE 0 END) as losses,
-                SUM(tmm.points) as points,
-                ROUND(CAST(SUM(tmm.points) AS FLOAT) / COUNT(tmm.match_id), 2) as points_per_match,
-                SUM(tmm.goals_for) as goals_scored,
-                SUM(tmm.goals_against) as goals_conceded,
-                SUM(tmm.goals_for) - SUM(tmm.goals_against) as goal_difference,
+        where_clauses.append("tmm.tournament = ?")
+        params.append(normalized_tourn)
 
-                -- A. Ofensivas / Tiro
-                SUM(tmm.shots_for) as total_shots,
-                SUM(tmm.shots_on_target_for) as shots_on_target,
-                SUM(tmm.shots_inside_box_for) as shots_inside_box,
-                SUM(tmm.shots_outside_box_for) as shots_outside_box,
-                ROUND(SUM(tmm.xg_for), 2) as xg,
-                ROUND(SUM(tmm.npxg_for), 2) as npxg,
-                ROUND(SUM(tmm.xg_for) / NULLIF(CAST(SUM(tmm.shots_for) AS FLOAT), 0), 2) as xg_per_shot,
-                ROUND(SUM(tmm.goals_for) - SUM(tmm.xg_for), 2) as goals_minus_xg,
-                ROUND((CAST(SUM(tmm.goals_for) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.shots_for), 0), 1) as conversion_rate_pct,
+    norm_venue = venue.strip().lower() if venue else "all"
+    if norm_venue == "home":
+        where_clauses.append("tmm.is_home = 1")
+    elif norm_venue == "away":
+        where_clauses.append("tmm.is_home = 0")
 
-                -- B. Circulación y Progresión
-                ROUND((CAST(SUM(tmm.passes_completed) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.passes_completed) + SUM(tmm.opp_passes_completed), 0), 1) as possession_pct,
-                SUM(tmm.passes_completed) as passes_completed,
-                SUM(tmm.passes_total) as passes_total,
-                ROUND((CAST(SUM(tmm.passes_completed) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.passes_total), 0), 1) as pass_accuracy_pct,
-                SUM(tmm.progressive_passes) as progressive_passes,
-                SUM(tmm.final_third_passes_for) as passes_into_final_third,
-                SUM(tmm.passes_into_box) as passes_into_box,
-                SUM(tmm.crosses_completed) as crosses_completed,
-                SUM(tmm.progressive_carries) as progressive_carries,
-                SUM(tmm.successful_dribbles) as successful_dribbles,
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-                -- C. Dominio Territorial y Estilo
-                ROUND((CAST(SUM(tmm.final_third_passes_for) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.final_third_passes_for) + SUM(tmm.final_third_passes_against), 0), 1) as field_tilt,
-                ROUND((CAST(SUM(tmm.final_third_passes_for) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.final_third_passes_for) + SUM(tmm.final_third_passes_against), 0), 1) as field_tilt_pct,
-                ROUND((CAST(SUM(tmm.forward_passes) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.passes_total), 0), 1) as verticality_ratio_pct,
-                ROUND(CAST(SUM(tmm.shot_dist_sum_for) AS FLOAT) / NULLIF(SUM(tmm.shot_dist_count_for), 0), 1) as avg_shot_distance,
+    query = f"""
+        SELECT 
+            t.team_id,
+            t.name,
+            t.short_name,
+            t.primary_color,
+            t.logo_url,
+            COUNT(tmm.match_id) as matches_played,
+            SUM(CASE WHEN tmm.result = 'W' THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN tmm.result = 'D' THEN 1 ELSE 0 END) as draws,
+            SUM(CASE WHEN tmm.result = 'L' THEN 1 ELSE 0 END) as losses,
+            COALESCE(SUM(tmm.points), 0) as points,
+            ROUND(CAST(COALESCE(SUM(tmm.points), 0) AS FLOAT) / NULLIF(COUNT(tmm.match_id), 0), 2) as points_per_match,
+            COALESCE(SUM(tmm.goals_for), 0) as goals_scored,
+            COALESCE(SUM(tmm.goals_against), 0) as goals_conceded,
+            COALESCE(SUM(tmm.goals_for), 0) - COALESCE(SUM(tmm.goals_against), 0) as goal_difference,
 
-                -- D. Presión y Fase Defensiva
-                ROUND(CAST(SUM(tmm.opp_passes_own_half) AS FLOAT) / NULLIF(SUM(tmm.defensive_actions_high), 0), 2) as ppda,
-                SUM(tmm.high_recoveries) as high_recoveries,
-                SUM(tmm.defensive_actions) as defensive_actions,
-                SUM(tmm.tackles) as tackles,
-                SUM(tmm.interceptions) as interceptions,
-                SUM(tmm.clearances) as clearances,
+            -- A. Ofensivas / Tiro
+            COALESCE(SUM(tmm.shots_for), 0) as total_shots,
+            COALESCE(SUM(tmm.shots_on_target_for), 0) as shots_on_target,
+            COALESCE(SUM(tmm.shots_inside_box_for), 0) as shots_inside_box,
+            COALESCE(SUM(tmm.shots_outside_box_for), 0) as shots_outside_box,
+            ROUND(COALESCE(SUM(tmm.xg_for), 0.0), 2) as xg,
+            ROUND(COALESCE(SUM(tmm.npxg_for), 0.0), 2) as npxg,
+            ROUND(COALESCE(SUM(tmm.xg_for), 0.0) / NULLIF(CAST(SUM(tmm.shots_for) AS FLOAT), 0), 2) as xg_per_shot,
+            ROUND(COALESCE(SUM(tmm.goals_for), 0) - COALESCE(SUM(tmm.xg_for), 0.0), 2) as goals_minus_xg,
+            ROUND((CAST(COALESCE(SUM(tmm.goals_for), 0) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.shots_for), 0), 1) as conversion_rate_pct,
 
-                -- E. Concesión / Rival
-                SUM(tmm.shots_against) as shots_conceded,
-                SUM(tmm.shots_on_target_against) as shots_on_target_conceded,
-                SUM(tmm.shots_inside_box_against) as shots_conceded_inside_box,
-                ROUND(SUM(tmm.xg_against), 2) as xga,
-                ROUND(SUM(tmm.xg_for) - SUM(tmm.xg_against), 2) as xgd,
-                ROUND(CAST(SUM(tmm.shots_against) AS FLOAT) / MAX(SUM(tmm.goals_against), 1), 1) as defensive_resistance_ratio,
+            -- B. Circulación y Progresión
+            ROUND((CAST(COALESCE(SUM(tmm.passes_completed), 0) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.passes_completed) + SUM(tmm.opp_passes_completed), 0), 1) as possession_pct,
+            COALESCE(SUM(tmm.passes_completed), 0) as passes_completed,
+            COALESCE(SUM(tmm.passes_total), 0) as passes_total,
+            ROUND((CAST(COALESCE(SUM(tmm.passes_completed), 0) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.passes_total), 0), 1) as pass_accuracy_pct,
+            COALESCE(SUM(tmm.progressive_passes), 0) as progressive_passes,
+            COALESCE(SUM(tmm.final_third_passes_for), 0) as passes_into_final_third,
+            COALESCE(SUM(tmm.passes_into_box), 0) as passes_into_box,
+            COALESCE(SUM(tmm.crosses_completed), 0) as crosses_completed,
+            COALESCE(SUM(tmm.progressive_carries), 0) as progressive_carries,
+            COALESCE(SUM(tmm.successful_dribbles), 0) as successful_dribbles,
 
-                -- Compatibility metrics
-                ROUND(SUM(tmm.xg_for) / COUNT(tmm.match_id), 2) as xg_per_match,
-                ROUND(SUM(tmm.xg_against) / COUNT(tmm.match_id), 2) as xga_per_match,
-                ROUND(CAST(SUM(tmm.shots_for) AS FLOAT) / NULLIF(SUM(tmm.goals_for), 0), 2) as conversion_ratio
+            -- C. Dominio Territorial y Estilo
+            ROUND((CAST(COALESCE(SUM(tmm.final_third_passes_for), 0) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.final_third_passes_for) + SUM(tmm.final_third_passes_against), 0), 1) as field_tilt,
+            ROUND((CAST(COALESCE(SUM(tmm.final_third_passes_for), 0) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.final_third_passes_for) + SUM(tmm.final_third_passes_against), 0), 1) as field_tilt_pct,
+            ROUND((CAST(COALESCE(SUM(tmm.forward_passes), 0) AS FLOAT) * 100.0) / NULLIF(SUM(tmm.passes_total), 0), 1) as verticality_ratio_pct,
+            ROUND(CAST(COALESCE(SUM(tmm.shot_dist_sum_for), 0) AS FLOAT) / NULLIF(SUM(tmm.shot_dist_count_for), 0), 1) as avg_shot_distance,
 
-            FROM teams t
-            JOIN team_match_metrics tmm ON t.team_id = tmm.team_id
-            WHERE tmm.tournament = ?
-            GROUP BY t.team_id, t.name, t.short_name, t.primary_color, t.logo_url
-            ORDER BY points DESC, goal_difference DESC, goals_scored DESC
-        """
-        rows = db.execute(query, (normalized_tourn,)).fetchall()
-    else:
-        query = "SELECT * FROM vw_team_metrics ORDER BY points DESC, goal_difference DESC, goals_scored DESC"
-        rows = db.execute(query).fetchall()
+            -- D. Presión y Fase Defensiva
+            ROUND(CAST(COALESCE(SUM(tmm.opp_passes_own_half), 0) AS FLOAT) / NULLIF(SUM(tmm.defensive_actions_high), 0), 2) as ppda,
+            COALESCE(SUM(tmm.high_recoveries), 0) as high_recoveries,
+            COALESCE(SUM(tmm.defensive_actions), 0) as defensive_actions,
+            COALESCE(SUM(tmm.tackles), 0) as tackles,
+            COALESCE(SUM(tmm.interceptions), 0) as interceptions,
+            COALESCE(SUM(tmm.clearances), 0) as clearances,
 
+            -- E. Concesión / Rival
+            COALESCE(SUM(tmm.shots_against), 0) as shots_conceded,
+            COALESCE(SUM(tmm.shots_on_target_against), 0) as shots_on_target_conceded,
+            COALESCE(SUM(tmm.shots_inside_box_against), 0) as shots_conceded_inside_box,
+            ROUND(COALESCE(SUM(tmm.xg_against), 0.0), 2) as xga,
+            ROUND(COALESCE(SUM(tmm.xg_for), 0.0) - COALESCE(SUM(tmm.xg_against), 0.0), 2) as xgd,
+            ROUND(CAST(COALESCE(SUM(tmm.shots_against), 0) AS FLOAT) / MAX(COALESCE(SUM(tmm.goals_against), 0), 1), 1) as defensive_resistance_ratio,
+
+            -- Compatibility metrics
+            ROUND(COALESCE(SUM(tmm.xg_for), 0.0) / NULLIF(COUNT(tmm.match_id), 0), 2) as xg_per_match,
+            ROUND(COALESCE(SUM(tmm.xg_against), 0.0) / NULLIF(COUNT(tmm.match_id), 0), 2) as xga_per_match,
+            ROUND(CAST(COALESCE(SUM(tmm.shots_for), 0) AS FLOAT) / NULLIF(SUM(tmm.goals_for), 0), 2) as conversion_ratio
+
+        FROM teams t
+        JOIN team_match_metrics tmm ON t.team_id = tmm.team_id
+        {where_sql}
+        GROUP BY t.team_id, t.name, t.short_name, t.primary_color, t.logo_url
+        ORDER BY points DESC, goal_difference DESC, goals_scored DESC
+    """
+    rows = db.execute(query, tuple(params)).fetchall()
     return [dict(row) for row in rows]
 
 def get_team_shot_zones(
@@ -406,7 +476,8 @@ def get_team_pass_network(
     db: sqlite3.Connection,
     team_id: int,
     tournament: Optional[str] = "all",
-    match_id: Optional[int] = None
+    match_id: Optional[int] = None,
+    venue: str = "all"
 ) -> Optional[Dict[str, Any]]:
     """
     Compute pass network for a team's Base XI (cumulative tournament scope)
@@ -429,18 +500,29 @@ def get_team_pass_network(
             return None
         match_tourn = match_row["tournament"]
 
-        # Select exact 11 starters of that specific fixture (ordered by minutes played & pass count)
+        # Select exact 11 starters of that specific fixture (strictly scoped to pms.team_id = ?)
+        # Prioritize confirmed starters (was_substitute = 0), then detailed tactical starters,
+        # then minutes_played DESC, then pass volume.
         xi_query = """
             SELECT 
                 pms.player_id,
                 p.name,
                 p.shirt_number,
-                pms.minutes_played
+                pms.minutes_played,
+                pms.position as match_position,
+                p.position as player_position,
+                p.position_group
             FROM player_match_stats pms
             JOIN players p ON pms.player_id = p.player_id
             WHERE pms.match_id = ? AND pms.team_id = ?
             ORDER BY 
-                pms.minutes_played DESC,
+                CASE 
+                    WHEN pms.was_substitute = 0 THEN 0
+                    WHEN pms.was_substitute IS NULL AND pms.position IS NOT NULL AND pms.position NOT IN ('G', 'D', 'M', 'F') THEN 0
+                    WHEN pms.was_substitute = 1 THEN 2
+                    ELSE 1
+                END ASC,
+                COALESCE(pms.minutes_played, 0) DESC,
                 (SELECT COUNT(*) FROM player_passes pp WHERE pp.match_id = pms.match_id AND pp.player_id = pms.player_id) DESC,
                 pms.player_id ASC
             LIMIT 11
@@ -478,9 +560,14 @@ def get_team_pass_network(
         for r in xi_rows:
             pid = r["player_id"]
             st = stats_map.get(pid, {})
-            node_x = float(st.get("x")) if st.get("x") is not None else 50.0
-            node_y = float(st.get("y")) if st.get("y") is not None else 50.0
             succ_passes = int(st.get("successful_passes") or 0)
+
+            # Determine fallback coordinates based on tactical position or position_group
+            pos_key = r["match_position"] or r["player_position"] or r["position_group"]
+            fallback_x, fallback_y = get_position_fallback_coords(pos_key)
+
+            node_x = float(st.get("x")) if st.get("x") is not None else fallback_x
+            node_y = float(st.get("y")) if st.get("y") is not None else fallback_y
 
             nodes.append({
                 "player_id": pid,
@@ -549,12 +636,23 @@ def get_team_pass_network(
         tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
         params.append(normalized_tourn)
 
+    venue_clause = ""
+    norm_venue = venue.strip().lower() if venue else "all"
+    if norm_venue == "home":
+        venue_clause = "AND m.home_team_id = ?"
+        params.append(team_id)
+    elif norm_venue == "away":
+        venue_clause = "AND m.away_team_id = ?"
+        params.append(team_id)
+
     # 1. Strictly query Top 11 players by total minutes played
     xi_query = f"""
         SELECT 
             pms.player_id,
             p.name,
             p.shirt_number,
+            p.position,
+            p.position_group,
             SUM(pms.minutes_played) as total_minutes
         FROM player_match_stats pms
         JOIN players p ON pms.player_id = p.player_id
@@ -562,7 +660,8 @@ def get_team_pass_network(
         WHERE pms.team_id = ? AND m.status = 'played'
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
-        GROUP BY pms.player_id, p.name, p.shirt_number
+          {venue_clause}
+        GROUP BY pms.player_id, p.name, p.shirt_number, p.position, p.position_group
         HAVING SUM(pms.minutes_played) > 0
         ORDER BY total_minutes DESC
         LIMIT 11
@@ -581,6 +680,9 @@ def get_team_pass_network(
     xi_id_set = set(xi_ids)
     placeholders = ",".join("?" * len(xi_ids))
 
+    # Base params for match-filtered queries 2, 3, 4
+    filter_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else []) + ([team_id] if norm_venue in ("home", "away") else [])
+
     # 2. Query spatial pass statistics ONLY for those 11 players
     stats_query = f"""
         SELECT 
@@ -596,10 +698,10 @@ def get_team_pass_network(
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           AND pp.player_id IN ({placeholders})
           {tourn_clause}
+          {venue_clause}
         GROUP BY pp.player_id
     """
-    stats_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else [])
-    stats_rows = db.execute(stats_query, stats_params).fetchall()
+    stats_rows = db.execute(stats_query, filter_params).fetchall()
     stats_map = {r["player_id"]: dict(r) for r in stats_rows}
 
     nodes = []
@@ -607,9 +709,11 @@ def get_team_pass_network(
     for r in xi_rows:
         pid = r["player_id"]
         st = stats_map.get(pid, {})
-        node_x = float(st.get("x")) if st.get("x") is not None else 50.0
-        node_y = float(st.get("y")) if st.get("y") is not None else 50.0
         succ_passes = int(st.get("successful_passes") or 0)
+
+        fallback_x, fallback_y = get_position_fallback_coords(r["position"] or r["position_group"])
+        node_x = float(st.get("x")) if st.get("x") is not None else fallback_x
+        node_y = float(st.get("y")) if st.get("y") is not None else fallback_y
 
         nodes.append({
             "player_id": pid,
@@ -630,9 +734,9 @@ def get_team_pass_network(
           AND pms.minutes_played > 0 AND m.status = 'played'
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
+          {venue_clause}
     """
-    mp_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else [])
-    mp_rows = db.execute(mp_query, mp_params).fetchall()
+    mp_rows = db.execute(mp_query, filter_params).fetchall()
     match_players = defaultdict(set)
     for r in mp_rows:
         match_players[r["match_id"]].add(r["player_id"])
@@ -647,9 +751,9 @@ def get_team_pass_network(
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           AND pp.player_id IN ({placeholders})
           {tourn_clause}
+          {venue_clause}
     """
-    passes_params = [team_id] + xi_ids + ([normalized_tourn] if normalized_tourn != "all" else [])
-    passes_rows = db.execute(passes_query, passes_params).fetchall()
+    passes_rows = db.execute(passes_query, filter_params).fetchall()
 
     edges_dict = defaultdict(int)
     for p in passes_rows:
@@ -701,7 +805,8 @@ def _get_team_defensive_actions_impl(
     db: sqlite3.Connection,
     team_id: int,
     tournament: str = "all",
-    match_id: Optional[int] = None
+    match_id: Optional[int] = None,
+    venue: str = "all"
 ) -> Optional[Dict[str, Any]]:
     """Internal implementation for defensive data retrieval and block height calculations."""
     team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
@@ -754,6 +859,15 @@ def _get_team_defensive_actions_impl(
             tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
             params.append(normalized_tourn)
 
+        venue_clause = ""
+        norm_venue = venue.strip().lower() if venue else "all"
+        if norm_venue == "home":
+            venue_clause = "AND m.home_team_id = ?"
+            params.append(team_id)
+        elif norm_venue == "away":
+            venue_clause = "AND m.away_team_id = ?"
+            params.append(team_id)
+
         scope_tournament = normalized_tourn
         scope_match_id = None
 
@@ -778,6 +892,7 @@ def _get_team_defensive_actions_impl(
                   'block', 'blocked_pass', 'ball-recovery', 'recovery', 'foul', 'foul-committed', 'foul_committed'
               )
               {tourn_clause}
+              {venue_clause}
             ORDER BY pda.id ASC
         """
         rows = db.execute(query, params).fetchall()
@@ -898,18 +1013,20 @@ def get_team_defensive_actions(
     db: Any,
     team_id: Optional[int] = None,
     tournament: str = "all",
-    match_id: Optional[int] = None
+    match_id: Optional[int] = None,
+    venue: str = "all"
 ) -> Optional[Dict[str, Any]]:
     """
     Retrieve defensive actions (tackles, interceptions, recoveries, fouls)
     and compute block height and defensive summary metrics.
 
     Supports both signatures:
-    - get_team_defensive_actions(db, team_id, tournament='all', match_id=None)
-    - get_team_defensive_actions(team_id, tournament='all', match_id=None)
+    - get_team_defensive_actions(db, team_id, tournament='all', match_id=None, venue='all')
+    - get_team_defensive_actions(team_id, tournament='all', match_id=None, venue='all')
     """
     if isinstance(db, int):
         actual_team_id = db
+        actual_venue = venue
         if isinstance(team_id, str):
             actual_tournament = team_id
         else:
@@ -925,9 +1042,9 @@ def get_team_defensive_actions(
         from ..core.config import settings
         with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as local_db:
             local_db.row_factory = sqlite3.Row
-            return _get_team_defensive_actions_impl(local_db, actual_team_id, actual_tournament, actual_match_id)
+            return _get_team_defensive_actions_impl(local_db, actual_team_id, actual_tournament, actual_match_id, actual_venue)
     else:
-        return _get_team_defensive_actions_impl(db, team_id, tournament, match_id)
+        return _get_team_defensive_actions_impl(db, team_id, tournament, match_id, venue)
 
 
 def _get_team_shot_map_impl(
@@ -935,7 +1052,8 @@ def _get_team_shot_map_impl(
     team_id: int,
     tournament: str = "all",
     match_id: Optional[int] = None,
-    mode: str = "for"
+    mode: str = "for",
+    venue: str = "all"
 ) -> Optional[Dict[str, Any]]:
     """Internal implementation for shot map data extraction and summary calculations."""
     team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
@@ -964,6 +1082,7 @@ def _get_team_shot_map_impl(
     # Case B: Cumulative tournament scope
     else:
         tourn_clause = ""
+        venue_clause = ""
         filter_params = [team_id, team_id]
         normalized_tourn = "all"
         if tournament and tournament.strip().lower() in ("apertura", "clausura"):
@@ -971,9 +1090,17 @@ def _get_team_shot_map_impl(
             tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
             filter_params.append(normalized_tourn)
 
+        norm_venue = venue.strip().lower() if venue else "all"
+        if norm_venue == "home":
+            venue_clause = "AND m.home_team_id = ?"
+            filter_params.append(team_id)
+        elif norm_venue == "away":
+            venue_clause = "AND m.away_team_id = ?"
+            filter_params.append(team_id)
+
         scope_tournament = normalized_tourn
         scope_match_id = None
-        filter_clause = f"AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026') {tourn_clause}"
+        filter_clause = f"AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026') {tourn_clause} {venue_clause}"
 
     query = f"""
         SELECT 
@@ -1107,7 +1234,8 @@ def get_team_shot_map(
     team_id: Optional[int] = None,
     tournament: str = "all",
     match_id: Optional[int] = None,
-    mode: str = "for"
+    mode: str = "for",
+    venue: str = "all"
 ) -> Optional[Dict[str, Any]]:
     """
     Retrieve shot events for a team and compute summary metrics.
@@ -1116,14 +1244,15 @@ def get_team_shot_map(
     - 'against': shots conceded by team_id (taken by opponents)
 
     Supports both signatures:
-    - get_team_shot_map(db, team_id, tournament='all', match_id=None, mode='for')
-    - get_team_shot_map(team_id, tournament='all', match_id=None, mode='for')
+    - get_team_shot_map(db, team_id, tournament='all', match_id=None, mode='for', venue='all')
+    - get_team_shot_map(team_id, tournament='all', match_id=None, mode='for', venue='all')
     """
     if isinstance(db, int):
         actual_team_id = db
         actual_tournament = tournament
         actual_match_id = match_id
         actual_mode = mode
+        actual_venue = venue
 
         if isinstance(team_id, str):
             if team_id.lower() in ("for", "against"):
@@ -1144,9 +1273,9 @@ def get_team_shot_map(
         from ..core.config import settings
         with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as local_db:
             local_db.row_factory = sqlite3.Row
-            return _get_team_shot_map_impl(local_db, actual_team_id, actual_tournament, actual_match_id, actual_mode)
+            return _get_team_shot_map_impl(local_db, actual_team_id, actual_tournament, actual_match_id, actual_mode, actual_venue)
     else:
-        return _get_team_shot_map_impl(db, team_id, tournament, match_id, mode)
+        return _get_team_shot_map_impl(db, team_id, tournament, match_id, mode, venue)
 
 
 def _is_in_penalty_box(x: Optional[float], y: Optional[float]) -> bool:
@@ -1178,7 +1307,8 @@ def _get_team_attack_zones_impl(
     team_id: int,
     tournament: str = "all",
     match_id: Optional[int] = None,
-    mode: str = "for"
+    mode: str = "for",
+    venue: str = "all"
 ) -> Optional[Dict[str, Any]]:
     """Internal implementation for Attack & Threat Infiltration Zones."""
     team_row = db.execute("SELECT name FROM teams WHERE team_id = ?", (team_id,)).fetchone()
@@ -1206,12 +1336,21 @@ def _get_team_attack_zones_impl(
         match_ids = [match_id]
     else:
         tourn_clause = ""
+        venue_clause = ""
         params: List[Any] = [team_id, team_id]
         normalized_tourn = "all"
         if tournament and tournament.strip().lower() in ("apertura", "clausura"):
             normalized_tourn = "Apertura" if tournament.strip().lower() == "apertura" else "Clausura"
             tourn_clause = "AND CASE WHEN strftime('%m', match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
             params.append(normalized_tourn)
+
+        norm_venue = venue.strip().lower() if venue else "all"
+        if norm_venue == "home":
+            venue_clause = "AND home_team_id = ?"
+            params.append(team_id)
+        elif norm_venue == "away":
+            venue_clause = "AND away_team_id = ?"
+            params.append(team_id)
 
         scope_tournament = normalized_tourn
         scope_match_id = None
@@ -1223,6 +1362,7 @@ def _get_team_attack_zones_impl(
               AND status = 'played'
               AND (season_id = 88529 OR strftime('%Y', match_date) = '2026')
               {tourn_clause}
+              {venue_clause}
         """, params).fetchall()
         match_ids = [r["match_id"] for r in m_rows]
 
@@ -1463,20 +1603,22 @@ def get_team_attack_zones(
     team_id: Optional[int] = None,
     tournament: str = "all",
     match_id: Optional[int] = None,
-    mode: str = "for"
+    mode: str = "for",
+    venue: str = "all"
 ) -> Optional[Dict[str, Any]]:
     """
     Calculate and aggregate Attack & Threat Infiltration Zones for a team in the 2026 season.
 
     Supports both signatures:
-    - get_team_attack_zones(db, team_id, tournament='all', match_id=None, mode='for')
-    - get_team_attack_zones(team_id, tournament='all', match_id=None, mode='for')
+    - get_team_attack_zones(db, team_id, tournament='all', match_id=None, mode='for', venue='all')
+    - get_team_attack_zones(team_id, tournament='all', match_id=None, mode='for', venue='all')
     """
     if isinstance(db, int):
         actual_team_id = db
         actual_tournament = tournament
         actual_match_id = match_id
         actual_mode = mode
+        actual_venue = venue
 
         if isinstance(team_id, str):
             if team_id.lower() in ("for", "against"):
@@ -1497,12 +1639,17 @@ def get_team_attack_zones(
         from ..core.config import settings
         with sqlite3.connect(f"file:{settings.DB_PATH}?mode=ro", uri=True) as local_db:
             local_db.row_factory = sqlite3.Row
-            return _get_team_attack_zones_impl(local_db, actual_team_id, actual_tournament, actual_match_id, actual_mode)
+            return _get_team_attack_zones_impl(local_db, actual_team_id, actual_tournament, actual_match_id, actual_mode, actual_venue)
     else:
-        return _get_team_attack_zones_impl(db, team_id, tournament, match_id, mode)
+        return _get_team_attack_zones_impl(db, team_id, tournament, match_id, mode, venue)
 
 
-def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: str = "all") -> Dict[str, Any]:
+def get_team_period_metrics(
+    db: sqlite3.Connection,
+    team_id: int,
+    tournament: str = "all",
+    venue: str = "all"
+) -> Dict[str, Any]:
     """
     Calculate comprehensive team averages and totals grouped by period ('1ST', '2ND', 'ALL') for:
     - Average corners for and conceded (/PJ), home vs away corner splits
@@ -1513,12 +1660,24 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
     - Set-piece goals and 15-minute goal distribution
     """
     tourn_clause = ""
-    params: List[Any] = [team_id]
+    tourn_param: List[Any] = []
     norm_tourn = tournament.strip().lower() if tournament else "all"
     if norm_tourn in ("apertura", "clausura"):
         target_tourn = "Apertura" if norm_tourn == "apertura" else "Clausura"
         tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
-        params.append(target_tourn)
+        tourn_param = [target_tourn]
+
+    venue_clause = ""
+    venue_param: List[Any] = []
+    norm_venue = venue.strip().lower() if venue else "all"
+    if norm_venue == "home":
+        venue_clause = "AND m.home_team_id = ?"
+        venue_param = [team_id]
+    elif norm_venue == "away":
+        venue_clause = "AND m.away_team_id = ?"
+        venue_param = [team_id]
+
+    base_params = [team_id] + tourn_param + venue_param
 
     # 1. Main team period query
     query_team = f"""
@@ -1538,9 +1697,10 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
         JOIN matches m ON mps.match_id = m.match_id
         WHERE mps.team_id = ? AND mps.period IN ('1ST', '2ND', 'ALL')
           {tourn_clause}
+          {venue_clause}
         GROUP BY mps.period
     """
-    rows_team = db.execute(query_team, tuple(params)).fetchall()
+    rows_team = db.execute(query_team, tuple(base_params)).fetchall()
 
     periods_data: Dict[str, Dict[str, Any]] = {}
     for r in rows_team:
@@ -1605,9 +1765,10 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
          AND mps_team.period = mps_opp.period
         WHERE mps_team.team_id = ? AND mps_team.period IN ('1ST', '2ND', 'ALL')
           {tourn_clause}
+          {venue_clause}
         GROUP BY mps_opp.period
     """
-    rows_opp = db.execute(query_opp, tuple(params)).fetchall()
+    rows_opp = db.execute(query_opp, tuple(base_params)).fetchall()
     for r in rows_opp:
         p = r["period"]
         if p in periods_data:
@@ -1617,7 +1778,8 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
             periods_data[p]["avg_fouls_received"] = float(r["avg_fouls_received"] or 0.0)
 
     # 3. Home vs Away corners for team
-    venue_params = [team_id, team_id] + ([params[1]] if len(params) > 1 else [])
+    venue_params = [team_id, team_id] + tourn_param + venue_param
+
     query_venue = f"""
         SELECT
             CASE WHEN m.home_team_id = ? THEN 1 ELSE 0 END AS is_home,
@@ -1626,6 +1788,7 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
         JOIN matches m ON mps.match_id = m.match_id
         WHERE mps.team_id = ? AND mps.period = 'ALL'
           {tourn_clause}
+          {venue_clause}
         GROUP BY is_home
     """
     rows_venue = db.execute(query_venue, tuple(venue_params)).fetchall()
@@ -1636,7 +1799,13 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
             periods_data["ALL"]["avg_corners_away"] = float(r["avg_corners"] or 0.0)
 
     # 4. Total xG from team_match_metrics to derive 1T vs 2T expected goals
-    tmm_clause = f"AND tournament = '{params[1]}'" if len(params) > 1 else ""
+    tmm_clause = f"AND tournament = '{tourn_param[0]}'" if tourn_param else ""
+    tmm_venue_clause = ""
+    if norm_venue == "home":
+        tmm_venue_clause = "AND is_home = 1"
+    elif norm_venue == "away":
+        tmm_venue_clause = "AND is_home = 0"
+
     query_xg = f"""
         SELECT 
             COUNT(match_id) as matches_count,
@@ -1645,6 +1814,7 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
         FROM team_match_metrics
         WHERE team_id = ?
           {tmm_clause}
+          {tmm_venue_clause}
     """
     row_xg = db.execute(query_xg, (team_id,)).fetchone()
     avg_xg_all = float(row_xg["avg_xg"] or 0.0) if row_xg and row_xg["avg_xg"] is not None else 0.0
@@ -1658,7 +1828,8 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
     periods_data["2ND"]["avg_xg"] = round(max(0.0, avg_xg_all - periods_data["1ST"]["avg_xg"]), 2)
 
     # 5. Set pieces metrics & 15-minute interval distribution
-    sp_params = [team_id, team_id] + ([params[1]] if len(params) > 1 else [])
+    sp_params = [team_id, team_id] + tourn_param + venue_param
+
     query_sp = f"""
         SELECT
             COUNT(ps.shot_id) as set_piece_shots,
@@ -1670,13 +1841,13 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
         WHERE ((ps.is_home = 1 AND m.home_team_id = ?) OR (ps.is_home = 0 AND m.away_team_id = ?))
           AND ps.situation IN ('corner', 'set_piece')
           {tourn_clause}
+          {venue_clause}
     """
     row_sp = db.execute(query_sp, tuple(sp_params)).fetchone()
     sp_shots = int(row_sp["set_piece_shots"] or 0) if row_sp else 0
     sp_xg = float(row_sp["set_piece_xg"] or 0.0) if row_sp else 0.0
     sp_goals = int(row_sp["set_piece_goals"] or 0) if row_sp else 0
 
-    mgi_params = [team_id] + ([params[1]] if len(params) > 1 else [])
     query_mgi = f"""
         SELECT
             COUNT(mgi.id) as total_goals,
@@ -1685,8 +1856,9 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
         JOIN matches m ON mgi.match_id = m.match_id
         WHERE mgi.team_id = ?
           {tourn_clause}
+          {venue_clause}
     """
-    row_mgi = db.execute(query_mgi, tuple(mgi_params)).fetchone()
+    row_mgi = db.execute(query_mgi, tuple(base_params)).fetchone()
     corner_goals = int(row_mgi["corner_goals"] or 0) if row_mgi else 0
     mgi_total_goals = int(row_mgi["total_goals"] or 0) if row_mgi else 0
 
@@ -1721,9 +1893,10 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
         JOIN matches m ON mgi.match_id = m.match_id
         WHERE mgi.team_id = ?
           {tourn_clause}
+          {venue_clause}
         GROUP BY interval_bucket
     """
-    interval_rows = db.execute(intervals_query, tuple(mgi_params)).fetchall()
+    interval_rows = db.execute(intervals_query, tuple(base_params)).fetchall()
     counts_by_bucket = {row["interval_bucket"]: dict(row) for row in interval_rows}
 
     distribution = []
@@ -1753,6 +1926,7 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
     return {
         "team_id": team_id,
         "tournament": tournament,
+        "venue": norm_venue,
         "matches_count": matches_count,
         "periods": periods_data,
         "set_pieces": {
@@ -1775,15 +1949,16 @@ def get_team_period_metrics(db: sqlite3.Connection, team_id: int, tournament: st
     }
 
 
-def get_team_set_piece_metrics(db: sqlite3.Connection, team_id: int, tournament: str = "all") -> Dict[str, Any]:
+def get_team_set_piece_metrics(db: sqlite3.Connection, team_id: int, tournament: str = "all", venue: str = "all") -> Dict[str, Any]:
     """
     Returns set piece metrics and 15-minute goal distribution for team_id.
     Delegates to get_team_period_metrics for unified computation.
     """
-    full_data = get_team_period_metrics(db, team_id, tournament=tournament)
+    full_data = get_team_period_metrics(db, team_id, tournament=tournament, venue=venue)
     return {
         "team_id": team_id,
         "tournament": tournament,
+        "venue": full_data.get("venue", venue),
         "total_goals": full_data["goal_distribution"]["total_goals"],
         "corner_goals": full_data["set_pieces"]["corner_goals"],
         "corner_goals_pct": full_data["set_pieces"]["corner_goals_pct"],
@@ -1796,18 +1971,28 @@ def get_team_set_piece_metrics(db: sqlite3.Connection, team_id: int, tournament:
     }
 
 
-def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str = "all") -> Dict[str, Any]:
+def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str = "all", venue: str = "all") -> Dict[str, Any]:
     """
     Returns the top 11 players with the most minutes played for the team,
     including percentage of total available team minutes, appearances, age, and goals+assists.
     """
     tourn_clause = ""
-    params: List[Any] = [team_id]
+    tourn_param: List[Any] = []
     norm_tourn = tournament.strip().lower() if tournament else "all"
     if norm_tourn in ("apertura", "clausura"):
         target_tourn = "Apertura" if norm_tourn == "apertura" else "Clausura"
         tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
-        params.append(target_tourn)
+        tourn_param = [target_tourn]
+
+    venue_clause = ""
+    venue_param: List[Any] = []
+    norm_venue = venue.strip().lower() if venue else "all"
+    if norm_venue == "home":
+        venue_clause = "AND m.home_team_id = ?"
+        venue_param = [team_id]
+    elif norm_venue == "away":
+        venue_clause = "AND m.away_team_id = ?"
+        venue_param = [team_id]
 
     # 1. Total team matches played to calculate max possible team minutes (matches * 90)
     matches_count_query = f"""
@@ -1817,8 +2002,9 @@ def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str 
           AND m.status = 'played'
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause.replace('pms.team_id = ? AND ', '')}
+          {venue_clause}
     """
-    mc_params = [team_id, team_id] + ([params[1]] if len(params) > 1 else [])
+    mc_params = [team_id, team_id] + tourn_param + venue_param
     mc_row = db.execute(matches_count_query, mc_params).fetchone()
     total_matches = mc_row["total_matches"] if mc_row and mc_row["total_matches"] > 0 else 1
     max_team_minutes = total_matches * 90
@@ -1844,12 +2030,14 @@ def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str 
         WHERE pms.team_id = ? AND m.status = 'played'
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
+          {venue_clause}
         GROUP BY pms.player_id, p.name, p.shirt_number, p.position_group, p.date_of_birth
         HAVING SUM(pms.minutes_played) > 0
         ORDER BY total_minutes DESC
         LIMIT 11
     """
-    xi_rows = db.execute(xi_query, params).fetchall()
+    xi_params = [team_id] + tourn_param + venue_param
+    xi_rows = db.execute(xi_query, xi_params).fetchall()
 
     players_list = []
     current_year = 2026
@@ -1894,6 +2082,7 @@ def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str 
     return {
         "team_id": team_id,
         "tournament": tournament,
+        "venue": norm_venue,
         "total_matches": total_matches,
         "max_minutes": max_team_minutes,
         "players": players_list
