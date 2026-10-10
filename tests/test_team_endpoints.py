@@ -902,8 +902,73 @@ def test_get_team_attack_zones_endpoint():
     assert resp_bad_mode.status_code == 422
 
 
+def test_get_team_period_metrics_mode():
+    # 1. Default (mode=for)
+    resp_for = client.get("/api/teams/2311/period-metrics?mode=for")
+    assert resp_for.status_code == 200
+    data_for = resp_for.json()
+    assert data_for["mode"] == "for"
+    assert data_for["periods"]["ALL"]["avg_goals"] > 0
+    assert data_for["periods"]["ALL"]["avg_xg"] > 0
+    assert data_for["goal_distribution"]["total_goals"] > 0
+
+    # 2. mode=against
+    resp_against = client.get("/api/teams/2311/period-metrics?mode=against")
+    assert resp_against.status_code == 200
+    data_against = resp_against.json()
+    assert data_against["mode"] == "against"
+    assert data_against["periods"]["ALL"]["avg_goals"] == data_against["periods"]["ALL"]["avg_goals_conceded"]
+    assert data_against["goal_distribution"]["total_goals"] == data_against["periods"]["ALL"]["goals_conceded"]
+
+    # 3. Invalid mode -> 422
+    resp_invalid = client.get("/api/teams/2311/period-metrics?mode=invalid")
+    assert resp_invalid.status_code == 422
+
+
+def test_get_team_set_pieces_mode():
+    # 1. Default (mode=for)
+    resp_for = client.get("/api/teams/2311/set-pieces?mode=for")
+    assert resp_for.status_code == 200
+    data_for = resp_for.json()
+    assert data_for["mode"] == "for"
+    assert "corner_goals" in data_for
+
+    # 2. mode=against
+    resp_against = client.get("/api/teams/2311/set-pieces?mode=against")
+    assert resp_against.status_code == 200
+    data_against = resp_against.json()
+    assert data_against["mode"] == "against"
+    assert "corner_goals" in data_against
+
+    # 3. Invalid mode -> 422
+    resp_invalid = client.get("/api/teams/2311/set-pieces?mode=invalid")
+    assert resp_invalid.status_code == 422
+
+
+def test_get_team_shot_map_per_match_metrics():
+    # Cumulative mode
+    resp = client.get("/api/teams/2311/shot-map?mode=for")
+    assert resp.status_code == 200
+    data = resp.json()
+    summary = data["summary"]
+    assert "shots_per_match" in summary
+    assert "xg_per_match" in summary
+    assert summary["shots_per_match"] > 0
+    assert summary["xg_per_match"] > 0
+
+    # Against mode
+    resp_ag = client.get("/api/teams/2311/shot-map?mode=against")
+    assert resp_ag.status_code == 200
+    summary_ag = resp_ag.json()["summary"]
+    assert "shots_per_match" in summary_ag
+    assert "xg_per_match" in summary_ag
+    assert summary_ag["shots_per_match"] > 0
+    assert summary_ag["xg_per_match"] > 0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
 
 
 

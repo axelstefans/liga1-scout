@@ -638,11 +638,13 @@ export const ClubDetailAnalytics: React.FC = () => {
                 activeTeam={activeTeam}
                 tournament={selectedTournament}
                 venue={venue}
+                mode={perspective}
               />
               <TeamPeriodMetricsCard
                 activeTeam={activeTeam}
                 tournament={selectedTournament}
                 venue={venue}
+                mode={perspective}
               />
               <TeamDisciplineCard
                 activeTeam={activeTeam}

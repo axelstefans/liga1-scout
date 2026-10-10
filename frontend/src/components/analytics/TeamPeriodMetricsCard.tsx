@@ -7,17 +7,21 @@ export interface TeamPeriodMetricsCardProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
   venue?: VenueFilter;
+  mode?: 'for' | 'against';
 }
 
 export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
   activeTeam,
   tournament = 'all',
   venue = 'all',
+  mode = 'for',
 }) => {
+  const isAgainst = mode === 'against';
   const { data, isLoading, isError } = useTeamPeriodMetrics(
     activeTeam?.team_id,
     tournament,
-    venue
+    venue,
+    mode
   );
 
   const allPeriod = data?.periods?.['ALL'];
@@ -25,25 +29,33 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
   const secondPeriod = data?.periods?.['2ND'];
   const goalDist = data?.goal_distribution;
 
-  // 1. Goles / PJ
+  // 1. Goles Marcados / Concedidos / PJ
   const goalsPM =
     allPeriod?.avg_goals ??
-    (activeTeam?.goals_scored && activeTeam?.matches_played
-      ? activeTeam.goals_scored / activeTeam.matches_played
-      : 0);
+    (isAgainst
+      ? (activeTeam?.goals_conceded && activeTeam?.matches_played
+        ? activeTeam.goals_conceded / activeTeam.matches_played
+        : 0)
+      : (activeTeam?.goals_scored && activeTeam?.matches_played
+        ? activeTeam.goals_scored / activeTeam.matches_played
+        : 0));
 
-  // 2. xG / PJ
+  // 2. xG / xGA / PJ
   const xgPM =
     allPeriod?.avg_xg ??
-    (activeTeam?.xg && activeTeam?.matches_played
-      ? activeTeam.xg / activeTeam.matches_played
-      : 0);
+    (isAgainst
+      ? (activeTeam?.xga && activeTeam?.matches_played
+        ? activeTeam.xga / activeTeam.matches_played
+        : (activeTeam?.xga_per_match ?? 0))
+      : (activeTeam?.xg && activeTeam?.matches_played
+        ? activeTeam.xg / activeTeam.matches_played
+        : (activeTeam?.xg_per_match ?? 0)));
 
   // 3. Goles 1T / PJ & 2T / PJ
   const goals1TPM = firstPeriod?.avg_goals ?? 0;
   const goals2TPM = secondPeriod?.avg_goals ?? 0;
 
-  // 4. xG 1T / PJ & 2T / PJ
+  // 4. xG / xGA 1T / PJ & 2T / PJ
   const xg1TPM = firstPeriod?.avg_xg ?? 0;
   const xg2TPM = secondPeriod?.avg_xg ?? 0;
 
@@ -78,10 +90,10 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 flex-1">
-            {/* 1. Goles Marcados / PJ */}
+            {/* 1. Goles Marcados / Concedidos / PJ */}
             <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-3 flex flex-col justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                Goles Marcados
+                {isAgainst ? 'Goles Concedidos' : 'Goles Marcados'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -91,10 +103,10 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
               </div>
             </div>
 
-            {/* 2. xG Generado / PJ */}
+            {/* 2. Peligro xG / xGA / PJ */}
             <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-3 flex flex-col justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                Peligro xG
+                {isAgainst ? 'Peligro xGA' : 'Peligro xG'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -104,10 +116,10 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
               </div>
             </div>
 
-            {/* 3. Goles en 1T / PJ */}
+            {/* 3. Goles en 1T / Concedidos 1T / PJ */}
             <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-3 flex flex-col justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                Goles en 1T
+                {isAgainst ? 'Goles Concedidos 1T' : 'Goles en 1T'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -117,10 +129,10 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
               </div>
             </div>
 
-            {/* 4. Goles en 2T / PJ */}
+            {/* 4. Goles en 2T / Concedidos 2T / PJ */}
             <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-3 flex flex-col justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                Goles en 2T
+                {isAgainst ? 'Goles Concedidos 2T' : 'Goles en 2T'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -130,10 +142,10 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
               </div>
             </div>
 
-            {/* 5. xG en 1T / PJ */}
+            {/* 5. xG / xGA en 1T / PJ */}
             <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-3 flex flex-col justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                xG en 1T
+                {isAgainst ? 'xGA en 1T' : 'xG en 1T'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -143,10 +155,10 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
               </div>
             </div>
 
-            {/* 6. xG en 2T / PJ */}
+            {/* 6. xG / xGA en 2T / PJ */}
             <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-3 flex flex-col justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                xG en 2T
+                {isAgainst ? 'xGA en 2T' : 'xG en 2T'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -160,7 +172,7 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
           {/* Bottom row: Peak interval info */}
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Tramo con más goles
+              {isAgainst ? 'Tramo con más goles recibidos' : 'Tramo con más goles'}
             </span>
             <span className="text-xs font-bold text-slate-800">
               Minutos {peakInterval.replace('+', "'+")} ({peakGoals} {peakGoals === 1 ? 'gol' : 'goles'})

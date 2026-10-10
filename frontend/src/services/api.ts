@@ -469,6 +469,8 @@ export interface ShotMapSummary {
   shots_on_target: number;
   on_target_pct: number;
   xg_difference: number;
+  shots_per_match?: number;
+  xg_per_match?: number;
 }
 
 export interface TeamShotMapResponse {
@@ -676,7 +678,8 @@ export const teamsApi = {
   getPeriodMetrics: async (
     teamId: number,
     tournament?: 'Apertura' | 'Clausura' | 'all',
-    venue?: VenueFilter
+    venue?: VenueFilter,
+    mode: 'for' | 'against' = 'for'
   ): Promise<TeamPeriodMetricsResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -684,6 +687,9 @@ export const teamsApi = {
     }
     if (venue && venue !== 'all') {
       params.append('venue', venue);
+    }
+    if (mode) {
+      params.append('mode', mode);
     }
     const queryString = params.toString();
     const url = queryString
@@ -695,7 +701,8 @@ export const teamsApi = {
   getSetPieces: async (
     teamId: number,
     tournament?: 'Apertura' | 'Clausura' | 'all',
-    venue?: VenueFilter
+    venue?: VenueFilter,
+    mode: 'for' | 'against' = 'for'
   ): Promise<any> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -703,6 +710,9 @@ export const teamsApi = {
     }
     if (venue && venue !== 'all') {
       params.append('venue', venue);
+    }
+    if (mode) {
+      params.append('mode', mode);
     }
     const queryString = params.toString();
     const url = queryString

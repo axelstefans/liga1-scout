@@ -7,17 +7,21 @@ export interface TeamSetPiecesCardProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
   venue?: VenueFilter;
+  mode?: 'for' | 'against';
 }
 
 export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
   activeTeam,
   tournament = 'all',
   venue = 'all',
+  mode = 'for',
 }) => {
+  const isAgainst = mode === 'against';
   const { data, isLoading, isError } = useTeamPeriodMetrics(
     activeTeam?.team_id,
     tournament,
-    venue
+    venue,
+    mode
   );
 
   const allPeriod = data?.periods?.['ALL'];
@@ -125,10 +129,10 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
             </div>
           </div>
 
-          {/* 6. Goles de Córner (Total y %) */}
+          {/* 6. Goles de Córner / Recibidos (Total y %) */}
           <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-3 flex flex-col justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-              Goles de Córner
+              {isAgainst ? 'Goles de córner recibidos' : 'Goles de Córner'}
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -144,7 +148,7 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
           {/* Bottom row: Set pieces total goals */}
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Goles a balón parado
+              {isAgainst ? 'Goles recibidos a balón parado' : 'Goles a balón parado'}
             </span>
             <span className="text-xs font-bold text-slate-800">
               {setPieces?.set_piece_goals ?? 0} ({((setPieces?.set_piece_goals_per_match ?? 0)).toFixed(2)} / pj)

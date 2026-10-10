@@ -250,17 +250,18 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   // Reactive KPI summary (recalculated when player filter is applied)
   const activeSummary = useMemo(() => {
     if (selectedPlayer === 'all') {
-      return (
-        data?.summary || {
-          total_shots: 0,
-          goals: 0,
-          total_xg: 0,
-          xg_per_shot: 0,
-          shots_on_target: 0,
-          on_target_pct: 0,
-          xg_difference: 0,
-        }
-      );
+      const summary = data?.summary || {
+        total_shots: 0,
+        goals: 0,
+        total_xg: 0,
+        xg_per_shot: 0,
+        shots_on_target: 0,
+        on_target_pct: 0,
+        xg_difference: 0,
+        shots_per_match: 0,
+        xg_per_match: 0,
+      };
+      return summary;
     }
     const total_shots = playerShots.length;
     const goals = playerShots.filter((s) => s.result === 'goal').length;
@@ -270,6 +271,11 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
     const on_target_pct = total_shots > 0 ? roundDecimals((shots_on_target / total_shots) * 100, 1) : 0;
     const xg_difference = roundDecimals(goals - total_xg, 2);
 
+    // For player-filtered view in cumulative mode, derive per-match using matches length or activeTeam matches
+    const matchesCount = matches?.length || activeTeam?.matches_played || 1;
+    const shots_per_match = roundDecimals(total_shots / matchesCount, 1);
+    const xg_per_match = roundDecimals(total_xg / matchesCount, 2);
+
     return {
       total_shots,
       goals,
@@ -278,8 +284,10 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
       shots_on_target,
       on_target_pct,
       xg_difference,
+      shots_per_match,
+      xg_per_match,
     };
-  }, [selectedPlayer, playerShots, data?.summary]);
+  }, [selectedPlayer, playerShots, data?.summary, matches?.length, activeTeam?.matches_played]);
 
   // Counts for pills
   const counts = useMemo(() => {
@@ -705,7 +713,14 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-lg text-xs">
           <div className="flex items-center gap-1">
             <span className="text-slate-500 font-medium">Remates:</span>
-            <span className="font-bold text-slate-900">{activeSummary?.total_shots ?? 0}</span>
+            <span className="font-bold text-slate-900">
+              {activeSummary?.total_shots ?? 0}
+              {viewMode === 'cumulative' && activeSummary?.shots_per_match !== undefined && (
+                <span className="ml-1 text-[11px] font-normal text-slate-500">
+                  ({activeSummary.shots_per_match.toFixed(1)} / pj)
+                </span>
+              )}
+            </span>
           </div>
           <span className="text-slate-300">•</span>
 
@@ -717,7 +732,14 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
 
           <div className="flex items-center gap-1">
             <span className="text-slate-500 font-medium">{mode === 'against' ? 'xGA:' : 'xG:'}</span>
-            <span className="font-bold text-slate-900">{(activeSummary?.total_xg ?? 0).toFixed(2)}</span>
+            <span className="font-bold text-slate-900">
+              {(activeSummary?.total_xg ?? 0).toFixed(2)}
+              {viewMode === 'cumulative' && activeSummary?.xg_per_match !== undefined && (
+                <span className="ml-1 text-[11px] font-normal text-slate-500">
+                  ({activeSummary.xg_per_match.toFixed(2)} {mode === 'against' ? 'xGA' : 'xG'} / pj)
+                </span>
+              )}
+            </span>
           </div>
           <span className="text-slate-300">•</span>
 

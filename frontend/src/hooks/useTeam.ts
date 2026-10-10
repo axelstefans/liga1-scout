@@ -135,11 +135,27 @@ export const useTeamPeriodMetrics = (
   teamId?: number,
   tournament?: 'Apertura' | 'Clausura' | 'all',
   venue: VenueFilter = 'all',
+  mode: 'for' | 'against' = 'for',
   enabled: boolean = true
 ) => {
   return useQuery<TeamPeriodMetricsResponse>({
-    queryKey: ['teamPeriodMetrics', teamId, tournament || 'all', venue],
-    queryFn: () => teamsApi.getPeriodMetrics(teamId!, tournament, venue),
+    queryKey: ['teamPeriodMetrics', teamId, tournament || 'all', venue, mode],
+    queryFn: () => teamsApi.getPeriodMetrics(teamId!, tournament, venue, mode),
+    enabled: Boolean(teamId) && enabled,
+    staleTime: 1000 * 60 * 10,
+  });
+};
+
+export const useTeamSetPieces = (
+  teamId?: number,
+  tournament?: 'Apertura' | 'Clausura' | 'all',
+  venue: VenueFilter = 'all',
+  mode: 'for' | 'against' = 'for',
+  enabled: boolean = true
+) => {
+  return useQuery<any>({
+    queryKey: ['teamSetPieces', teamId, tournament || 'all', venue, mode],
+    queryFn: () => teamsApi.getSetPieces(teamId!, tournament, venue, mode),
     enabled: Boolean(teamId) && enabled,
     staleTime: 1000 * 60 * 10,
   });

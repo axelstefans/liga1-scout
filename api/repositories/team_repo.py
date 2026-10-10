@@ -1209,6 +1209,23 @@ def _get_team_shot_map_impl(
     on_target_pct = round((shots_on_target / total_shots) * 100.0, 1) if total_shots > 0 else 0.0
     xg_difference = round(goals - total_xg, 2)
 
+    # Compute matches played for normalization
+    if match_id is not None:
+        matches_played = 1
+    else:
+        mp_query = f"""
+            SELECT COUNT(DISTINCT m.match_id) as matches_count
+            FROM matches m
+            WHERE m.status = 'played'
+              AND (m.home_team_id = ? OR m.away_team_id = ?)
+              {filter_clause}
+        """
+        mp_row = db.execute(mp_query, filter_params).fetchone()
+        matches_played = int(mp_row["matches_count"] or 0) if mp_row else 0
+
+    shots_per_match = round(total_shots / matches_played, 1) if matches_played > 0 else float(total_shots)
+    xg_per_match = round(total_xg / matches_played, 2) if matches_played > 0 else float(total_xg)
+
     summary = {
         "total_shots": total_shots,
         "goals": goals,
@@ -1216,7 +1233,9 @@ def _get_team_shot_map_impl(
         "xg_per_shot": xg_per_shot,
         "shots_on_target": shots_on_target,
         "on_target_pct": on_target_pct,
-        "xg_difference": xg_difference
+        "xg_difference": xg_difference,
+        "shots_per_match": shots_per_match,
+        "xg_per_match": xg_per_match
     }
 
     return {
@@ -1648,7 +1667,8 @@ def get_team_period_metrics(
     db: sqlite3.Connection,
     team_id: int,
     tournament: str = "all",
-    venue: str = "all"
+    venue: str = "all",
+    mode: str = "for"
 ) -> Dict[str, Any]:
     """
     Calculate comprehensive team averages and totals grouped by period ('1ST', '2ND', 'ALL') for:
@@ -1656,9 +1676,13 @@ def get_team_period_metrics(
     - Goals scored and conceded in 1T vs 2T (/PJ)
     - Fouls committed vs received (/PJ)
     - Yellow & red cards total and /PJ (including 1T vs 2T distribution)
-    - Average possession and expected goals (xG)
+    - Average possession and expected goals (xG / xGA)
     - Set-piece goals and 15-minute goal distribution
     """
+    norm_mode = mode.lower().strip() if mode else "for"
+    if norm_mode not in ("for", "against"):
+        norm_mode = "for"
+
     tourn_clause = ""
     tourn_param: List[Any] = []
     norm_tourn = tournament.strip().lower() if tournament else "all"
@@ -1798,7 +1822,7 @@ def get_team_period_metrics(
         else:
             periods_data["ALL"]["avg_corners_away"] = float(r["avg_corners"] or 0.0)
 
-    # 4. Total xG from team_match_metrics to derive 1T vs 2T expected goals
+    # 4. Total xG / xGA from team_match_metrics to derive 1T vs 2T expected goals
     tmm_clause = f"AND tournament = '{tourn_param[0]}'" if tourn_param else ""
     tmm_venue_clause = ""
     if norm_venue == "home":
@@ -1806,11 +1830,12 @@ def get_team_period_metrics(
     elif norm_venue == "away":
         tmm_venue_clause = "AND is_home = 0"
 
+    xg_col = "xg_against" if norm_mode == "against" else "xg_for"
     query_xg = f"""
         SELECT 
             COUNT(match_id) as matches_count,
-            ROUND(SUM(xg_for), 2) as total_xg,
-            ROUND(AVG(xg_for), 2) as avg_xg
+            ROUND(SUM({xg_col}), 2) as total_xg,
+            ROUND(AVG({xg_col}), 2) as avg_xg
         FROM team_match_metrics
         WHERE team_id = ?
           {tmm_clause}
@@ -1820,15 +1845,35 @@ def get_team_period_metrics(
     avg_xg_all = float(row_xg["avg_xg"] or 0.0) if row_xg and row_xg["avg_xg"] is not None else 0.0
     periods_data["ALL"]["avg_xg"] = avg_xg_all
 
-    goals_1t = periods_data["1ST"]["total_goals"]
-    goals_2t = periods_data["2ND"]["total_goals"]
+    if norm_mode == "against":
+        goals_1t = periods_data["1ST"]["goals_conceded"]
+        goals_2t = periods_data["2ND"]["goals_conceded"]
+    else:
+        goals_1t = periods_data["1ST"]["total_goals"]
+        goals_2t = periods_data["2ND"]["total_goals"]
+
     tot_goals = goals_1t + goals_2t
     ratio_1t = 0.46 if tot_goals == 0 else max(0.25, min(0.75, (goals_1t + 1.0) / (tot_goals + 2.0)))
     periods_data["1ST"]["avg_xg"] = round(avg_xg_all * ratio_1t, 2)
     periods_data["2ND"]["avg_xg"] = round(max(0.0, avg_xg_all - periods_data["1ST"]["avg_xg"]), 2)
 
+    # If mode == "against", align avg_goals and total_goals with conceded figures so consumers get the cohort data directly
+    if norm_mode == "against":
+        for p_key in ("1ST", "2ND", "ALL"):
+            periods_data[p_key]["total_goals"] = periods_data[p_key]["goals_conceded"]
+            periods_data[p_key]["avg_goals"] = periods_data[p_key]["avg_goals_conceded"]
+
     # 5. Set pieces metrics & 15-minute interval distribution
     sp_params = [team_id, team_id] + tourn_param + venue_param
+
+    if norm_mode == "against":
+        sp_shot_cond = "((ps.is_home = 0 AND m.home_team_id = ?) OR (ps.is_home = 1 AND m.away_team_id = ?))"
+        mgi_team_cond = "((m.home_team_id = ? AND mgi.team_id = m.away_team_id) OR (m.away_team_id = ? AND mgi.team_id = m.home_team_id))"
+        mgi_params = [team_id, team_id] + tourn_param + venue_param
+    else:
+        sp_shot_cond = "((ps.is_home = 1 AND m.home_team_id = ?) OR (ps.is_home = 0 AND m.away_team_id = ?))"
+        mgi_team_cond = "mgi.team_id = ?"
+        mgi_params = base_params
 
     query_sp = f"""
         SELECT
@@ -1838,7 +1883,7 @@ def get_team_period_metrics(
         FROM matches m
         JOIN player_shots ps ON m.match_id = ps.match_id
         LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
-        WHERE ((ps.is_home = 1 AND m.home_team_id = ?) OR (ps.is_home = 0 AND m.away_team_id = ?))
+        WHERE {sp_shot_cond}
           AND ps.situation IN ('corner', 'set_piece')
           {tourn_clause}
           {venue_clause}
@@ -1854,11 +1899,11 @@ def get_team_period_metrics(
             COALESCE(SUM(CASE WHEN mgi.is_corner_origin = 1 THEN 1 ELSE 0 END), 0) as corner_goals
         FROM match_goal_incidents mgi
         JOIN matches m ON mgi.match_id = m.match_id
-        WHERE mgi.team_id = ?
+        WHERE {mgi_team_cond}
           {tourn_clause}
           {venue_clause}
     """
-    row_mgi = db.execute(query_mgi, tuple(base_params)).fetchone()
+    row_mgi = db.execute(query_mgi, tuple(mgi_params)).fetchone()
     corner_goals = int(row_mgi["corner_goals"] or 0) if row_mgi else 0
     mgi_total_goals = int(row_mgi["total_goals"] or 0) if row_mgi else 0
 
@@ -1891,12 +1936,12 @@ def get_team_period_metrics(
             COALESCE(SUM(CASE WHEN mgi.is_corner_origin = 1 THEN 1 ELSE 0 END), 0) AS corner_goals_count
         FROM match_goal_incidents mgi
         JOIN matches m ON mgi.match_id = m.match_id
-        WHERE mgi.team_id = ?
+        WHERE {mgi_team_cond}
           {tourn_clause}
           {venue_clause}
         GROUP BY interval_bucket
     """
-    interval_rows = db.execute(intervals_query, tuple(base_params)).fetchall()
+    interval_rows = db.execute(intervals_query, tuple(mgi_params)).fetchall()
     counts_by_bucket = {row["interval_bucket"]: dict(row) for row in interval_rows}
 
     distribution = []
@@ -1925,6 +1970,7 @@ def get_team_period_metrics(
 
     return {
         "team_id": team_id,
+        "mode": norm_mode,
         "tournament": tournament,
         "venue": norm_venue,
         "matches_count": matches_count,
@@ -1949,14 +1995,21 @@ def get_team_period_metrics(
     }
 
 
-def get_team_set_piece_metrics(db: sqlite3.Connection, team_id: int, tournament: str = "all", venue: str = "all") -> Dict[str, Any]:
+def get_team_set_piece_metrics(
+    db: sqlite3.Connection,
+    team_id: int,
+    tournament: str = "all",
+    venue: str = "all",
+    mode: str = "for"
+) -> Dict[str, Any]:
     """
     Returns set piece metrics and 15-minute goal distribution for team_id.
     Delegates to get_team_period_metrics for unified computation.
     """
-    full_data = get_team_period_metrics(db, team_id, tournament=tournament, venue=venue)
+    full_data = get_team_period_metrics(db, team_id, tournament=tournament, venue=venue, mode=mode)
     return {
         "team_id": team_id,
+        "mode": full_data.get("mode", mode),
         "tournament": tournament,
         "venue": full_data.get("venue", venue),
         "total_goals": full_data["goal_distribution"]["total_goals"],

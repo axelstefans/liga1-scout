@@ -214,6 +214,8 @@ class ShotMapSummary(BaseModel):
     shots_on_target: int
     on_target_pct: float
     xg_difference: float
+    shots_per_match: Optional[float] = None
+    xg_per_match: Optional[float] = None
 
 
 class TeamShotMapResponse(BaseModel):

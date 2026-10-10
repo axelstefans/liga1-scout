@@ -141,13 +141,14 @@ def get_team_period_metrics(
     team_id: int,
     tournament: Optional[str] = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    mode: str = Query("for", pattern="^(for|against)$", description="Mode: 'for' (scored/conceded from team perspective) or 'against'"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get team averages and totals grouped by period ('1ST', '2ND', 'ALL')."""
     profile = team_repo.get_team_profile(db, team_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
-    return team_repo.get_team_period_metrics(db, team_id, tournament=tournament or "all", venue=venue)
+    return team_repo.get_team_period_metrics(db, team_id, tournament=tournament or "all", venue=venue, mode=mode)
 
 
 @router.get("/{team_id}/set-pieces")
@@ -155,13 +156,14 @@ def get_team_set_piece_metrics(
     team_id: int,
     tournament: Optional[str] = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    mode: str = Query("for", pattern="^(for|against)$", description="Mode: 'for' (goals scored) or 'against' (goals conceded)"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get set-piece metrics (corner origin goals and 15-minute goal distribution)."""
     profile = team_repo.get_team_profile(db, team_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
-    return team_repo.get_team_set_piece_metrics(db, team_id, tournament=tournament or "all", venue=venue)
+    return team_repo.get_team_set_piece_metrics(db, team_id, tournament=tournament or "all", venue=venue, mode=mode)
 
 
 @router.get("/{team_id}/most-used-xi")
