@@ -966,6 +966,66 @@ def test_get_team_shot_map_per_match_metrics():
     assert summary_ag["xg_per_match"] > 0
 
 
+def test_get_team_most_used_xi():
+    # 1. Full cohort (Alianza Lima)
+    resp = client.get("/api/teams/2311/most-used-xi")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["team_id"] == 2311
+    assert "formation" in data
+    assert len(data["formation"]) >= 3
+    outfield_sum = sum(int(p) for p in data["formation"].split("-") if p.isdigit())
+    assert outfield_sum == 10
+    assert len(data["players"]) == 11
+    assert data["total_matches"] > 0
+    assert data["max_minutes"] == data["total_matches"] * 90
+
+    # Verify player slot fields
+    first_player = data["players"][0]
+    assert "slot" in first_player
+    assert "name" in first_player
+    assert "pitch_x" in first_player
+    assert "pitch_y" in first_player
+    assert "minutes_share" in first_player
+    assert "apps" in first_player
+    assert "g_plus_a" in first_player
+    assert first_player["minutes_share"] <= 100
+
+    # 2. Filtered cohort (home venue and Apertura)
+    resp_venue = client.get("/api/teams/2311/most-used-xi?tournament=Apertura&venue=home")
+    assert resp_venue.status_code == 200
+    data_venue = resp_venue.json()
+    assert len(data_venue["players"]) == 11
+    assert data_venue["venue"] == "home"
+    venue_outfield_sum = sum(int(p) for p in data_venue["formation"].split("-") if p.isdigit())
+    assert venue_outfield_sum == 10
+
+    # 3. UTC Clausura: Verify valid 10-outfield formation (e.g. 4-1-4-1, not 4-1-2-1) and Marcos Lliuya in midfield
+    resp_utc = client.get("/api/teams/87854/most-used-xi?tournament=Clausura")
+    assert resp_utc.status_code == 200
+    data_utc = resp_utc.json()
+    utc_outfield_sum = sum(int(p) for p in data_utc["formation"].split("-") if p.isdigit())
+    assert utc_outfield_sum == 10
+    assert len(data_utc["players"]) == 11
+    # Ensure Lliuya is in midfield, not ST
+    lliuya = next((p for p in data_utc["players"] if "Lliuya" in p["name"]), None)
+    if lliuya:
+        assert lliuya["slot"] in ("LCM", "RCM", "CAM", "LM", "RM", "CDM")
+
+    # 4. Universitario (5-1-2-2 / 3-5-2): Verify central defender vertical clearance >= 18%
+    resp_uni = client.get("/api/teams/2305/most-used-xi")
+    assert resp_uni.status_code == 200
+    data_uni = resp_uni.json()
+    assert len(data_uni["players"]) == 11
+    uni_slots = {p["slot"]: p for p in data_uni["players"]}
+    if "LCB" in uni_slots and "CB" in uni_slots and "RCB" in uni_slots:
+        lcb_y = uni_slots["LCB"]["pitch_y"]
+        cb_y = uni_slots["CB"]["pitch_y"]
+        rcb_y = uni_slots["RCB"]["pitch_y"]
+        assert abs(lcb_y - cb_y) >= 18.0, f"LCB-CB clearance too small: {abs(lcb_y - cb_y)}"
+        assert abs(cb_y - rcb_y) >= 18.0, f"CB-RCB clearance too small: {abs(cb_y - rcb_y)}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 

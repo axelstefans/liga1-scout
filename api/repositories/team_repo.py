@@ -2024,10 +2024,222 @@ def get_team_set_piece_metrics(
     }
 
 
+# Normalized pitch coordinates (0-100 length x, 0-100 width y) for horizontal soccer pitch (Attack -> Right)
+# GK on the left (x ~ 10), Forwards on the right (x ~ 85)
+SLOT_HORIZONTAL_PITCH_COORDS: Dict[str, Tuple[float, float]] = {
+    # Goalkeepers
+    "GK": (10.0, 50.0),
+    "G": (10.0, 50.0),
+    # Defenders
+    "LB": (28.0, 87.0),
+    "LCB": (26.0, 63.0),
+    "CB": (22.0, 50.0),
+    "RCB": (26.0, 37.0),
+    "RB": (28.0, 13.0),
+    "LWB": (38.0, 90.0),
+    "RWB": (38.0, 10.0),
+    # Midfielders
+    "CDM": (45.0, 50.0),
+    "LDM": (45.0, 66.0),
+    "RDM": (45.0, 34.0),
+    "LCM": (56.0, 65.0),
+    "CM": (55.0, 50.0),
+    "RCM": (56.0, 35.0),
+    "LM": (62.0, 86.0),
+    "RM": (62.0, 14.0),
+    "LAM": (68.0, 72.0),
+    "CAM": (66.0, 50.0),
+    "RAM": (68.0, 28.0),
+    # Forwards
+    "LW": (78.0, 84.0),
+    "RW": (78.0, 16.0),
+    "ST": (85.0, 50.0),
+    "CF": (85.0, 50.0),
+    "LS": (84.0, 64.0),
+    "RS": (84.0, 36.0),
+}
+
+# Formation sort order mapping from Defense to Attack (Left to Right)
+SLOT_LINE_ORDER: Dict[str, int] = {
+    "GK": 1, "G": 1,
+    "LB": 2, "LCB": 3, "CB": 4, "RCB": 5, "RB": 6, "LWB": 7, "RWB": 8,
+    "LDM": 9, "CDM": 10, "RDM": 11,
+    "LM": 12, "LCM": 13, "CM": 14, "RCM": 15, "RM": 16,
+    "LAM": 17, "CAM": 18, "RAM": 19,
+    "LW": 20, "ST": 21, "CF": 21, "RW": 22, "LS": 23, "RS": 24
+}
+
+# Tactical equivalent positions for flexible slot matching
+SLOT_EQUIVALENTS: Dict[str, List[str]] = {
+    # Goalkeepers
+    "GK": ["GK", "G"],
+    "G": ["G", "GK"],
+    # Fullbacks & Wingbacks
+    "LB": ["LB", "LWB", "D"],
+    "RB": ["RB", "RWB", "D"],
+    "LWB": ["LWB", "LB", "LM", "D"],
+    "RWB": ["RWB", "RB", "RM", "D"],
+    # Center backs
+    "LCB": ["LCB", "CB", "D"],
+    "RCB": ["RCB", "CB", "D"],
+    "CB": ["CB", "LCB", "RCB", "D"],
+    # Defensive midfielders
+    "CDM": ["CDM", "LDM", "RDM", "CM", "M"],
+    "LDM": ["LDM", "CDM", "LCM", "RDM", "M"],
+    "RDM": ["RDM", "CDM", "RCM", "LDM", "M"],
+    # Central midfielders
+    "CM": ["CM", "LCM", "RCM", "CDM", "CAM", "M"],
+    "LCM": ["LCM", "CM", "LDM", "CAM", "LAM", "LM", "M"],
+    "RCM": ["RCM", "CM", "RDM", "CAM", "RAM", "RM", "M"],
+    # Wide midfielders
+    "LM": ["LM", "LAM", "LW", "LCM", "LWB", "M"],
+    "RM": ["RM", "RAM", "RW", "RCM", "RWB", "M"],
+    # Attacking midfielders
+    "CAM": ["CAM", "AM", "AMF", "SS", "LAM", "RAM", "CM", "LCM", "RCM", "M"],
+    "LAM": ["LAM", "CAM", "LM", "LW", "LCM", "AM", "M"],
+    "RAM": ["RAM", "CAM", "RM", "RW", "RCM", "AM", "M"],
+    # Forwards
+    "ST": ["ST", "CF", "LS", "RS", "F"],
+    "CF": ["CF", "ST", "LS", "RS", "SS", "F"],
+    "LS": ["LS", "ST", "CF", "LW", "RS", "F"],
+    "RS": ["RS", "ST", "CF", "RW", "LS", "F"],
+    "LW": ["LW", "LAM", "LM", "ST", "LS", "F"],
+    "RW": ["RW", "RAM", "RM", "ST", "RS", "F"],
+}
+
+# Position group affinity mapping
+SLOT_TARGET_GROUP: Dict[str, str] = {
+    "GK": "Goalkeeper", "G": "Goalkeeper",
+    "LB": "Defender", "LCB": "Defender", "CB": "Defender", "RCB": "Defender", "RB": "Defender", "LWB": "Defender", "RWB": "Defender",
+    "LDM": "Midfielder", "CDM": "Midfielder", "RDM": "Midfielder",
+    "LM": "Midfielder", "LCM": "Midfielder", "CM": "Midfielder", "RCM": "Midfielder", "RM": "Midfielder",
+    "LAM": "Midfielder", "CAM": "Midfielder", "RAM": "Midfielder",
+    "LW": "Forward", "RW": "Forward", "ST": "Forward", "CF": "Forward", "LS": "Forward", "RS": "Forward"
+}
+
+
+def _get_pitch_coords(slot: str, all_slots: List[str]) -> Tuple[float, float]:
+    """Calculate pitch coordinates dynamically adapting vertical dispersion for 3/5-defender systems."""
+    has_cb = "CB" in all_slots
+    if has_cb:
+        if slot == "LCB":
+            return (26.0, 71.0)
+        elif slot == "CB":
+            return (22.0, 50.0)
+        elif slot == "RCB":
+            return (26.0, 29.0)
+        elif slot == "LWB":
+            return (38.0, 90.0)
+        elif slot == "RWB":
+            return (38.0, 10.0)
+        elif slot == "LB":
+            return (28.0, 88.0)
+        elif slot == "RB":
+            return (28.0, 12.0)
+    else:
+        if slot == "LCB":
+            return (26.0, 63.0)
+        elif slot == "RCB":
+            return (26.0, 37.0)
+        elif slot == "LB":
+            return (28.0, 87.0)
+        elif slot == "RB":
+            return (28.0, 13.0)
+
+    return SLOT_HORIZONTAL_PITCH_COORDS.get(slot, (50.0, 50.0))
+
+
+def _get_formation_outfield_sum(formation: str) -> int:
+    """Calculate the total outfield players in a formation label string."""
+    try:
+        parts = [int(p) for p in formation.split("-") if p.isdigit()]
+        return sum(parts)
+    except Exception:
+        return 0
+
+
+def _determine_formation_label(positions: List[str]) -> str:
+    """
+    Format tactical positions list into standard football formation (e.g., '4-2-3-1', '5-1-2-2', '4-3-3', '4-1-4-1').
+    Always guarantees that outfield lines sum to 10.
+    """
+    outfield = [p for p in positions if p not in ("GK", "G")]
+    d_count = sum(1 for p in outfield if p in ("CB", "LCB", "RCB", "LB", "RB", "LWB", "RWB"))
+    dm_count = sum(1 for p in outfield if p in ("CDM", "LDM", "RDM"))
+    cm_count = sum(1 for p in outfield if p in ("CM", "LCM", "RCM"))
+    am_count = sum(1 for p in outfield if p in ("CAM", "LAM", "RAM", "LM", "RM"))
+    f_count = sum(1 for p in outfield if p in ("ST", "LS", "RS", "CF", "LW", "RW"))
+    mid_total = dm_count + cm_count + am_count
+
+    if d_count + mid_total + f_count != 10:
+        return "4-2-3-1"
+
+    # 5-defender formations
+    if d_count == 5:
+        if dm_count == 1 and cm_count == 2 and am_count == 0 and f_count == 2:
+            return "5-1-2-2"
+        if mid_total == 3 and f_count == 2:
+            return "5-3-2"
+        if mid_total == 4 and f_count == 1:
+            return "5-4-1"
+        if mid_total == 2 and f_count == 3:
+            return "5-2-3"
+        if dm_count > 0 and (cm_count + am_count) > 0 and f_count > 0:
+            return f"5-{dm_count}-{cm_count + am_count}-{f_count}"
+        if mid_total > 0 and f_count > 0:
+            return f"5-{mid_total}-{f_count}"
+
+    # 4-defender formations
+    if d_count == 4:
+        if dm_count == 2 and am_count == 3 and f_count == 1:
+            return "4-2-3-1"
+        if dm_count == 1 and cm_count == 2 and am_count == 2 and f_count == 1:
+            return "4-1-4-1"
+        if dm_count == 0 and cm_count == 2 and am_count == 2 and f_count == 2:
+            return "4-4-2"
+        if (dm_count + cm_count) == 3 and am_count == 0 and f_count == 3:
+            return "4-3-3"
+        if dm_count == 1 and cm_count == 2 and am_count == 1 and f_count == 2:
+            return "4-3-1-2"
+        if dm_count == 0 and cm_count == 2 and am_count == 3 and f_count == 1:
+            return "4-2-3-1"
+        if mid_total == 5 and f_count == 1:
+            return "4-2-3-1" if am_count >= 3 else "4-1-4-1"
+        if mid_total == 4 and f_count == 2:
+            return "4-4-2"
+        if mid_total == 3 and f_count == 3:
+            return "4-3-3"
+        if dm_count > 0 and (cm_count + am_count) > 0 and f_count > 0:
+            return f"4-{dm_count}-{cm_count + am_count}-{f_count}"
+        if mid_total > 0 and f_count > 0:
+            return f"4-{mid_total}-{f_count}"
+
+    # 3-defender formations
+    if d_count == 3:
+        if mid_total == 4 and f_count == 3:
+            return "3-4-3"
+        if (cm_count + dm_count) == 2 and am_count == 4 and f_count == 1:
+            return "3-4-2-1"
+        if mid_total == 5 and f_count == 2:
+            return "3-5-2"
+        if dm_count > 0 and (cm_count + am_count) > 0 and f_count > 0:
+            return f"3-{dm_count}-{cm_count + am_count}-{f_count}"
+        if mid_total > 0 and f_count > 0:
+            return f"3-{mid_total}-{f_count}"
+
+    if d_count > 0 and mid_total > 0 and f_count > 0 and (d_count + mid_total + f_count == 10):
+        return f"{d_count}-{mid_total}-{f_count}"
+
+    return "4-2-3-1"
+
+
 def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str = "all", venue: str = "all") -> Dict[str, Any]:
     """
-    Returns the top 11 players with the most minutes played for the team,
-    including percentage of total available team minutes, appearances, age, and goals+assists.
+    Returns the team's Most-Used XI (Opta / TheAnalyst standard):
+    - Identifies the team's most frequent valid tactical formation (outfield sum == 10) in the cohort.
+    - Selects the player with the best role fit and minutes in each slot without duplicates.
+    - Normalizes pitch coordinates for horizontal pitch layout (Attack -> Right) with anti-collision spacing.
+    - Calculates minutes share (% of total possible cohort minutes), age, apps, goals, and assists.
     """
     tourn_clause = ""
     tourn_param: List[Any] = []
@@ -2054,7 +2266,7 @@ def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str 
         WHERE (m.home_team_id = ? OR m.away_team_id = ?)
           AND m.status = 'played'
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
-          {tourn_clause.replace('pms.team_id = ? AND ', '')}
+          {tourn_clause}
           {venue_clause}
     """
     mc_params = [team_id, team_id] + tourn_param + venue_param
@@ -2062,40 +2274,209 @@ def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str 
     total_matches = mc_row["total_matches"] if mc_row and mc_row["total_matches"] > 0 else 1
     max_team_minutes = total_matches * 90
 
-    # 2. Query top 11 players by total minutes played
-    xi_query = f"""
-        SELECT 
+    # 2. Identify the most frequent valid starting formation for this team in the selected cohort
+    formation_query = f"""
+        SELECT m.match_id, GROUP_CONCAT(pms.position) as formation_slots
+        FROM (
+            SELECT match_id, team_id, position
+            FROM player_match_stats
+            WHERE team_id = ?
+              AND position NOT IN ('G', 'D', 'M', 'F')
+              AND position IS NOT NULL
+            ORDER BY match_id, team_id, position
+        ) pms
+        JOIN matches m ON pms.match_id = m.match_id
+        WHERE m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
+          {venue_clause}
+        GROUP BY m.match_id
+    """
+    form_params = [team_id] + tourn_param + venue_param
+    form_rows = db.execute(formation_query, form_params).fetchall()
+
+    from collections import Counter
+    valid_formations = Counter()
+    fallback_slots = ["GK", "RB", "RCB", "LCB", "LB", "RDM", "LDM", "RAM", "CAM", "LAM", "ST"]
+
+    for r in form_rows:
+        if not r["formation_slots"]:
+            continue
+        slots = [s.strip() for s in r["formation_slots"].split(",") if s.strip()]
+        if len(slots) != 11:
+            continue
+        lbl = _determine_formation_label(slots)
+        if _get_formation_outfield_sum(lbl) == 10 and ("GK" in slots or "G" in slots):
+            valid_formations[(lbl, tuple(slots))] += 1
+
+    if valid_formations:
+        (formation_label, selected_slots_tuple), _ = valid_formations.most_common(1)[0]
+        selected_slots = list(selected_slots_tuple)
+    else:
+        formation_label = "4-2-3-1"
+        selected_slots = fallback_slots
+
+    # 3. Query all candidate players and their minutes across positions in the cohort
+    cands_query = f"""
+        SELECT
             pms.player_id,
+            pms.position,
             p.name,
             p.shirt_number,
             p.position_group,
             p.date_of_birth,
-            COUNT(DISTINCT pms.match_id) as appearances,
-            SUM(pms.minutes_played) as total_minutes,
-            COALESCE(SUM(pms.goals), 0) as goals,
-            COALESCE(SUM(pms.assists), 0) as assists,
-            ROUND(AVG(pp.x_start), 1) as avg_x,
-            ROUND(AVG(pp.y_start), 1) as avg_y
+            SUM(pms.minutes_played) as pos_minutes
         FROM player_match_stats pms
         JOIN players p ON pms.player_id = p.player_id
         JOIN matches m ON pms.match_id = m.match_id
-        LEFT JOIN player_passes pp ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
-        WHERE pms.team_id = ? AND m.status = 'played'
+        WHERE pms.team_id = ?
+          AND m.status = 'played'
           AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
           {venue_clause}
-        GROUP BY pms.player_id, p.name, p.shirt_number, p.position_group, p.date_of_birth
+        GROUP BY pms.player_id, pms.position
         HAVING SUM(pms.minutes_played) > 0
-        ORDER BY total_minutes DESC
-        LIMIT 11
     """
-    xi_params = [team_id] + tourn_param + venue_param
-    xi_rows = db.execute(xi_query, xi_params).fetchall()
+    cands_params = [team_id] + tourn_param + venue_param
+    cands_rows = db.execute(cands_query, cands_params).fetchall()
 
-    players_list = []
+    # Query total player stats across all positions in the selected cohort
+    overall_stats_query = f"""
+        SELECT
+            pms.player_id,
+            COUNT(DISTINCT CASE WHEN pms.minutes_played > 0 THEN pms.match_id END) as apps,
+            SUM(pms.minutes_played) as total_minutes,
+            COALESCE(SUM(pms.goals), 0) as goals,
+            COALESCE(SUM(pms.assists), 0) as assists
+        FROM player_match_stats pms
+        JOIN matches m ON pms.match_id = m.match_id
+        WHERE pms.team_id = ?
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
+          {venue_clause}
+        GROUP BY pms.player_id
+    """
+    overall_params = [team_id] + tourn_param + venue_param
+    overall_rows = db.execute(overall_stats_query, overall_params).fetchall()
+    overall_map = {r["player_id"]: dict(r) for r in overall_rows}
+
+    player_pos_mins = defaultdict(lambda: defaultdict(int))
+    player_info: Dict[int, Dict[str, Any]] = {}
+    for r in cands_rows:
+        pid = r["player_id"]
+        player_pos_mins[pid][r["position"]] += r["pos_minutes"]
+        if pid not in player_info:
+            player_info[pid] = {
+                "player_id": pid,
+                "name": r["name"],
+                "shirt_number": r["shirt_number"],
+                "position_group": r["position_group"],
+                "date_of_birth": r["date_of_birth"],
+                "avg_x": None,
+                "avg_y": None,
+            }
+
+    # Evaluate candidate fitness for each target slot
+    cands_by_slot: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for s in selected_slots:
+        target_grp = SLOT_TARGET_GROUP.get(s, "")
+        equivs = SLOT_EQUIVALENTS.get(s, [s])
+        for pid, pdata in player_info.items():
+            direct = player_pos_mins[pid].get(s, 0)
+            equiv_mins = sum(player_pos_mins[pid].get(eq, 0) for eq in equivs if eq != s)
+            if direct == 0 and equiv_mins == 0:
+                continue
+            is_grp_match = (pdata["position_group"] == target_grp)
+            fit = (direct * 1.0) + (equiv_mins * 0.5) + (150.0 if is_grp_match else 0.0)
+            cands_by_slot[s].append({
+                "player_id": pid,
+                "slot": s,
+                "name": pdata["name"],
+                "shirt_number": pdata["shirt_number"],
+                "position_group": pdata["position_group"] or target_grp,
+                "date_of_birth": pdata["date_of_birth"],
+                "slot_minutes": direct or equiv_mins,
+                "avg_x": pdata["avg_x"],
+                "avg_y": pdata["avg_y"],
+                "fit": fit,
+                "is_grp_match": is_grp_match,
+            })
+        cands_by_slot[s].sort(key=lambda x: x["fit"], reverse=True)
+
+    # Prioritize slots with highest certainty / candidate fitness
+    slot_priority = sorted(
+        selected_slots,
+        key=lambda s: cands_by_slot[s][0]["fit"] if cands_by_slot.get(s) else 0,
+        reverse=True
+    )
+
+    picked_by_slot: Dict[str, Dict[str, Any]] = {}
+    used_player_ids = set()
+
+    for s in slot_priority:
+        for cand in cands_by_slot.get(s, []):
+            pid = cand["player_id"]
+            if pid not in used_player_ids:
+                picked_by_slot[s] = cand
+                used_player_ids.add(pid)
+                break
+
+    # If any slot remains unassigned (e.g., highly rotated or unrepresented slot), fallback to highest available unassigned player
+    if len(picked_by_slot) < len(selected_slots):
+        unassigned_slots = [s for s in selected_slots if s not in picked_by_slot]
+        remaining_pids = [r["player_id"] for r in overall_rows if r["player_id"] not in used_player_ids]
+        if remaining_pids:
+            rem_placeholders = ",".join("?" * len(remaining_pids))
+            rem_query = f"""
+                SELECT p.player_id, p.name, p.shirt_number, p.position_group, p.date_of_birth
+                FROM players p
+                WHERE p.player_id IN ({rem_placeholders})
+                ORDER BY p.player_id
+            """
+            rem_rows = {r["player_id"]: dict(r) for r in db.execute(rem_query, remaining_pids).fetchall()}
+            for slot_to_fill in unassigned_slots:
+                best_pid = max(remaining_pids, key=lambda pid: (overall_map.get(pid, {}).get("total_minutes") or 0), default=None)
+                if best_pid is not None and best_pid in rem_rows:
+                    p_info = rem_rows[best_pid]
+                    target_grp = SLOT_TARGET_GROUP.get(slot_to_fill, "Midfielder")
+                    picked_by_slot[slot_to_fill] = {
+                        "player_id": best_pid,
+                        "slot": slot_to_fill,
+                        "name": p_info["name"],
+                        "shirt_number": p_info["shirt_number"],
+                        "position_group": p_info["position_group"] or target_grp,
+                        "date_of_birth": p_info["date_of_birth"],
+                        "slot_minutes": overall_map[best_pid].get("total_minutes") or 0,
+                        "avg_x": 50.0,
+                        "avg_y": 50.0,
+                    }
+                    used_player_ids.add(best_pid)
+                    remaining_pids.remove(best_pid)
+
     current_year = 2026
-    for r in xi_rows:
-        dob = r["date_of_birth"]
+    players_list = []
+
+    for s in selected_slots:
+        cand = picked_by_slot.get(s)
+        if not cand:
+            continue
+
+        pid = cand["player_id"]
+        stats = overall_map.get(pid, {})
+        mins = int(stats.get("total_minutes") or cand.get("slot_minutes") or 0)
+        apps = int(stats.get("apps") or 0)
+        goals = int(stats.get("goals") or 0)
+        assists = int(stats.get("assists") or 0)
+        g_plus_a = goals + assists
+
+        mins_share = round((float(mins) / max_team_minutes) * 100.0) if max_team_minutes > 0 else 0
+        mins_share = min(mins_share, 100)
+
+        mins_pct = round((float(mins) / max_team_minutes) * 100.0, 1) if max_team_minutes > 0 else 0.0
+        mins_pct = min(mins_pct, 100.0)
+
+        dob = cand.get("date_of_birth")
         age = None
         if dob:
             try:
@@ -2104,38 +2485,38 @@ def get_team_most_used_xi(db: sqlite3.Connection, team_id: int, tournament: str 
             except Exception:
                 age = None
 
-        mins = int(r["total_minutes"] or 0)
-        mins_pct = round((float(mins) / max_team_minutes) * 100.0, 1) if max_team_minutes > 0 else 0.0
-        # Cap visual percentage at 100%
-        mins_pct = min(mins_pct, 100.0)
-
-        g = int(r["goals"] or 0)
-        a = int(r["assists"] or 0)
+        pitch_coords = _get_pitch_coords(s, selected_slots)
 
         players_list.append({
-            "player_id": r["player_id"],
-            "name": r["name"],
-            "shirt_number": r["shirt_number"],
-            "position_group": r["position_group"] or "Midfielder",
+            "slot": s,
+            "player_id": pid,
+            "name": cand["name"],
+            "shirt_number": cand.get("shirt_number"),
+            "position_group": cand.get("position_group") or "Midfielder",
             "age": age,
-            "appearances": r["appearances"],
+            "appearances": apps,
+            "apps": apps,
             "minutes_played": mins,
             "minutes_pct": mins_pct,
-            "goals": g,
-            "assists": a,
-            "goal_contributions": g + a,
-            "avg_x": float(r["avg_x"]) if r["avg_x"] is not None else 50.0,
-            "avg_y": float(r["avg_y"]) if r["avg_y"] is not None else 50.0,
+            "minutes_share": mins_share,
+            "goals": goals,
+            "assists": assists,
+            "g_plus_a": g_plus_a,
+            "goal_contributions": g_plus_a,
+            "pitch_x": pitch_coords[0],
+            "pitch_y": pitch_coords[1],
+            "avg_x": float(cand["avg_x"]) if cand.get("avg_x") is not None else pitch_coords[0],
+            "avg_y": float(cand["avg_y"]) if cand.get("avg_y") is not None else pitch_coords[1],
         })
 
-    # Sort so Goalkeeper is first, then Defenders, Midfielders, Forwards
-    pos_order = {"Goalkeeper": 1, "Defender": 2, "Midfielder": 3, "Forward": 4}
-    players_list.sort(key=lambda p: (pos_order.get(p["position_group"], 5), -p["minutes_played"]))
+    # Sort players in tactical line order: GK -> Defense -> Midfield -> Attack
+    players_list.sort(key=lambda p: SLOT_LINE_ORDER.get(p["slot"], 99))
 
     return {
         "team_id": team_id,
         "tournament": tournament,
         "venue": norm_venue,
+        "formation": formation_label,
         "total_matches": total_matches,
         "max_minutes": max_team_minutes,
         "players": players_list

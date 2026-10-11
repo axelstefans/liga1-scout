@@ -724,17 +724,23 @@ export const teamsApi = {
 };
 
 export interface MostUsedXIPlayer {
+  slot: string;
   player_id: number;
   name: string;
   shirt_number: number | null;
   position_group: string;
   age: number | null;
   appearances: number;
+  apps: number;
   minutes_played: number;
   minutes_pct: number;
+  minutes_share: number;
   goals: number;
   assists: number;
+  g_plus_a: number;
   goal_contributions: number;
+  pitch_x: number;
+  pitch_y: number;
   avg_x: number;
   avg_y: number;
 }
@@ -742,6 +748,8 @@ export interface MostUsedXIPlayer {
 export interface MostUsedXIResponse {
   team_id: number;
   tournament: string;
+  venue: string;
+  formation: string;
   total_matches: number;
   max_minutes: number;
   players: MostUsedXIPlayer[];

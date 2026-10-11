@@ -265,7 +265,34 @@ class TeamAttackZonesResponse(BaseModel):
     summary: AttackZonesSummary
     channels: List[AttackZoneChannel]
 
+class MostUsedXIPlayer(BaseModel):
+    slot: str
+    player_id: int
+    name: str
+    shirt_number: Optional[int] = None
+    position_group: str
+    age: Optional[int] = None
+    appearances: int
+    apps: int
+    minutes_played: int
+    minutes_pct: float
+    minutes_share: int
+    goals: int
+    assists: int
+    g_plus_a: int
+    goal_contributions: int
+    pitch_x: float
+    pitch_y: float
+    avg_x: float
+    avg_y: float
 
 
-
+class MostUsedXIResponse(BaseModel):
+    team_id: int
+    tournament: str
+    venue: str
+    formation: str
+    total_matches: int
+    max_minutes: int
+    players: List[MostUsedXIPlayer]
 

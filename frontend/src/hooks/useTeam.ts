@@ -4,6 +4,7 @@ import {
   TeamPassNetworkResponse, TeamMatchItem, TeamBase,
   TeamDefensiveActionsResponse, TeamShotMapResponse,
   TeamAttackZonesResponse, TeamPeriodMetricsResponse,
+  MostUsedXIResponse,
   VenueFilter
 } from '../services/api';
 
@@ -109,7 +110,7 @@ export const useTeamMostUsedXI = (
   venue: VenueFilter = 'all',
   enabled: boolean = true
 ) => {
-  return useQuery({
+  return useQuery<MostUsedXIResponse>({
     queryKey: ['teamMostUsedXI', teamId, tournament || 'all', venue],
     queryFn: () => teamsApi.getMostUsedXI(teamId!, tournament, venue),
     enabled: Boolean(teamId) && enabled,

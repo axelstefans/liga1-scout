@@ -6,7 +6,8 @@ from ..core.database import get_db
 from ..schemas.team import (
     RosterPlayer, TeamNextMatch, TeamProfile, TeamMetricEntry, 
     TeamShotZonesResponse, TeamPassNetworkResponse, TeamMatchItem,
-    TeamDefensiveActionsResponse, TeamShotMapResponse, TeamAttackZonesResponse
+    TeamDefensiveActionsResponse, TeamShotMapResponse, TeamAttackZonesResponse,
+    MostUsedXIResponse
 )
 from ..repositories import team_repo
 
@@ -166,7 +167,7 @@ def get_team_set_piece_metrics(
     return team_repo.get_team_set_piece_metrics(db, team_id, tournament=tournament or "all", venue=venue, mode=mode)
 
 
-@router.get("/{team_id}/most-used-xi")
+@router.get("/{team_id}/most-used-xi", response_model=MostUsedXIResponse)
 def get_team_most_used_xi(
     team_id: int,
     tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),

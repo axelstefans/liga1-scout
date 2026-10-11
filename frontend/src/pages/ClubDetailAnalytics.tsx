@@ -14,6 +14,7 @@ import TeamDefensiveTerritory from '../components/analytics/TeamDefensiveTerrito
 import TeamSetPiecesCard from '../components/analytics/TeamSetPiecesCard';
 import TeamPeriodMetricsCard from '../components/analytics/TeamPeriodMetricsCard';
 import TeamDisciplineCard from '../components/analytics/TeamDisciplineCard';
+import TeamMostUsedXICard from '../components/team/TeamMostUsedXICard';
 import { VenueFilter } from '../services/api';
 
 type TournamentFilter = 'all' | 'Apertura' | 'Clausura';
@@ -647,6 +648,17 @@ export const ClubDetailAnalytics: React.FC = () => {
                 mode={perspective}
               />
               <TeamDisciplineCard
+                activeTeam={activeTeam}
+                tournament={selectedTournament}
+                venue={venue}
+              />
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* MOST-USED XI SECTION (OPTA / THEANALYST FULL-WIDTH LAYOUT)   */}
+            {/* ------------------------------------------------------------- */}
+            <div className="w-full">
+              <TeamMostUsedXICard
                 activeTeam={activeTeam}
                 tournament={selectedTournament}
                 venue={venue}
