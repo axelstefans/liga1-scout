@@ -90,6 +90,11 @@ class TeamMetricEntry(BaseModel):
     xga_per_match: Optional[float] = None
     field_tilt_pct: Optional[float] = None
     conversion_ratio: Optional[float] = None
+    set_piece_xg: Optional[float] = 0.0
+    set_piece_xg_p90: Optional[float] = 0.0
+    set_piece_xg_per_match: Optional[float] = 0.0
+    progressive_passes_p90: Optional[float] = None
+    final_third_passes_p90: Optional[float] = None
 
 class ShotZoneCell(BaseModel):
     zone_id: int
@@ -134,6 +139,9 @@ class PassNetworkNode(BaseModel):
     x: float
     y: float
     total_passes: int
+    is_pivot: Optional[bool] = False
+    defensive_actions_p90: Optional[float] = None
+    is_exposed_pivot: Optional[bool] = False
 
 class PassNetworkEdge(BaseModel):
     passer_id: int
@@ -274,17 +282,24 @@ class MostUsedXIPlayer(BaseModel):
     age: Optional[int] = None
     appearances: int
     apps: int
+    starts: int = 0
     minutes_played: int
     minutes_pct: float
     minutes_share: int
     goals: int
     assists: int
+    xg: float = 0.0
+    shots_p90: float = 0.0
+    total_shots: int = 0
+    yellow_cards: int = 0
     g_plus_a: int
     goal_contributions: int
     pitch_x: float
     pitch_y: float
     avg_x: float
     avg_y: float
+    saves: Optional[int] = None
+    saves_p90: Optional[float] = None
 
 
 class MostUsedXIResponse(BaseModel):
@@ -295,4 +310,173 @@ class MostUsedXIResponse(BaseModel):
     total_matches: int
     max_minutes: int
     players: List[MostUsedXIPlayer]
+
+
+class HTOutcomes(BaseModel):
+    ht_won: int
+    ht_drawn: int
+    ht_lost: int
+
+
+class FirstGoalRecord(BaseModel):
+    scored_first_count: int
+    scored_first_record: str
+    conceded_first_count: int
+    conceded_first_record: str
+
+
+class TeamPeriodStatsItem(BaseModel):
+    matches_count: int
+    avg_corner_kicks: float
+    avg_fouls: float
+    avg_possession: float
+    total_goals: int
+    avg_goals: float
+    total_yellow_cards: int
+    avg_yellow_cards: float
+    total_red_cards: int
+    avg_red_cards: float
+    goals_conceded: int
+    avg_goals_conceded: float
+    avg_corners_against: Optional[float] = None
+    avg_fouls_received: Optional[float] = None
+    avg_corners_home: Optional[float] = None
+    avg_corners_away: Optional[float] = None
+    avg_xg: Optional[float] = None
+
+
+class TeamSetPieceDetail(BaseModel):
+    corner_goals: int
+    corner_goals_per_match: float
+    corner_goals_pct: float
+    corner_goals_conceded: int = 0
+    set_piece_shots: int
+    set_piece_goals: int
+    set_piece_goals_per_match: float
+    set_piece_goals_conceded: int = 0
+    set_piece_goals_conceded_per_match: float = 0.0
+    set_piece_xg: float
+    set_piece_xg_per_match: float
+    penalties_awarded: int = 0
+    penalties_scored: int = 0
+    penalties_conceded: int = 0
+
+
+class GoalIntervalItem(BaseModel):
+    interval: str
+    goals: int
+    corner_goals: int
+    percentage: float
+
+
+class GoalDistributionDetail(BaseModel):
+    total_goals: int
+    intervals: List[GoalIntervalItem]
+    peak_interval: str
+    peak_goals: int
+    peak_pct: float
+
+
+class FrequencyCount(BaseModel):
+    count: int
+    total: int
+
+
+class CornerStats(BaseModel):
+    corners_for_avg: float
+    corners_against_avg: float
+    corners_total_avg: float
+    over_8_5_corners: FrequencyCount
+    over_9_5_corners: FrequencyCount
+    corners_conceded_over_4_5: Optional[FrequencyCount] = None
+    corners_conceded_over_4_5_count: int = 0
+    corners_conceded_over_4_5_pct: float = 0.0
+    set_piece_goals: int
+    corner_goals: int
+
+
+class TimeSplits(BaseModel):
+    goals_1t: int
+    goals_2t: int
+    pct_goals_2t: float
+    peak_scoring_interval: str
+
+
+class RecordBreakdown(BaseModel):
+    wins: int
+    draws: int
+    losses: int
+
+
+class DynamicEventRecord(BaseModel):
+    count: int
+    total: int
+    record: str
+    breakdown: RecordBreakdown
+
+
+class MatchDynamics(BaseModel):
+    btts: FrequencyCount
+    clean_sheets: Optional[FrequencyCount] = None
+    clean_sheets_pct: Optional[float] = 0.0
+    failed_to_score: Optional[FrequencyCount] = None
+    failed_to_score_pct: Optional[float] = 0.0
+    conceded_early_0_20: Optional[FrequencyCount] = None
+    conceded_early_0_20_pct: Optional[float] = 0.0
+    ht_won: FrequencyCount
+    ht_drawn: FrequencyCount
+    ht_lost: FrequencyCount
+    scored_first: DynamicEventRecord
+    conceded_first: DynamicEventRecord
+
+
+class DisciplineStats(BaseModel):
+    fouls_committed_avg: float
+    fouls_drawn_avg: float
+    cards_for_avg: float
+    cards_forced_avg: float
+    cards_match_total_avg: float
+    red_cards_total: int = 0
+    red_cards_avg: float = 0.0
+    over_3_5_cards: FrequencyCount
+    cards_2h_pct: float = 0.0
+
+
+class TeamPeriodMetricsResponse(BaseModel):
+    team_id: int
+    mode: str = "for"
+    tournament: str
+    venue: str
+    matches_count: int
+    periods: Dict[str, TeamPeriodStatsItem]
+    clean_sheets_count: Optional[int] = None
+    clean_sheets_pct: Optional[float] = None
+    failed_to_score_count: Optional[int] = None
+    failed_to_score_pct: Optional[float] = None
+    conceded_early_0_20_count: Optional[int] = None
+    conceded_early_0_20_pct: Optional[float] = None
+    red_cards_total: Optional[int] = None
+    red_cards_avg: Optional[float] = None
+    penalties_awarded: Optional[int] = None
+    penalties_scored: Optional[int] = None
+    penalties_conceded: Optional[int] = None
+    corners_conceded_over_4_5_count: Optional[int] = None
+    corners_conceded_over_4_5_pct: Optional[float] = None
+    ht_won: int = 0
+    ht_drawn: int = 0
+    ht_lost: int = 0
+    ht_outcomes: Optional[HTOutcomes] = None
+    scored_first_count: int = 0
+    scored_first_record: str = "0V-0E-0D"
+    conceded_first_count: int = 0
+    conceded_first_record: str = "0V-0E-0D"
+    first_goal: Optional[FirstGoalRecord] = None
+    set_pieces: TeamSetPieceDetail
+    goal_distribution: GoalDistributionDetail
+    corner_stats: Optional[CornerStats] = None
+    time_splits: Optional[TimeSplits] = None
+    match_dynamics: Optional[MatchDynamics] = None
+    discipline_stats: Optional[DisciplineStats] = None
+
+
 

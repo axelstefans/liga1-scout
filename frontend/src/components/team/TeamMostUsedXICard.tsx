@@ -1,12 +1,13 @@
 import React from 'react';
 import { Users, Loader2, AlertCircle } from 'lucide-react';
-import { TeamMetricEntry, VenueFilter } from '../../services/api';
+import { TeamMetricEntry, VenueFilter, ContextFilter } from '../../services/api';
 import { useTeamMostUsedXI } from '../../hooks/useTeam';
 
 export interface TeamMostUsedXICardProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
   venue?: VenueFilter;
+  contextFilter?: ContextFilter;
 }
 
 /**
@@ -33,12 +34,14 @@ export const TeamMostUsedXICard: React.FC<TeamMostUsedXICardProps> = ({
   activeTeam,
   tournament = 'all',
   venue = 'all',
+  contextFilter = 'all',
 }) => {
   const { data, isLoading, isError, error, refetch } = useTeamMostUsedXI(
     activeTeam?.team_id,
     tournament,
     venue,
-    Boolean(activeTeam?.team_id)
+    Boolean(activeTeam?.team_id),
+    contextFilter
   );
 
   const formation = data?.formation || '4-2-3-1';
@@ -122,10 +125,10 @@ export const TeamMostUsedXICard: React.FC<TeamMostUsedXICardProps> = ({
         </div>
       ) : (
         /* Two-Column Layout matching Opta / TheAnalyst exact layout */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          {/* Left Column: Horizontal Tactical Pitch graphic (~48%) */}
-          <div className="lg:col-span-6 xl:col-span-5 w-full flex flex-col items-center">
-            <div className="w-full relative aspect-[1.55/1] max-w-[580px] bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-800">
+        <div className="flex flex-col lg:flex-row gap-6 items-center">
+          {/* Left Column: Horizontal Tactical Pitch graphic (~45%) */}
+          <div className="w-full lg:w-[45%] flex flex-col items-center shrink-0">
+            <div className="w-full relative aspect-[1.55/1] bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-800">
               <svg
                 viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
                 className="w-full h-full select-none"
@@ -342,86 +345,148 @@ export const TeamMostUsedXICard: React.FC<TeamMostUsedXICardProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Tabular Breakdown matching Opta exact columns (~52%) */}
-          <div className="lg:col-span-6 xl:col-span-7 w-full overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[500px]">
+          {/* Right Column: Tabular Breakdown matching Opta exact columns (~55%) */}
+          <div className="w-full lg:w-[55%] overflow-x-auto min-w-0">
+            <table className="w-full text-left border-collapse min-w-[620px]">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  <th className="py-2.5 px-2 w-14">POS</th>
-                  <th className="py-2.5 px-3">JUGADOR</th>
-                  <th className="py-2.5 px-3 w-44">CUOTA MINUTOS</th>
-                  <th className="py-2.5 px-2 text-center w-14">EDAD</th>
-                  <th className="py-2.5 px-2 text-center w-14">PJ</th>
-                  <th className="py-2.5 px-2 text-center w-16">G+A</th>
+                  <th className="py-2.5 px-1.5 text-center w-11">POS</th>
+                  <th className="py-2.5 px-2 text-left">JUGADOR</th>
+                  <th className="py-2.5 px-2 text-left w-32">CUOTA MINUTOS</th>
+                  <th className="py-2.5 px-1.5 text-center w-10">EDAD</th>
+                  <th className="py-2.5 px-1.5 text-center w-14">TIT/PJ</th>
+                  <th className="py-2.5 px-1.5 text-center w-12">G+A</th>
+                  <th className="py-2.5 px-1.5 text-center w-12">xG</th>
+                  <th className="py-2.5 px-1.5 text-center w-16">TIROS/90</th>
+                  <th className="py-2.5 px-1.5 text-center w-14">AMARILLAS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {players.map((p) => {
-                  const isHighShare = p.minutes_share >= 75;
-
+                  const isGK = p.slot === 'GK' || p.slot === 'G' || p.position_group === 'Goalkeeper';
                   return (
                     <tr
                       key={p.slot}
                       className="hover:bg-slate-50/80 transition-colors group"
                     >
                       {/* 1. Tactical Slot Tag */}
-                      <td className="py-2.5 px-2 font-bold">
+                      <td className="py-2 px-1.5 text-center font-bold">
                         <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors">
                           {p.slot}
                         </span>
                       </td>
 
                       {/* 2. Player Display Name + Jersey */}
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2">
-                          {p.shirt_number && (
-                            <span className="text-[10px] font-bold text-slate-400 w-4 text-right">
-                              #{p.shirt_number}
-                            </span>
-                          )}
-                          <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      <td className="py-2 px-2 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[11px] font-medium text-slate-400 font-mono w-5 text-right shrink-0">
+                            {p.shirt_number ? `#${p.shirt_number}` : '—'}
+                          </span>
+                          <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                             {p.name}
                           </span>
                         </div>
                       </td>
 
                       {/* 3. Horizontal Progress Bar + Percentage */}
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                      <td className="py-2 px-2">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-[75px] sm:w-[85px] h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60 shrink-0">
                             <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                isHighShare ? 'bg-blue-600' : 'bg-slate-400'
-                              }`}
+                              className="h-full rounded-full bg-blue-600 transition-all duration-500"
                               style={{ width: `${Math.min(100, p.minutes_share)}%` }}
                             />
                           </div>
-                          <span className="text-xs font-bold text-slate-800 w-10 text-right">
+                          <span className="text-xs font-bold text-slate-800 font-mono w-8 text-right shrink-0">
                             {p.minutes_share}%
                           </span>
                         </div>
                       </td>
 
                       {/* 4. Age */}
-                      <td className="py-2.5 px-2 text-center font-medium text-slate-600">
+                      <td className="py-2 px-1.5 text-center font-medium text-slate-600">
                         {p.age ?? '—'}
                       </td>
 
-                      {/* 5. Apps */}
-                      <td className="py-2.5 px-2 text-center font-semibold text-slate-700">
-                        {p.apps}
+                      {/* 5. TIT / PJ */}
+                      <td className="py-2 px-1.5 text-center">
+                        <span className="font-bold text-slate-900">{p.starts}</span>
+                        <span className="text-slate-400 text-[11px]">/{data?.total_matches ?? p.apps}</span>
                       </td>
 
-                      {/* 6. G+A Breakdown */}
-                      <td className="py-2.5 px-2 text-center">
-                        <div className="inline-flex items-center gap-1 font-bold text-slate-900">
-                          <span>{p.g_plus_a}</span>
-                          {(p.goals > 0 || p.assists > 0) && (
-                            <span className="text-[10px] font-normal text-slate-400">
-                              ({p.goals}G+{p.assists}A)
+                      {/* 6 & 7. GK Atajadas / Outfield G+A and xG */}
+                      {isGK ? (
+                        <td colSpan={2} className="py-2 px-1.5 text-center">
+                          {p.saves && p.saves > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-800 bg-sky-50 border border-sky-200/90 px-2 py-0.5 rounded shadow-2xs whitespace-nowrap"
+                              title={`${p.saves} atajadas registradas en la temporada`}
+                            >
+                              <span className="text-sky-600 font-semibold">Atajadas:</span> {p.saves}
+                              <span className="text-[10px] text-sky-600 font-medium font-mono">
+                                ({p.saves_p90 ? `${p.saves_p90.toFixed(1)}/pj` : `${(p.saves / Math.max(p.apps || 1, 1)).toFixed(1)}/pj`})
+                              </span>
                             </span>
+                          ) : (
+                            <span className="text-slate-400 font-mono text-[11px]">Atajadas: —</span>
                           )}
-                        </div>
+                        </td>
+                      ) : (
+                        <>
+                          {/* 6. G+A Breakdown */}
+                          <td className="py-2 px-1.5 text-center">
+                            <div className="inline-flex items-center gap-0.5 font-bold text-slate-900">
+                              <span>{p.g_plus_a}</span>
+                              {(p.goals > 0 || p.assists > 0) && (
+                                <span className="text-[10px] font-normal text-slate-400">
+                                  ({p.goals}+{p.assists})
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 7. xG */}
+                          <td className="py-2 px-1.5 text-center font-mono font-bold text-slate-800">
+                            {p.xg > 0 ? p.xg.toFixed(2) : '0.00'}
+                          </td>
+                        </>
+                      )}
+
+                      {/* 8. Tiros/90 */}
+                      <td className="py-2 px-1.5 text-center font-mono text-xs text-slate-700 whitespace-nowrap">
+                        {isGK ? (
+                          <span className="text-slate-300 font-mono text-[11px]">—</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-slate-900">
+                              {(p.shots_p90 ?? 0).toFixed(1)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-sans ml-0.5">/90m</span>
+                          </>
+                        )}
+                      </td>
+
+                      {/* 9. Amarillas con alerta "En Capilla" */}
+                      <td className="py-2 px-1.5 text-center">
+                        {p.yellow_cards === 4 ? (
+                          <span
+                            className="inline-flex items-center gap-1 font-mono font-extrabold text-amber-950 text-[11px] bg-amber-500/20 border-2 border-amber-500 px-1.5 py-0.5 rounded shadow-xs animate-pulse cursor-help"
+                            title="En Capilla: 4 amonestaciones acumuladas (a 1 de suspensión)"
+                          >
+                            <span className="w-2 h-2.5 bg-amber-500 border border-amber-600 rounded-[1px] inline-block shadow-2xs shrink-0" />
+                            <span>4</span>
+                            <span className="text-[9px] font-sans font-black text-amber-900 tracking-tighter">
+                              ⚠️
+                            </span>
+                          </span>
+                        ) : (p.yellow_cards ?? 0) > 0 ? (
+                          <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-800 text-[11px] bg-amber-50 border border-amber-200/90 px-1.5 py-0.5 rounded shadow-2xs">
+                            <span className="w-2 h-2.5 bg-amber-400 border border-amber-500/80 rounded-[1px] inline-block shadow-2xs shrink-0" />
+                            {p.yellow_cards}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 font-mono text-[11px]">—</span>
+                        )}
                       </td>
                     </tr>
                   );

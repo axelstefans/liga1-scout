@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry, PassNetworkNode, VenueFilter } from '../../services/api';
+import { TeamMetricEntry, PassNetworkNode, VenueFilter, ContextFilter } from '../../services/api';
 import { useTeamPassNetwork, useTeamMatches } from '../../hooks/useTeam';
 import { getTeamThemeColor } from '../../utils/teams';
 
@@ -10,6 +10,7 @@ export interface TeamPassNetworkProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
   venue?: VenueFilter;
+  contextFilter?: ContextFilter;
   viewMode?: 'cumulative' | 'match';
   selectedMatchId?: number | null;
 }
@@ -42,6 +43,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
   activeTeam,
   tournament = 'all',
   venue = 'all',
+  contextFilter = 'all',
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
 }) => {
@@ -109,7 +111,8 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     venue,
-    isPassNetworkEnabled
+    isPassNetworkEnabled,
+    contextFilter
   );
 
   const isWaitingForMatch = viewMode === 'match' && (!isMatchValidForTeam || isLoadingMatches);
@@ -839,6 +842,24 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               </span>
             </div>
 
+            {/* Pivot tactical role and defensive actions */}
+            {hoveredNode.is_pivot && (
+              <div className="flex items-center justify-between text-[11px] mb-1.5 pt-1.5 border-t border-slate-800">
+                <span className="text-slate-400">Rol táctico:</span>
+                <span className="font-semibold flex items-center gap-1 text-emerald-400">
+                  🛡️ Pivote Defensivo
+                </span>
+              </div>
+            )}
+            {hoveredNode.defensive_actions_p90 !== undefined && hoveredNode.defensive_actions_p90 !== null && (
+              <div className="flex items-center justify-between text-[11px] mb-2">
+                <span className="text-slate-400">Acciones def / 90:</span>
+                <span className="font-mono font-bold text-slate-200">
+                  {hoveredNode.defensive_actions_p90.toFixed(2)}
+                </span>
+              </div>
+            )}
+
             {/* Top Socios / Circuitos */}
             {hoveredPartners.length > 0 && (
               <div className="pt-1.5 border-t border-slate-800/80">
@@ -874,7 +895,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
 
       {/* 3. Diagnostic Footer Strip */}
       <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 font-normal">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-3">
           <span>Grosor y flechas proporcionales al volumen de pases entre futbolistas.</span>
         </div>
         <div className="flex items-center gap-3">

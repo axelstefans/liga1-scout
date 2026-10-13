@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Download, Loader2, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry, DefensiveEventItem, VenueFilter } from '../../services/api';
+import { TeamMetricEntry, DefensiveEventItem, VenueFilter, ContextFilter } from '../../services/api';
 import { useTeamDefensiveActions, useTeamMatches } from '../../hooks/useTeam';
 import { getTeamThemeColor } from '../../utils/teams';
 
@@ -10,6 +10,7 @@ export interface TeamDefensiveTerritoryProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
   venue?: VenueFilter;
+  contextFilter?: ContextFilter;
   viewMode?: 'cumulative' | 'match';
   selectedMatchId?: number | null;
 }
@@ -253,6 +254,7 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
   activeTeam,
   tournament = 'all',
   venue = 'all',
+  contextFilter = 'all',
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
 }) => {
@@ -327,7 +329,8 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
     tournament,
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     venue,
-    isQueryEnabled
+    isQueryEnabled,
+    contextFilter
   );
 
   const isWaitingForMatch = viewMode === 'match' && (!isMatchValidForTeam || isLoadingMatches);

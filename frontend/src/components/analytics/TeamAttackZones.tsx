@@ -4,7 +4,7 @@ import {
   ChevronDown, Copy, Check, Download
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry, VenueFilter } from '../../services/api';
+import { TeamMetricEntry, VenueFilter, ContextFilter } from '../../services/api';
 import { useTeamAttackZones, useTeamMatches } from '../../hooks/useTeam';
 
 export interface TeamAttackZonesProps {
@@ -12,6 +12,7 @@ export interface TeamAttackZonesProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
   venue?: VenueFilter;
+  contextFilter?: ContextFilter;
   mode?: AttackZoneMode;
   viewMode?: ViewMode;
   selectedMatchId?: number | null;
@@ -68,6 +69,7 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
   activeTeam,
   tournament = 'Clausura',
   venue = 'all',
+  contextFilter = 'all',
   mode: propMode,
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
@@ -151,7 +153,8 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     mode,
     venue,
-    isQueryEnabled
+    isQueryEnabled,
+    contextFilter
   );
 
   const showLoading = isLoading || (viewMode === 'match' && (!isMatchValidForTeam || isLoadingMatches));

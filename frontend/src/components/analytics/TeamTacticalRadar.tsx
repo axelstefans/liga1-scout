@@ -40,11 +40,11 @@ const TACTICAL_DIMENSIONS: TacticalDimensionDef[] = [
     higherIsBetter: true,
   },
   {
-    key: 'box_shots',
-    name: 'Remates en el Área',
-    shortName: 'Tiros en Área / PJ',
-    description: 'Volumen de tiros ejecutados dentro del área penal por partido disputado.',
-    extractor: (t) => (t.matches_played > 0 ? t.shots_inside_box / t.matches_played : 0),
+    key: 'progressive_passes',
+    name: 'Pases al Último Tercio / Progresivos',
+    shortName: 'Pases Últ. 3ro / PJ',
+    description: 'Volumen medio de pases completados hacia el último tercio ofensivo por partido.',
+    extractor: (t) => t.final_third_passes_p90 ?? (t.matches_played > 0 ? (t.passes_into_final_third ?? t.progressive_passes) / t.matches_played : 0),
     format: (v) => `${v.toFixed(1)} / pj`,
     higherIsBetter: true,
   },
@@ -58,12 +58,12 @@ const TACTICAL_DIMENSIONS: TacticalDimensionDef[] = [
     higherIsBetter: true,
   },
   {
-    key: 'pass_accuracy',
-    name: 'Precisión de Pase',
-    shortName: 'Precisión Pases',
-    description: 'Porcentaje de pases completados con éxito en todas las zonas del campo.',
-    extractor: (t) => t.pass_accuracy_pct ?? 0,
-    format: (v) => `${v.toFixed(1)}%`,
+    key: 'set_piece_xg',
+    name: 'xG a Balón Parado',
+    shortName: 'xG Balón Parado',
+    description: 'Peligro esperado generado a balón parado (córners y faltas) por partido disputado.',
+    extractor: (t) => t.set_piece_xg_p90 ?? t.set_piece_xg_per_match ?? (t.matches_played > 0 && t.set_piece_xg ? t.set_piece_xg / t.matches_played : 0),
+    format: (v) => `${v.toFixed(2)} xG / pj`,
     higherIsBetter: true,
   },
   {
@@ -74,24 +74,6 @@ const TACTICAL_DIMENSIONS: TacticalDimensionDef[] = [
     extractor: (t) => (t.matches_played > 0 ? t.high_recoveries / t.matches_played : 0),
     format: (v) => `${v.toFixed(1)} / pj`,
     higherIsBetter: true,
-  },
-  {
-    key: 'ppda_intensity',
-    name: 'Intensidad de Presión',
-    shortName: 'Presión (PPDA)',
-    description: 'Pases rivales permitidos por acción defensiva. Menor valor indica presión más intensa.',
-    extractor: (t) => t.ppda ?? 10.0,
-    format: (v) => `${v.toFixed(1)} PPDA`,
-    higherIsBetter: false, // Inverted: lower PPDA is more aggressive pressing
-  },
-  {
-    key: 'defensive_solidity',
-    name: 'Solidez Defensiva',
-    shortName: 'Solidez (xGA / PJ)',
-    description: 'Goles esperados en contra concedidos por partido. Menor valor indica mayor solidez defensiva.',
-    extractor: (t) => t.xga_per_match ?? (t.matches_played > 0 ? t.xga / t.matches_played : 0),
-    format: (v) => `${v.toFixed(2)} xGA / pj`,
-    higherIsBetter: false, // Inverted: lower xGA is higher defensive solidity
   },
 ];
 
@@ -170,14 +152,29 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
       const angleRad = -Math.PI / 2 + (i * 2 * Math.PI) / NUM_VERTICES;
       const angleDeg = (angleRad * 180) / Math.PI;
 
+      const labelX = CX + LABEL_RADIUS * Math.cos(angleRad);
+      const labelY = CY + LABEL_RADIUS * Math.sin(angleRad);
+
+      // If active team has 0 matches, collapse to minimum radius with fallback values
+      if (activeTeam.matches_played === 0) {
+        return {
+          def: dim,
+          rawVal: 0,
+          rank: n,
+          percentile: 0,
+          x: CX + MIN_RADIUS * Math.cos(angleRad),
+          y: CY + MIN_RADIUS * Math.sin(angleRad),
+          labelX,
+          labelY,
+          angleDeg,
+        };
+      }
+
       // Map percentile (0-100) to radial distance [MIN_RADIUS, MAX_RADIUS]
       const r = MIN_RADIUS + (percentile / 100) * (MAX_RADIUS - MIN_RADIUS);
 
       const x = CX + r * Math.cos(angleRad);
       const y = CY + r * Math.sin(angleRad);
-
-      const labelX = CX + LABEL_RADIUS * Math.cos(angleRad);
-      const labelY = CY + LABEL_RADIUS * Math.sin(angleRad);
 
       return {
         def: dim,
@@ -479,7 +476,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
                       isHovered ? 'fill-navy font-bold' : 'fill-slate-800 font-medium'
                     }`}
                   >
-                    P{dim.percentile}
+                    {activeTeam.matches_played === 0 ? 'P—' : `P${dim.percentile}`}
                   </tspan>
                 </text>
               </g>
@@ -501,7 +498,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
                 {hoveredDim.def.name}
               </span>
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-400 text-slate-950">
-                P{hoveredDim.percentile}
+                {activeTeam.matches_played === 0 ? 'P—' : `P${hoveredDim.percentile}`}
               </span>
             </div>
 
@@ -512,14 +509,14 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
             <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[11px]">
               <span className="text-slate-400">Valor real:</span>
               <span className="font-mono font-semibold text-emerald-400">
-                {hoveredDim.def.format(hoveredDim.rawVal)}
+                {activeTeam.matches_played === 0 ? '—' : hoveredDim.def.format(hoveredDim.rawVal)}
               </span>
             </div>
 
             <div className="flex items-center justify-between text-[11px] mt-0.5">
               <span className="text-slate-400">Posición en Liga 1:</span>
               <span className="font-semibold text-slate-200">
-                #{hoveredDim.rank} de {teams.length}
+                {activeTeam.matches_played === 0 ? '—' : `#${hoveredDim.rank} de ${teams.length}`}
               </span>
             </div>
           </div>

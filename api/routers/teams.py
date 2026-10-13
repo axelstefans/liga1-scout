@@ -22,10 +22,11 @@ def get_all_teams(db: sqlite3.Connection = Depends(get_db)):
 def get_team_metrics(
     tournament: Optional[str] = Query(None, description="Filter by tournament: Apertura or Clausura"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get aggregated metrics for all 18 Liga 1 clubs, supporting optional tournament filter."""
-    return team_repo.get_team_metrics(db, tournament, venue=venue)
+    return team_repo.get_team_metrics(db, tournament, venue=venue, context_filter=context_filter)
 
 @router.get("/{team_id}/matches", response_model=List[TeamMatchItem])
 def get_team_matches(
@@ -57,10 +58,11 @@ def get_team_pass_network(
     tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
     match_id: Optional[int] = Query(None, description="Filter by a specific fixture match_id"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get pass network (nodes and edges) for a team's Base XI or a single fixture."""
-    network = team_repo.get_team_pass_network(db, team_id, tournament, match_id=match_id, venue=venue)
+    network = team_repo.get_team_pass_network(db, team_id, tournament, match_id=match_id, venue=venue, context_filter=context_filter)
     if not network:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found or match not found")
     return network
@@ -88,10 +90,11 @@ def get_team_defensive_actions(
     tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
     match_id: Optional[int] = Query(None, description="Filter by a specific fixture match_id"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get defensive actions (tackles, interceptions, recoveries, fouls) and block height metrics."""
-    data = team_repo.get_team_defensive_actions(db, team_id, tournament, match_id=match_id, venue=venue)
+    data = team_repo.get_team_defensive_actions(db, team_id, tournament, match_id=match_id, venue=venue, context_filter=context_filter)
     if not data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -106,10 +109,11 @@ def get_team_shot_map(
     match_id: Optional[int] = Query(None, description="Filter by a specific fixture match_id"),
     mode: str = Query("for", pattern="^(for|against)$", description="Mode: 'for' (shots taken) or 'against' (shots conceded)"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get shot map events and summary metrics for a team (shots taken or conceded)."""
-    data = team_repo.get_team_shot_map(db, team_id, tournament=tournament, match_id=match_id, mode=mode, venue=venue)
+    data = team_repo.get_team_shot_map(db, team_id, tournament=tournament, match_id=match_id, mode=mode, venue=venue, context_filter=context_filter)
     if not data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -125,10 +129,11 @@ def get_team_attack_zones(
     match_id: Optional[int] = Query(None, description="Filter by a specific fixture match_id"),
     mode: str = Query("for", pattern="^(for|against)$", description="Mode: 'for' (actions performed) or 'against' (actions conceded)"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get attack & threat infiltration zones per channel and summary metrics."""
-    data = team_repo.get_team_attack_zones(db, team_id, tournament=tournament, match_id=match_id, mode=mode, venue=venue)
+    data = team_repo.get_team_attack_zones(db, team_id, tournament=tournament, match_id=match_id, mode=mode, venue=venue, context_filter=context_filter)
     if not data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -143,13 +148,14 @@ def get_team_period_metrics(
     tournament: Optional[str] = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
     mode: str = Query("for", pattern="^(for|against)$", description="Mode: 'for' (scored/conceded from team perspective) or 'against'"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get team averages and totals grouped by period ('1ST', '2ND', 'ALL')."""
     profile = team_repo.get_team_profile(db, team_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
-    return team_repo.get_team_period_metrics(db, team_id, tournament=tournament or "all", venue=venue, mode=mode)
+    return team_repo.get_team_period_metrics(db, team_id, tournament=tournament or "all", venue=venue, mode=mode, context_filter=context_filter)
 
 
 @router.get("/{team_id}/set-pieces")
@@ -158,13 +164,14 @@ def get_team_set_piece_metrics(
     tournament: Optional[str] = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
     mode: str = Query("for", pattern="^(for|against)$", description="Mode: 'for' (goals scored) or 'against' (goals conceded)"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get set-piece metrics (corner origin goals and 15-minute goal distribution)."""
     profile = team_repo.get_team_profile(db, team_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
-    return team_repo.get_team_set_piece_metrics(db, team_id, tournament=tournament or "all", venue=venue, mode=mode)
+    return team_repo.get_team_set_piece_metrics(db, team_id, tournament=tournament or "all", venue=venue, mode=mode, context_filter=context_filter)
 
 
 @router.get("/{team_id}/most-used-xi", response_model=MostUsedXIResponse)
@@ -172,13 +179,14 @@ def get_team_most_used_xi(
     team_id: int,
     tournament: str = Query("all", description="Filter by tournament: all, Apertura, or Clausura"),
     venue: str = Query("all", pattern="^(all|home|away)$", description="Filter by venue: all, home, or away"),
+    context_filter: str = Query("all", pattern="^(all|vs_elite|vs_rest|altitude|sea_level)$", description="Filter context: all, vs_elite, vs_rest, altitude, sea_level"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get the 11 players with the highest minutes played for a team."""
     profile = team_repo.get_team_profile(db, team_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
-    return team_repo.get_team_most_used_xi(db, team_id, tournament, venue=venue)
+    return team_repo.get_team_most_used_xi(db, team_id, tournament, venue=venue, context_filter=context_filter)
 
 
 @router.get("/{team_id}/goal-contributions")

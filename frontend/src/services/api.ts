@@ -333,6 +333,11 @@ export interface TeamMetricEntry {
   xga_per_match: number | null;
   field_tilt_pct: number | null;
   conversion_ratio: number | null;
+  set_piece_xg?: number;
+  set_piece_xg_p90?: number;
+  set_piece_xg_per_match?: number;
+  progressive_passes_p90?: number;
+  final_third_passes_p90?: number;
 }
 
 export interface ShotZoneCell {
@@ -384,6 +389,9 @@ export interface PassNetworkNode {
   x: number;
   y: number;
   total_passes: number;
+  is_pivot?: boolean;
+  defensive_actions_p90?: number | null;
+  is_exposed_pivot?: boolean;
 }
 
 export interface PassNetworkEdge {
@@ -516,6 +524,7 @@ export interface TeamAttackZonesResponse {
 }
 
 export type VenueFilter = 'all' | 'home' | 'away';
+export type ContextFilter = 'all' | 'vs_elite' | 'vs_rest' | 'altitude' | 'sea_level';
 
 export const teamsApi = {
   getAll: async (): Promise<TeamBase[]> => {
@@ -526,10 +535,11 @@ export const teamsApi = {
     const response = await apiClient.get(`/teams/${teamId}/next-match`);
     return response.data;
   },
-  getMetrics: async (tournament?: 'Apertura' | 'Clausura', venue?: VenueFilter): Promise<TeamMetricEntry[]> => {
+  getMetrics: async (tournament?: 'Apertura' | 'Clausura', venue?: VenueFilter, contextFilter?: ContextFilter): Promise<TeamMetricEntry[]> => {
     const params = new URLSearchParams();
     if (tournament) params.append('tournament', tournament);
     if (venue && venue !== 'all') params.append('venue', venue);
+    if (contextFilter && contextFilter !== 'all') params.append('context_filter', contextFilter);
     const queryString = params.toString();
     const url = queryString ? `/teams/metrics?${queryString}` : `/teams/metrics`;
     const response = await apiClient.get(url);
@@ -551,7 +561,8 @@ export const teamsApi = {
     teamId: number,
     tournament?: 'Apertura' | 'Clausura' | 'all',
     matchId?: number | null,
-    venue?: VenueFilter
+    venue?: VenueFilter,
+    contextFilter?: ContextFilter
   ): Promise<TeamPassNetworkResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -563,6 +574,9 @@ export const teamsApi = {
     if (venue && venue !== 'all') {
       params.append('venue', venue);
     }
+    if (contextFilter && contextFilter !== 'all') {
+      params.append('context_filter', contextFilter);
+    }
     const queryString = params.toString();
     const url = queryString ? `/teams/${teamId}/pass-network?${queryString}` : `/teams/${teamId}/pass-network`;
     const response = await apiClient.get(url);
@@ -572,7 +586,8 @@ export const teamsApi = {
     teamId: number,
     tournament: string = 'all',
     matchId?: number | null,
-    venue?: VenueFilter
+    venue?: VenueFilter,
+    contextFilter?: ContextFilter
   ): Promise<TeamDefensiveActionsResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -583,6 +598,9 @@ export const teamsApi = {
     }
     if (venue && venue !== 'all') {
       params.append('venue', venue);
+    }
+    if (contextFilter && contextFilter !== 'all') {
+      params.append('context_filter', contextFilter);
     }
     const queryString = params.toString();
     const url = queryString
@@ -596,7 +614,8 @@ export const teamsApi = {
     tournament?: string,
     matchId?: number | null,
     mode: 'for' | 'against' = 'for',
-    venue?: VenueFilter
+    venue?: VenueFilter,
+    contextFilter?: ContextFilter
   ): Promise<TeamShotMapResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -611,6 +630,9 @@ export const teamsApi = {
     if (venue && venue !== 'all') {
       params.append('venue', venue);
     }
+    if (contextFilter && contextFilter !== 'all') {
+      params.append('context_filter', contextFilter);
+    }
     const queryString = params.toString();
     const url = queryString
       ? `/teams/${teamId}/shot-map?${queryString}`
@@ -623,7 +645,8 @@ export const teamsApi = {
     tournament?: string,
     matchId?: number | null,
     mode: 'for' | 'against' = 'for',
-    venue?: VenueFilter
+    venue?: VenueFilter,
+    contextFilter?: ContextFilter
   ): Promise<TeamAttackZonesResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -638,6 +661,9 @@ export const teamsApi = {
     if (venue && venue !== 'all') {
       params.append('venue', venue);
     }
+    if (contextFilter && contextFilter !== 'all') {
+      params.append('context_filter', contextFilter);
+    }
     const queryString = params.toString();
     const url = queryString
       ? `/teams/${teamId}/attack-zones?${queryString}`
@@ -648,7 +674,8 @@ export const teamsApi = {
   getMostUsedXI: async (
     teamId: number,
     tournament?: 'Apertura' | 'Clausura' | 'all',
-    venue?: VenueFilter
+    venue?: VenueFilter,
+    contextFilter?: ContextFilter
   ): Promise<MostUsedXIResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -656,6 +683,9 @@ export const teamsApi = {
     }
     if (venue && venue !== 'all') {
       params.append('venue', venue);
+    }
+    if (contextFilter && contextFilter !== 'all') {
+      params.append('context_filter', contextFilter);
     }
     const queryString = params.toString();
     const url = queryString
@@ -679,7 +709,8 @@ export const teamsApi = {
     teamId: number,
     tournament?: 'Apertura' | 'Clausura' | 'all',
     venue?: VenueFilter,
-    mode: 'for' | 'against' = 'for'
+    mode: 'for' | 'against' = 'for',
+    contextFilter?: ContextFilter
   ): Promise<TeamPeriodMetricsResponse> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -690,6 +721,9 @@ export const teamsApi = {
     }
     if (mode) {
       params.append('mode', mode);
+    }
+    if (contextFilter && contextFilter !== 'all') {
+      params.append('context_filter', contextFilter);
     }
     const queryString = params.toString();
     const url = queryString
@@ -702,7 +736,8 @@ export const teamsApi = {
     teamId: number,
     tournament?: 'Apertura' | 'Clausura' | 'all',
     venue?: VenueFilter,
-    mode: 'for' | 'against' = 'for'
+    mode: 'for' | 'against' = 'for',
+    contextFilter?: ContextFilter
   ): Promise<any> => {
     const params = new URLSearchParams();
     if (tournament && tournament !== 'all') {
@@ -713,6 +748,9 @@ export const teamsApi = {
     }
     if (mode) {
       params.append('mode', mode);
+    }
+    if (contextFilter && contextFilter !== 'all') {
+      params.append('context_filter', contextFilter);
     }
     const queryString = params.toString();
     const url = queryString
@@ -732,11 +770,18 @@ export interface MostUsedXIPlayer {
   age: number | null;
   appearances: number;
   apps: number;
+  starts: number;
   minutes_played: number;
   minutes_pct: number;
   minutes_share: number;
   goals: number;
   assists: number;
+  xg: number;
+  shots_p90?: number;
+  total_shots?: number;
+  yellow_cards?: number;
+  saves?: number;
+  saves_p90?: number;
   g_plus_a: number;
   goal_contributions: number;
   pitch_x: number;
@@ -807,11 +852,17 @@ export interface TeamSetPieceDetail {
   corner_goals: number;
   corner_goals_per_match: number;
   corner_goals_pct: number;
+  corner_goals_conceded?: number;
   set_piece_shots: number;
   set_piece_goals: number;
   set_piece_goals_per_match: number;
+  set_piece_goals_conceded?: number;
+  set_piece_goals_conceded_per_match?: number;
   set_piece_xg: number;
   set_piece_xg_per_match: number;
+  penalties_awarded?: number;
+  penalties_scored?: number;
+  penalties_conceded?: number;
 }
 
 export interface GoalIntervalItem {
@@ -829,15 +880,121 @@ export interface GoalDistributionDetail {
   peak_pct: number;
 }
 
+export interface HTOutcomes {
+  ht_won: number;
+  ht_drawn: number;
+  ht_lost: number;
+}
+
+export interface FirstGoalRecord {
+  scored_first_count: number;
+  scored_first_record: string;
+  conceded_first_count: number;
+  conceded_first_record: string;
+}
+
+export interface FrequencyCount {
+  count: number;
+  total: number;
+}
+
+export interface CornerStats {
+  corners_for_avg: number;
+  corners_against_avg: number;
+  corners_total_avg: number;
+  over_8_5_corners: FrequencyCount;
+  over_9_5_corners: FrequencyCount;
+  corners_conceded_over_4_5?: FrequencyCount;
+  corners_conceded_over_4_5_count?: number;
+  corners_conceded_over_4_5_pct?: number;
+  set_piece_goals: number;
+  corner_goals: number;
+}
+
+export interface TimeSplits {
+  goals_1t: number;
+  goals_2t: number;
+  pct_goals_2t: number;
+  peak_scoring_interval: string;
+}
+
+export interface RecordBreakdown {
+  wins: number;
+  draws: number;
+  losses: number;
+}
+
+export interface DynamicEventRecord {
+  count: number;
+  total: number;
+  record: string;
+  breakdown: RecordBreakdown;
+}
+
+export interface MatchDynamics {
+  btts: FrequencyCount;
+  clean_sheets?: FrequencyCount;
+  clean_sheets_pct?: number;
+  failed_to_score?: FrequencyCount;
+  failed_to_score_pct?: number;
+  conceded_early_0_20?: FrequencyCount;
+  conceded_early_0_20_pct?: number;
+  ht_won: FrequencyCount;
+  ht_drawn: FrequencyCount;
+  ht_lost: FrequencyCount;
+  scored_first: DynamicEventRecord;
+  conceded_first: DynamicEventRecord;
+}
+
+export interface DisciplineStats {
+  fouls_committed_avg: number;
+  fouls_drawn_avg: number;
+  cards_for_avg: number;
+  cards_forced_avg: number;
+  cards_match_total_avg: number;
+  red_cards_total?: number;
+  red_cards_avg?: number;
+  over_3_5_cards: FrequencyCount;
+  cards_2h_pct?: number;
+}
+
 export interface TeamPeriodMetricsResponse {
   team_id: number;
   tournament: string;
+  venue?: string;
+  mode?: string;
   matches_count: number;
   periods: {
     '1ST': TeamPeriodStatsItem;
     '2ND': TeamPeriodStatsItem;
     'ALL': TeamPeriodStatsItem;
   };
+  clean_sheets_count?: number;
+  clean_sheets_pct?: number;
+  failed_to_score_count?: number;
+  failed_to_score_pct?: number;
+  conceded_early_0_20_count?: number;
+  conceded_early_0_20_pct?: number;
+  red_cards_total?: number;
+  red_cards_avg?: number;
+  penalties_awarded?: number;
+  penalties_scored?: number;
+  penalties_conceded?: number;
+  corners_conceded_over_4_5_count?: number;
+  corners_conceded_over_4_5_pct?: number;
+  ht_won?: number;
+  ht_drawn?: number;
+  ht_lost?: number;
+  ht_outcomes?: HTOutcomes;
+  scored_first_count?: number;
+  scored_first_record?: string;
+  conceded_first_count?: number;
+  conceded_first_record?: string;
+  first_goal?: FirstGoalRecord;
   set_pieces: TeamSetPieceDetail;
   goal_distribution: GoalDistributionDetail;
+  corner_stats?: CornerStats;
+  time_splits?: TimeSplits;
+  match_dynamics?: MatchDynamics;
+  discipline_stats?: DisciplineStats;
 }

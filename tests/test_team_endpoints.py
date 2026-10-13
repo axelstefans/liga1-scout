@@ -27,6 +27,11 @@ def test_get_team_metrics_all():
     assert alianza["xg"] > 40.0
     assert alianza["defensive_resistance_ratio"] is not None
     assert alianza["conversion_ratio"] is not None
+    assert "progressive_passes" in alianza
+    assert "set_piece_xg" in alianza
+    assert alianza["set_piece_xg"] > 0.0
+    assert "set_piece_xg_p90" in alianza
+    assert "progressive_passes_p90" in alianza
 
 def test_get_team_metrics_tournament_filters():
     # Apertura
@@ -988,8 +993,23 @@ def test_get_team_most_used_xi():
     assert "pitch_y" in first_player
     assert "minutes_share" in first_player
     assert "apps" in first_player
+    assert "starts" in first_player
     assert "g_plus_a" in first_player
+    assert "xg" in first_player
+    assert "shots_p90" in first_player
+    assert "total_shots" in first_player
+    assert "yellow_cards" in first_player
+    assert first_player["starts"] >= 0
+    assert first_player["xg"] >= 0.0
+    assert first_player["shots_p90"] >= 0.0
+    assert first_player["yellow_cards"] >= 0
     assert first_player["minutes_share"] <= 100
+
+    # Verify GK has saves field
+    gk_player = next((p for p in data["players"] if p["slot"] in ("GK", "G")), None)
+    if gk_player:
+        assert "saves" in gk_player
+        assert "saves_p90" in gk_player
 
     # 2. Filtered cohort (home venue and Apertura)
     resp_venue = client.get("/api/teams/2311/most-used-xi?tournament=Apertura&venue=home")
@@ -1024,6 +1044,199 @@ def test_get_team_most_used_xi():
         rcb_y = uni_slots["RCB"]["pitch_y"]
         assert abs(lcb_y - cb_y) >= 18.0, f"LCB-CB clearance too small: {abs(lcb_y - cb_y)}"
         assert abs(cb_y - rcb_y) >= 18.0, f"CB-RCB clearance too small: {abs(cb_y - rcb_y)}"
+
+
+def test_get_team_period_metrics_ht_and_first_goal():
+    """Verify that /teams/{team_id}/period-metrics returns HT outcomes and first-goal dynamics."""
+    resp = client.get("/api/teams/2301/period-metrics")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # Verify HT state fields
+    assert "ht_won" in data
+    assert "ht_drawn" in data
+    assert "ht_lost" in data
+    assert isinstance(data["ht_won"], int)
+    assert isinstance(data["ht_drawn"], int)
+    assert isinstance(data["ht_lost"], int)
+
+    # Verify First Goal dynamic fields
+    assert "scored_first_count" in data
+    assert "scored_first_record" in data
+    assert "conceded_first_count" in data
+    assert "conceded_first_record" in data
+    assert isinstance(data["scored_first_count"], int)
+    assert isinstance(data["conceded_first_count"], int)
+    assert "V-" in data["scored_first_record"]
+    assert "V-" in data["conceded_first_record"]
+
+    # Verify in 'against' mode
+    resp_against = client.get("/api/teams/2301/period-metrics?mode=against")
+    assert resp_against.status_code == 200
+    data_against = resp_against.json()
+    assert "ht_won" in data_against
+    assert "scored_first_record" in data_against
+
+
+    # Verify Floor 2 Estimation & Frequency metrics
+    assert "corner_stats" in data
+    cs = data["corner_stats"]
+    assert "corners_for_avg" in cs
+    assert "corners_against_avg" in cs
+    assert "corners_total_avg" in cs
+    assert "over_8_5_corners" in cs
+    assert "count" in cs["over_8_5_corners"]
+    assert "total" in cs["over_8_5_corners"]
+    assert "over_9_5_corners" in cs
+    assert "corners_conceded_over_4_5" in cs
+    assert "count" in cs["corners_conceded_over_4_5"]
+    assert "total" in cs["corners_conceded_over_4_5"]
+    assert "corners_conceded_over_4_5_count" in data
+    assert "corners_conceded_over_4_5_pct" in data
+    assert "penalties_awarded" in data
+    assert "penalties_scored" in data
+    assert "penalties_conceded" in data
+    assert isinstance(data["penalties_awarded"], int)
+    assert isinstance(data["penalties_scored"], int)
+    assert isinstance(data["penalties_conceded"], int)
+    assert "set_pieces" in data
+    assert data["set_pieces"]["penalties_awarded"] == data["penalties_awarded"]
+    assert "set_piece_goals_conceded" in data["set_pieces"]
+    assert "set_piece_goals_conceded_per_match" in data["set_pieces"]
+    assert isinstance(data["set_pieces"]["set_piece_goals_conceded"], int)
+    assert isinstance(data["set_pieces"]["set_piece_goals_conceded_per_match"], float)
+
+    assert "time_splits" in data
+    ts = data["time_splits"]
+    assert "goals_1t" in ts
+    assert "goals_2t" in ts
+    assert "pct_goals_2t" in ts
+    assert "peak_scoring_interval" in ts
+
+    assert "match_dynamics" in data
+    md = data["match_dynamics"]
+    assert "btts" in md
+    assert "clean_sheets" in md
+    assert "clean_sheets_pct" in md
+    assert "failed_to_score" in md
+    assert "failed_to_score_pct" in md
+    assert "conceded_early_0_20" in md
+    assert "conceded_early_0_20_pct" in md
+    assert "ht_won" in md
+    assert "scored_first" in md
+    assert "conceded_first" in md
+    assert "breakdown" in md["scored_first"]
+    assert "wins" in md["scored_first"]["breakdown"]
+
+    assert "clean_sheets_count" in data
+    assert "clean_sheets_pct" in data
+    assert "failed_to_score_count" in data
+    assert "failed_to_score_pct" in data
+    assert "conceded_early_0_20_count" in data
+    assert "conceded_early_0_20_pct" in data
+
+    assert "discipline_stats" in data
+    ds = data["discipline_stats"]
+    assert "fouls_committed_avg" in ds
+    assert "fouls_drawn_avg" in ds
+    assert ds["fouls_committed_avg"] >= 9.0, f"Expected realistic fouls committed (>= 9.0), got {ds['fouls_committed_avg']}"
+    assert ds["fouls_drawn_avg"] >= 7.0, f"Expected realistic fouls drawn (>= 7.0), got {ds['fouls_drawn_avg']}"
+    assert data["periods"]["ALL"]["avg_fouls"] >= 9.0
+    assert data["periods"]["ALL"]["avg_fouls_received"] >= 7.0
+    assert "cards_for_avg" in ds
+    assert "cards_forced_avg" in ds
+    assert "cards_match_total_avg" in ds
+    assert "red_cards_total" in ds
+    assert "red_cards_avg" in ds
+    assert "red_cards_total" in data
+    assert "red_cards_avg" in data
+    assert "over_3_5_cards" in ds
+    assert "cards_2h_pct" in ds
+    assert 0.0 <= ds["cards_2h_pct"] <= 100.0
+
+
+def test_context_filter_metrics():
+    # 1. vs_elite filter
+    resp_elite = client.get("/api/teams/metrics?context_filter=vs_elite")
+    assert resp_elite.status_code == 200
+    data_elite = resp_elite.json()
+    assert len(data_elite) == 18
+    # In Liga 1, non-elite teams play at most 4-8 matches vs elite
+    cienciano_elite = next(t for t in data_elite if t["team_id"] == 2301)
+    assert cienciano_elite["matches_played"] <= 8
+
+    # 2. altitude filter
+    resp_alt = client.get("/api/teams/metrics?context_filter=altitude")
+    assert resp_alt.status_code == 200
+    data_alt = resp_alt.json()
+    assert len(data_alt) == 18
+
+    # 3. sea_level filter
+    resp_sea = client.get("/api/teams/metrics?context_filter=sea_level")
+    assert resp_sea.status_code == 200
+    data_sea = resp_sea.json()
+    assert len(data_sea) == 18
+
+    # Total matches across altitude + sea_level should equal all matches for a team
+    resp_all = client.get("/api/teams/metrics?context_filter=all")
+    data_all = resp_all.json()
+    alianza_all = next(t for t in data_all if t["team_id"] == 2311)
+    alianza_alt = next(t for t in data_alt if t["team_id"] == 2311)
+    alianza_sea = next(t for t in data_sea if t["team_id"] == 2311)
+    assert alianza_alt["matches_played"] + alianza_sea["matches_played"] == alianza_all["matches_played"]
+
+
+def test_pass_network_exposed_pivot():
+    # Test pass network returns pivot tags
+    resp = client.get("/api/teams/2311/pass-network?tournament=Clausura")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "nodes" in data
+    assert len(data["nodes"]) > 0
+
+    # Verify at least one node is tagged as pivot
+    pivot_nodes = [n for n in data["nodes"] if n.get("is_pivot")]
+    assert len(pivot_nodes) >= 1
+
+    for p in pivot_nodes:
+        assert "defensive_actions_p90" in p
+        assert p["defensive_actions_p90"] is not None
+        assert "is_exposed_pivot" in p
+        # Exposure condition: def_p90 < 2.0
+        assert p["is_exposed_pivot"] == (p["defensive_actions_p90"] < 2.0)
+
+    # Test with context_filter
+    resp_ctx = client.get("/api/teams/2311/pass-network?context_filter=vs_elite")
+    assert resp_ctx.status_code == 200
+    data_ctx = resp_ctx.json()
+    assert len(data_ctx["nodes"]) > 0
+
+
+def test_context_filter_across_analytic_endpoints():
+    # Period metrics
+    resp_pm = client.get("/api/teams/2311/period-metrics?context_filter=vs_rest")
+    assert resp_pm.status_code == 200
+    data_pm = resp_pm.json()
+    assert "periods" in data_pm
+
+    # Most used XI
+    resp_xi = client.get("/api/teams/2311/most-used-xi?context_filter=altitude")
+    assert resp_xi.status_code == 200
+    data_xi = resp_xi.json()
+    assert "players" in data_xi
+    assert len(data_xi["players"]) == 11
+
+    # Shot map
+    resp_sm = client.get("/api/teams/2311/shot-map?context_filter=sea_level")
+    assert resp_sm.status_code == 200
+    data_sm = resp_sm.json()
+    assert "shots" in data_sm
+
+    # Defensive actions
+    resp_def = client.get("/api/teams/2311/defensive-actions?context_filter=vs_elite")
+    assert resp_def.status_code == 200
+    data_def = resp_def.json()
+    assert "summary" in data_def
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Download, Loader2, AlertCircle, RefreshCw, 
-  Target, Copy, Check 
+  Target 
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { TeamMetricEntry, ShotItem, VenueFilter } from '../../services/api';
+import { TeamMetricEntry, ShotItem, VenueFilter, ContextFilter } from '../../services/api';
 import { useTeamShotMap, useTeamMatches } from '../../hooks/useTeam';
 
 export interface TeamShotMapProps {
@@ -12,6 +12,7 @@ export interface TeamShotMapProps {
   activeTeam: TeamMetricEntry;
   tournament?: 'all' | 'Apertura' | 'Clausura';
   venue?: VenueFilter;
+  contextFilter?: ContextFilter;
   mode?: ShotMode;
   viewMode?: 'cumulative' | 'match';
   selectedMatchId?: number | null;
@@ -136,6 +137,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
   activeTeam,
   tournament = 'all',
   venue = 'all',
+  contextFilter = 'all',
   mode: propMode,
   viewMode: propViewMode,
   selectedMatchId: propSelectedMatchId,
@@ -143,7 +145,6 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [internalMode] = useState<ShotMode>('for');
   const [internalViewMode] = useState<'cumulative' | 'match'>('cumulative');
   const [internalSelectedMatchId, setInternalSelectedMatchId] = useState<number | null>(null);
@@ -223,7 +224,8 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
     viewMode === 'match' ? (isMatchValidForTeam ? selectedMatchId : null) : null,
     mode,
     venue,
-    isQueryEnabled
+    isQueryEnabled,
+    contextFilter
   );
 
   const isWaitingForMatch = viewMode === 'match' && (!isMatchValidForTeam || isLoadingMatches);
@@ -384,213 +386,6 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
     });
   }, [mappedShots, hoveredShot]);
 
-  // Copy Summary Handler (strictly formatted for ML / LLM ingestion without ambiguity)
-  const handleCopySummary = async () => {
-    // 1. Header line
-    const headerLine = `MAPA DE TIROS | ${
-      mode === 'for'
-        ? `A FAVOR (tiros de ${activeTeam.name})`
-        : `CONCEDIDOS (tiros de rivales contra ${activeTeam.name})`
-    }`;
-
-    // 2. Context line
-    let contextLine = '';
-    const isSingleMatch = viewMode === 'match';
-    if (isSingleMatch && activeMatch) {
-      const matchLabel = activeMatch.label;
-      const venue = activeMatch.is_home ? 'Local' : 'Visita';
-      const rivalName = activeMatch.opponent_name;
-
-      let matchPerspectiveScore = '';
-      if (
-        activeMatch.team_score !== null &&
-        activeMatch.team_score !== undefined &&
-        activeMatch.opponent_score !== null &&
-        activeMatch.opponent_score !== undefined
-      ) {
-        const teamScore = activeMatch.team_score;
-        const oppScore = activeMatch.opponent_score;
-        const outcome_label =
-          teamScore > oppScore
-            ? 'victoria'
-            : teamScore < oppScore
-            ? 'derrota'
-            : 'empate';
-
-        if (activeMatch.is_home) {
-          matchPerspectiveScore = `${activeTeam.name} ${teamScore} - ${oppScore} ${rivalName} (${outcome_label})`;
-        } else {
-          matchPerspectiveScore = `${rivalName} ${oppScore} - ${teamScore} ${activeTeam.name} (${outcome_label})`;
-        }
-      } else {
-        matchPerspectiveScore = 'Resultado pendiente';
-      }
-
-      contextLine = `Partido: ${matchLabel} | ${venue} | ${matchPerspectiveScore} | Rival: ${rivalName}`;
-    } else {
-      const scopeLabel =
-        tournament === 'all' ? 'Temporada Completa 2026' : `${tournament} 2026`;
-      const matchesCount = matches?.length || 0;
-      const lowReliability = matchesCount < 8 ? ' (fiabilidad baja)' : '';
-      contextLine = `Alcance: ${scopeLabel} | Muestra: ${matchesCount} PJ${lowReliability}`;
-    }
-
-    // Decoupled stats: always calculated from playerShots (full match/scope, narrow only if player selected)
-    const total_shots = playerShots.length;
-    const goals = playerShots.filter((s) => s.result === 'goal').length;
-    const saved = playerShots.filter((s) => s.result === 'saved').length;
-    const blocked = playerShots.filter((s) => s.result === 'blocked').length;
-    const miss = playerShots.filter((s) => s.result === 'miss').length;
-
-    const total_xg_val = roundDecimals(
-      playerShots.reduce((acc, s) => acc + s.xg, 0),
-      2
-    );
-    const total_xg = total_xg_val.toFixed(2);
-    const xg_per_shot =
-      total_shots > 0
-        ? roundDecimals(total_xg_val / total_shots, 2).toFixed(2)
-        : '0.00';
-    const shots_on_target = goals + saved;
-    const on_target_pct =
-      total_shots > 0
-        ? roundDecimals((shots_on_target / total_shots) * 100, 1).toFixed(1)
-        : '0.0';
-    const delta_val = roundDecimals(goals - total_xg_val, 2);
-    const delta = delta_val.toFixed(2);
-
-    // 3. Top Shooters Aggregation (Top 2-3 with format Name (shots, xG))
-    const shooterMap = new Map<string, { shots: number; xg: number }>();
-    for (const s of playerShots) {
-      const name = s.player_name || 'Desconocido';
-      const curr = shooterMap.get(name) || { shots: 0, xg: 0 };
-      curr.shots += 1;
-      curr.xg += s.xg;
-      shooterMap.set(name, curr);
-    }
-    const topShooters = Array.from(shooterMap.entries())
-      .map(([name, d]) => ({
-        name: formatPlayerName(name),
-        shots: d.shots,
-        xg: roundDecimals(d.xg, 2),
-      }))
-      .sort((a, b) => b.xg - a.xg || b.shots - a.shots)
-      .slice(0, 3);
-    const topShootersText = topShooters
-      .map((s) => `${s.name} (${s.shots}, ${s.xg.toFixed(2)} xG)`)
-      .join(', ');
-
-    const shootersLabel =
-      selectedPlayer === 'all'
-        ? (mode === 'for' ? 'Plantel completo' : 'Rivales') +
-          (topShootersText ? ` (Top: ${topShootersText})` : '')
-        : selectedPlayer;
-    const rematadoresLine = `Rematadores: ${shootersLabel}`;
-
-    // 4. Shot distribution line
-    const shotDistLine = `Tiros ${total_shots} | Goles ${goals} | Atajados ${saved} | Bloqueados ${blocked} | Desviados ${miss}`;
-
-    // 5. Quality metrics line
-    const xgPrefix = mode === 'for' ? 'xG' : 'xGA';
-    const qualityLine = `${xgPrefix} ${total_xg} | ${xgPrefix}/tiro ${xg_per_shot} | % a puerta ${on_target_pct}% (incl. goles)`;
-
-    // 6. Performance line
-    const deltaSign = delta_val >= 0 ? '+' : '';
-    const performanceLine =
-      mode === 'for'
-        ? `Goles - xG: ${deltaSign}${delta} (${
-            delta_val >= 0
-              ? 'marcó más de lo esperado'
-              : 'marcó menos de lo esperado'
-          })`
-        : `Goles concedidos - xGA: ${deltaSign}${delta} (${
-            delta_val > 0
-              ? 'concedió más de lo esperado'
-              : 'concedió menos de lo esperado'
-          })`;
-
-    // 7. Location line (Inside box: x >= 84, y in [20, 80])
-    const inBoxCount = playerShots.filter(
-      (s) => s.x >= 84.0 && s.y >= 20.0 && s.y <= 80.0
-    ).length;
-    const pctInBox =
-      total_shots > 0 ? Math.round((inBoxCount / total_shots) * 100) : 0;
-    const locationLine = `Dentro del área: ${pctInBox}% | Fuera: ${100 - pctInBox}%`;
-
-    // 8. Situational breakdown
-    const openShots = playerShots.filter((s) => s.situation === 'open_play').length;
-    const openXg = roundDecimals(
-      playerShots
-        .filter((s) => s.situation === 'open_play')
-        .reduce((acc, s) => acc + s.xg, 0),
-      2
-    ).toFixed(2);
-
-    const spShots = playerShots.filter(
-      (s) => s.situation === 'set_piece' || s.situation === 'corner'
-    ).length;
-    const spXg = roundDecimals(
-      playerShots
-        .filter((s) => s.situation === 'set_piece' || s.situation === 'corner')
-        .reduce((acc, s) => acc + s.xg, 0),
-      2
-    ).toFixed(2);
-
-    const cntShots = playerShots.filter((s) => s.situation === 'fast_break').length;
-    const cntXg = roundDecimals(
-      playerShots
-        .filter((s) => s.situation === 'fast_break')
-        .reduce((acc, s) => acc + s.xg, 0),
-      2
-    ).toFixed(2);
-
-    const penShots = playerShots.filter((s) => s.situation === 'penalty').length;
-    const penXg = roundDecimals(
-      playerShots
-        .filter((s) => s.situation === 'penalty')
-        .reduce((acc, s) => acc + s.xg, 0),
-      2
-    ).toFixed(2);
-    const penString = penShots > 0 ? ` | penal ${penShots}/${penXg}` : '';
-
-    const situationLine = `Por situación (tiros / ${xgPrefix}): abierta ${openShots}/${openXg} | balón parado ${spShots}/${spXg} | contra ${cntShots}/${cntXg}${penString}`;
-
-    // 9. Execution breakdown
-    const footShots = playerShots.filter(
-      (s) => s.body_part === 'right_foot' || s.body_part === 'left_foot'
-    ).length;
-    const headShots = playerShots.filter((s) => s.body_part === 'head').length;
-    const executionLine = `Por ejecución: pie ${footShots} | cabeza ${headShots}`;
-
-    const summaryLines = [
-      headerLine,
-      contextLine,
-      rematadoresLine,
-      shotDistLine,
-      qualityLine,
-      performanceLine,
-      locationLine,
-      situationLine,
-      executionLine,
-    ];
-
-    // 10. Reliability note for single matches:
-    if (!isCumulative) {
-      summaryLines.push(
-        'Nota: muestra de un solo partido, el ΔxG puntual no constituye tendencia.'
-      );
-    }
-
-    const text = summaryLines.join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2200);
-    } catch (err) {
-      console.error('Failed to copy summary to clipboard', err);
-    }
-  };
-
   // PNG Export Handler
   const handleExportPNG = async () => {
     if (!cardRef.current || isExporting) return;
@@ -743,7 +538,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
           </div>
           <span className="text-slate-300">•</span>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <span className="text-slate-500 font-medium">Dif:</span>
             <span
               className={`font-bold ${
@@ -761,6 +556,73 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
               {(activeSummary?.xg_difference ?? 0) > 0 ? '+' : ''}
               {(activeSummary?.xg_difference ?? 0).toFixed(2)}
             </span>
+            {(() => {
+              const diff = activeSummary?.xg_difference ?? 0;
+              // For attacking 'for' mode:
+              // diff <= -2.0 -> Deficit de cara al arco (-X.XX xG)
+              // diff >= 2.0 -> Sobrerendimiento (+X.XX xG)
+              // else -> Conversión esperada
+              if (mode === 'for') {
+                if (diff <= -2.0) {
+                  return (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap"
+                      title="Genera más peligro esperado del que convierte"
+                    >
+                      Déficit ({diff.toFixed(2)} xG)
+                    </span>
+                  );
+                } else if (diff >= 2.0) {
+                  return (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap"
+                      title="Conversión por encima de la expectativa de gol"
+                    >
+                      Sobrerendimiento (+{diff.toFixed(2)} xG)
+                    </span>
+                  );
+                } else {
+                  return (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80 shadow-2xs whitespace-nowrap"
+                      title="Conversión alineada con la probabilidad de gol esperada"
+                    >
+                      Conversión esperada
+                    </span>
+                  );
+                }
+              } else {
+                // Defensive 'against' mode
+                if (diff >= 2.0) {
+                  return (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap"
+                      title="Concede más goles de lo esperado según la calidad del disparo rival"
+                    >
+                      Vulnerabilidad (+{diff.toFixed(2)} GC)
+                    </span>
+                  );
+                } else if (diff <= -2.0) {
+                  return (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap"
+                      title="Eficacia defensiva: concede menos goles de lo esperado"
+                    >
+                      Resistencia ({diff.toFixed(2)} GC)
+                    </span>
+                  );
+                } else {
+                  return (
+                    <span
+                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80 shadow-2xs whitespace-nowrap"
+                      title="Goles concedidos alineados con la expectativa del rival"
+                    >
+                      Concesión esperada
+                    </span>
+                  );
+                }
+              }
+            })()}
           </div>
           <span className="text-slate-300 hidden sm:inline">•</span>
 
@@ -1121,28 +983,8 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
       <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <span className="font-medium text-slate-400">Liga 1 Scout | Datos Oficiales</span>
 
-        {/* Action Buttons: Copiar Resumen & Exportar PNG */}
+        {/* Action Button: Exportar PNG */}
         <div className="flex items-center gap-2 export-ignore">
-          <button
-            type="button"
-            onClick={handleCopySummary}
-            disabled={rawShots.length === 0}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition cursor-pointer disabled:opacity-50"
-            title="Copiar resumen estructurado para análisis táctico o IA"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-700">Copiado</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copiar Resumen</span>
-              </>
-            )}
-          </button>
-
           <button
             type="button"
             onClick={handleExportPNG}
