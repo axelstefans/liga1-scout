@@ -10,6 +10,7 @@ class Team:
     logo_url: Optional[str]
     tm_team_id: Optional[int]
     tm_team_name: Optional[str]
+    flashscore_id: Optional[str] = None
 
 @dataclass
 class Player:

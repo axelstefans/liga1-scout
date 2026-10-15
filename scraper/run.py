@@ -26,12 +26,14 @@ from scraper.sources.shotmap import scrape_and_store_shotmaps
 from scraper.sources.percentiles import compute_and_store_percentiles
 from scraper.sources.heatmap import scrape_and_store_heatmaps
 from scraper.sources.match_period_stats import scrape_and_store_match_period_stats
+from scraper.sources.team_metrics import recompute_all_team_metrics, recompute_match_team_metrics
+from scripts.sync_discovered_matches import run_sync, print_summary_report
 
 import LanusStats as ls
 
 logger = logging.getLogger("scraper.run")
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Liga 1 Peruana Data Pipeline")
     parser.add_argument("--teams-only", action="store_true", help="Run only the teams pipeline step")
     parser.add_argument("--squads-only", action="store_true", help="Run only the squads pipeline step")
@@ -45,11 +47,15 @@ def main():
     parser.add_argument("--percentiles-only", action="store_true", help="Run only the percentiles calculation pipeline step")
     parser.add_argument("--heatmaps-only", action="store_true", help="Run only the heatmaps pipeline step")
     parser.add_argument("--period-stats-only", action="store_true", help="Run only the match period stats pipeline step")
+    parser.add_argument("--team-metrics-only", action="store_true", help="Run only the team match metrics calculation pipeline step")
+    parser.add_argument("--flashscore-only", action="store_true", help="Run only the Flashscore match team stats synchronization step")
+    parser.add_argument("--flashscore-limit", type=int, default=None, help="Maximum number of Flashscore matches to process in this run")
+    parser.add_argument("--flashscore-dry-run", action="store_true", help="Run Flashscore discovery and check pending matches without downloading stats")
     parser.add_argument("--test-mode", action="store_true", help="Run step in test mode (e.g. process only 1 match)")
     parser.add_argument("--target-match", type=int, help="Optional match ID to target for single match runs")
     parser.add_argument("--full", action="store_true", help="Run the full pipeline")
     
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     
     if not any(vars(args).values()):
         parser.print_help()
@@ -109,11 +115,27 @@ def main():
     if args.shotmap_only or args.full:
         scrape_and_store_shotmaps(conn, api_client, test_mode=False)
 
+    if args.team_metrics_only or args.full:
+        if args.target_match:
+            recompute_match_team_metrics(conn, args.target_match)
+        else:
+            recompute_all_team_metrics(conn)
+
     if args.percentiles_only or args.full:
         compute_and_store_percentiles(conn)
 
     if args.heatmaps_only or args.full:
         scrape_and_store_heatmaps(conn, api_client)
+
+    if args.flashscore_only or args.flashscore_dry_run or args.full:
+        logger.info("Starting Flashscore match team statistics synchronization...")
+        summary = run_sync(
+            db_path=DB_PATH,
+            limit=args.flashscore_limit,
+            dry_run=args.flashscore_dry_run,
+            auto_discover=True,
+        )
+        print_summary_report(summary)
 
     logger.info("Pipeline run complete.")
     conn.close()

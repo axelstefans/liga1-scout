@@ -173,3 +173,6 @@ export const useTeamSetPieces = (
     staleTime: 1000 * 60 * 10,
   });
 };
+
+export { useTeamFlashscoreSummary } from './useTeamFlashscoreSummary';
+

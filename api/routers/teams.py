@@ -10,8 +10,10 @@ from ..schemas.team import (
     MostUsedXIResponse
 )
 from ..repositories import team_repo
+from services.flashscore_service import get_team_flashscore_summary
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
+
 
 @router.get("/", response_model=List[TeamProfile])
 def get_all_teams(db: sqlite3.Connection = Depends(get_db)):
@@ -201,6 +203,25 @@ def get_team_goal_contributions(
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Team {team_id} not found")
     return team_repo.get_team_goal_contributions(db, team_id, tournament, limit)
+
+
+@router.get("/{team_id}/flashscore-summary")
+def get_team_flashscore_summary_endpoint(
+    team_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+):
+    """
+    Get aggregated Flashscore team statistics and tactical tendencies
+    (1T vs 2T performance splits, goalkeeper efficiency, territorial dominance).
+    """
+    summary = get_team_flashscore_summary(db, team_id=team_id)
+    if summary is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team not found",
+        )
+    return summary
+
 
 
 

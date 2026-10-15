@@ -12,7 +12,8 @@ import {
   useTeamPassNetwork,
   useTeamPeriodMetrics,
   useTeamMostUsedXI,
-  useTeamsList
+  useTeamsList,
+  useTeamFlashscoreSummary
 } from '../hooks/useTeam';
 import { getTeamCrestUrl, getTeamTricode } from '../utils/teams';
 import TeamTacticalRadar from '../components/analytics/TeamTacticalRadar';
@@ -24,6 +25,11 @@ import TeamSetPiecesCard from '../components/analytics/TeamSetPiecesCard';
 import TeamPeriodMetricsCard from '../components/analytics/TeamPeriodMetricsCard';
 import TeamDisciplineCard from '../components/analytics/TeamDisciplineCard';
 import TeamMostUsedXICard from '../components/team/TeamMostUsedXICard';
+import { 
+  TeamBoxControlCard, 
+  TeamGoalkeeperCard, 
+  TeamPeriodDominanceCard 
+} from '../components/clubs';
 import { VenueFilter, ContextFilter, TeamMetricEntry } from '../services/api';
 
 interface RadarDimDef {
@@ -363,6 +369,10 @@ export const ClubDetailAnalytics: React.FC = () => {
     Boolean(activeTeam?.team_id),
     contextFilter
   );
+
+  // Fetch Flashscore advanced team summary (Floor 2.5)
+  const { data: flashscoreSummary, isLoading: isFlashscoreLoading } = useTeamFlashscoreSummary(selectedTeamId);
+
 
   const activeMatch = useMemo(() => {
     if (!matches || !selectedMatchId) return null;
@@ -1227,6 +1237,15 @@ export const ClubDetailAnalytics: React.FC = () => {
                 venue={venue}
                 contextFilter={contextFilter}
               />
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* FLOOR 2.5: FLASHSCORE ADVANCED ANALYTICS (3-COLUMN GRID)       */}
+            {/* ------------------------------------------------------------- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <TeamBoxControlCard data={flashscoreSummary} isLoading={isFlashscoreLoading} />
+              <TeamGoalkeeperCard data={flashscoreSummary} isLoading={isFlashscoreLoading} />
+              <TeamPeriodDominanceCard data={flashscoreSummary} isLoading={isFlashscoreLoading} />
             </div>
 
             {/* ------------------------------------------------------------- */}

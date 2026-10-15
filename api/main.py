@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
-from .routers import players, teams, rankings
+from .routers import players, teams, rankings, matches
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -28,11 +28,13 @@ app.add_middleware(
 app.include_router(players.router, prefix="/api/v1")
 app.include_router(teams.router, prefix="/api/v1")
 app.include_router(rankings.router, prefix="/api/v1")
+app.include_router(matches.router, prefix="/api/v1")
 
 # Also mount under /api prefix for convenient direct routing
 app.include_router(players.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(rankings.router, prefix="/api")
+app.include_router(matches.router, prefix="/api")
 
 
 @app.get("/health")

@@ -87,3 +87,20 @@ ehthumbs.db
 skills-lock.json
 GEMINI.md
 scratch/
+
+*.pkl
+xg_model_pipeline.pkl
+
+# ==========================================
+# Testing & Build Artifacts Faltantes
+# ==========================================
+.pytest_cache/
+frontend/dist/
+*.log
+
+# ==========================================
+# Scripts y Dumps Locales de Depuración
+# ==========================================
+debug_*.py
+test_frontend.py
+tools/*.json

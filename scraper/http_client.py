@@ -6,6 +6,20 @@ import LanusStats as ls
 
 logger = logging.getLogger(__name__)
 
+def is_challenge_response(data: any) -> bool:
+    """Detects Cloudflare 403 challenge payload or API error response."""
+    if not isinstance(data, dict):
+        return False
+    if data.get("code") == 403 and data.get("reason") == "challenge":
+        return True
+    err = data.get("error")
+    if isinstance(err, dict):
+        if err.get("code") == 403 and err.get("reason") == "challenge":
+            return True
+        if err.get("code") in (403, 429, 500, 503):
+            return True
+    return False
+
 class SofaScoreAPIClient:
     """Wrapper for SofaScore JSON API using LanusStats undetected-chromedriver to bypass 403s."""
     
@@ -23,6 +37,8 @@ class SofaScoreAPIClient:
                 data = self.sofascore.sofascore_request(endpoint)
                 if data is None:
                     raise ValueError(f"Received None from sofascore_request for {endpoint}")
+                if is_challenge_response(data):
+                    raise RuntimeError(f"Cloudflare/API Challenge response detected for {endpoint}: {data}")
                 return data
             except Exception as e:
                 if attempt == config.MAX_RETRIES:
