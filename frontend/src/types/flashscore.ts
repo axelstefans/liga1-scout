@@ -23,6 +23,7 @@ export interface FlashscoreGoalkeeperEfficiency {
 export interface TeamFlashscoreSummaryResponse {
   team_id: number;
   team_name: string;
+  tournament?: string;
   matches_analyzed: number;
   periods: {
     '1T': FlashscorePeriodStats;

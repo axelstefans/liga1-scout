@@ -2181,6 +2181,8 @@ def get_team_period_metrics(
         LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
         WHERE {sp_shot_cond}
           AND ps.situation IN ('corner', 'set_piece')
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
           {venue_clause}
           {ctx_clause}
@@ -2197,6 +2199,8 @@ def get_team_period_metrics(
         FROM match_goal_incidents mgi
         JOIN matches m ON mgi.match_id = m.match_id
         WHERE {mgi_team_cond}
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
           {venue_clause}
           {ctx_clause}
@@ -2215,17 +2219,21 @@ def get_team_period_metrics(
         mgi_conceded_cond = "((m.home_team_id = ? AND mgi.team_id = m.away_team_id) OR (m.away_team_id = ? AND mgi.team_id = m.home_team_id))"
         mgi_conceded_params = [team_id, team_id] + tourn_param + venue_param + ctx_params
 
+    sp_conceded_params = [team_id, team_id] + tourn_param + venue_param + ctx_params
+
     query_sp_conceded = f"""
         SELECT COALESCE(SUM(CASE WHEN ps.shot_type = 'goal' THEN 1 ELSE 0 END), 0) as sp_goals
         FROM matches m
         JOIN player_shots ps ON m.match_id = ps.match_id
         WHERE {sp_conceded_shot_cond}
           AND ps.situation IN ('corner', 'set_piece')
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
           {venue_clause}
           {ctx_clause}
     """
-    row_sp_conceded = db.execute(query_sp_conceded, tuple(sp_params)).fetchone()
+    row_sp_conceded = db.execute(query_sp_conceded, tuple(sp_conceded_params)).fetchone()
     sp_goals_conceded = int(row_sp_conceded["sp_goals"] or 0) if row_sp_conceded else 0
 
     query_mgi_conceded = f"""
@@ -2233,6 +2241,8 @@ def get_team_period_metrics(
         FROM match_goal_incidents mgi
         JOIN matches m ON mgi.match_id = m.match_id
         WHERE {mgi_conceded_cond}
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
           {venue_clause}
           {ctx_clause}
@@ -2275,6 +2285,8 @@ def get_team_period_metrics(
         FROM match_goal_incidents mgi
         JOIN matches m ON mgi.match_id = m.match_id
         WHERE {mgi_team_cond}
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
           {tourn_clause}
           {venue_clause}
           {ctx_clause}

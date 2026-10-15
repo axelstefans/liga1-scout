@@ -759,8 +759,16 @@ export const teamsApi = {
     const response = await apiClient.get(url);
     return response.data;
   },
-  getTeamFlashscoreSummary: async (teamId: number): Promise<TeamFlashscoreSummaryResponse> => {
-    const response = await apiClient.get(`/teams/${teamId}/flashscore-summary`);
+  getTeamFlashscoreSummary: async (teamId: number, tournament?: string): Promise<TeamFlashscoreSummaryResponse> => {
+    const params = new URLSearchParams();
+    if (tournament && tournament !== 'all') {
+      params.append('tournament', tournament);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/teams/${teamId}/flashscore-summary?${queryString}`
+      : `/teams/${teamId}/flashscore-summary`;
+    const response = await apiClient.get(url);
     return response.data;
   }
 };
@@ -1028,6 +1036,7 @@ export interface FlashscoreGoalkeeperEfficiency {
 export interface TeamFlashscoreSummaryResponse {
   team_id: number;
   team_name: string;
+  tournament?: string;
   matches_analyzed: number;
   periods: {
     '1T': FlashscorePeriodStats;

@@ -371,7 +371,7 @@ export const ClubDetailAnalytics: React.FC = () => {
   );
 
   // Fetch Flashscore advanced team summary (Floor 2.5)
-  const { data: flashscoreSummary, isLoading: isFlashscoreLoading } = useTeamFlashscoreSummary(selectedTeamId);
+  const { data: flashscoreSummary, isLoading: isFlashscoreLoading } = useTeamFlashscoreSummary(selectedTeamId, selectedTournament);
 
 
   const activeMatch = useMemo(() => {
@@ -623,6 +623,74 @@ export const ClubDetailAnalytics: React.FC = () => {
       xiLines.push('| - | Sin datos de alineación base disponibles | - | - | - | - | - | - | - |');
     }
 
+    // 9. Presencia Ofensiva & 10. Rendimiento Defensivo y Balance Táctico (Floor 2.5 Flashscore Analytics)
+    const fsLines: string[] = [];
+    if (flashscoreSummary && flashscoreSummary.matches_analyzed > 0) {
+      const pAll = flashscoreSummary.periods?.ALL;
+      const p1T = flashscoreSummary.periods?.['1T'];
+      const p2T = flashscoreSummary.periods?.['2T'];
+      const gk = flashscoreSummary.goalkeeper_efficiency;
+
+      const avgTouchesBox = (pAll?.avg_touches_in_box ?? 0).toFixed(1);
+      const touches1T = (p1T?.avg_touches_in_box ?? 0).toFixed(1);
+      const touches2T = (p2T?.avg_touches_in_box ?? 0).toFixed(1);
+
+      const avgXgot = (pAll?.avg_xgot ?? 0).toFixed(2);
+      const avgXgVal = (pAll?.avg_xg ?? 0).toFixed(2);
+      const deltaVal = (pAll?.avg_xgot ?? 0) - (pAll?.avg_xg ?? 0);
+      const deltaSignStr = deltaVal >= 0 ? '+' : '';
+      const deltaStr = deltaVal.toFixed(2);
+
+      const avgP3 = (pAll?.avg_passes_final_third_completed ?? 0).toFixed(1);
+      const p3_1T = (p1T?.avg_passes_final_third_completed ?? 0).toFixed(1);
+      const p3_2T = (p2T?.avg_passes_final_third_completed ?? 0).toFixed(1);
+
+      const gp = gk?.goals_prevented ?? 0;
+      const gpStr = `${gp >= 0 ? '+' : ''}${gp.toFixed(2)}`;
+      const gpm = gk?.prevented_per_match ?? 0;
+      const gpmStr = `${gpm >= 0 ? '+' : ''}${gpm.toFixed(2)}`;
+      const xgotFacedStr = (gk?.xgot_faced ?? 0).toFixed(2);
+      const gcStr = `${gk?.goals_conceded ?? 0}`;
+
+      const net1T = (p1T?.avg_xg ?? 0) - (p1T?.avg_xg_conceded ?? 0);
+      const net1TStr = `${net1T >= 0 ? '+' : ''}${net1T.toFixed(2)}`;
+      const xgFav1T = (p1T?.avg_xg ?? 0).toFixed(2);
+      const xgCon1T = (p1T?.avg_xg_conceded ?? 0).toFixed(2);
+
+      const net2T = (p2T?.avg_xg ?? 0) - (p2T?.avg_xg_conceded ?? 0);
+      const net2TStr = `${net2T >= 0 ? '+' : ''}${net2T.toFixed(2)}`;
+      const xgFav2T = (p2T?.avg_xg ?? 0).toFixed(2);
+      const xgCon2T = (p2T?.avg_xg_conceded ?? 0).toFixed(2);
+
+      const poss1T = (p1T?.avg_possession ?? 0).toFixed(1);
+      const poss2T = (p2T?.avg_possession ?? 0).toFixed(1);
+
+      fsLines.push(
+        '### 9. PRESENCIA OFENSIVA & EFICIENCIA DE TIRO',
+        `- Toques en Área Rival: ${avgTouchesBox} / pj (1T: ${touches1T} | 2T: ${touches2T})`,
+        `- Calidad de Definición Post-Impacto: ${avgXgot} xGOT vs ${avgXgVal} xG (${deltaSignStr}${deltaStr} delta)`,
+        `- Pases al Último Tercio: ${avgP3} / pj (1T: ${p3_1T} | 2T: ${p3_2T})`,
+        '',
+        '---',
+        '',
+        '### 10. RENDIMIENTO DEFENSIVO & BALANCE TÁCTICO',
+        `- Goles Salvados por Portería: ${gpStr} totales (${gpmStr} / pj) | xGOT recibido: ${xgotFacedStr} vs ${gcStr} GC`,
+        `- Diferencial xG Neto 1T: ${net1TStr} (${xgFav1T} fav - ${xgCon1T} con)`,
+        `- Diferencial xG Neto 2T: ${net2TStr} (${xgFav2T} fav - ${xgCon2T} con)`,
+        `- Dominio de Posesión: ${poss1T}% (1T) vs ${poss2T}% (2T)`
+      );
+    } else {
+      fsLines.push(
+        '### 9. PRESENCIA OFENSIVA & EFICIENCIA DE TIRO',
+        '- Sin datos de presencia ofensiva disponibles.',
+        '',
+        '---',
+        '',
+        '### 10. RENDIMIENTO DEFENSIVO & BALANCE TÁCTICO',
+        '- Sin datos de rendimiento defensivo disponibles.'
+      );
+    }
+
     // Assemble Comprehensive Document
     const docLines = [
       `# 📋 INFORME DE SCOUTING & INTELIGENCIA TÁCTICA`,
@@ -700,6 +768,10 @@ export const ClubDetailAnalytics: React.FC = () => {
       '---',
       '',
       ...xiLines,
+      '',
+      '---',
+      '',
+      ...fsLines,
       '',
       '---',
       `> *Informe exportado desde Liga 1 Scout Intelligence Suite.*`,

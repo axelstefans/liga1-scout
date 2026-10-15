@@ -2,7 +2,7 @@
 Service layer for Flashscore match analytics and statistics queries.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 import sqlite3
 import logging
 
@@ -159,6 +159,7 @@ def get_match_flashscore_stats(
 def get_team_flashscore_summary(
     db_conn: sqlite3.Connection,
     team_id: int,
+    tournament: Optional[str] = "all",
 ) -> Optional[Dict[str, Any]]:
     """
     Aggregates Flashscore statistics for a team across all synced matches,
@@ -167,6 +168,7 @@ def get_team_flashscore_summary(
     Args:
         db_conn: SQLite database connection.
         team_id: Internal team ID.
+        tournament: Filter by tournament ('all', 'Apertura', or 'Clausura').
 
     Returns:
         Structured dictionary if team exists, None if team_id not found in teams table.
@@ -184,8 +186,17 @@ def get_team_flashscore_summary(
 
     team_name = team_row["name"]
 
+    # Tournament filter clause
+    norm_tourn = tournament.strip().lower() if tournament else "all"
+    tourn_clause = ""
+    tourn_params: List[Any] = []
+    if norm_tourn in ("apertura", "clausura"):
+        target_tourn = "Apertura" if norm_tourn == "apertura" else "Clausura"
+        tourn_clause = "AND CASE WHEN strftime('%m', m.match_date) >= '06' THEN 'Clausura' ELSE 'Apertura' END = ?"
+        tourn_params = [target_tourn]
+
     # 2. Query aggregated metrics grouped by period, joining opponent's metrics
-    agg_query = """
+    agg_query = f"""
     SELECT
         t.period,
         COUNT(DISTINCT t.flashscore_event_id) AS match_count,
@@ -202,14 +213,19 @@ def get_team_flashscore_summary(
         COALESCE(SUM(COALESCE(t.goals_conceded, 0)), 0) AS total_goals_conceded,
         COALESCE(SUM(COALESCE(t.goals_prevented, 0)), 0) AS total_goals_prevented
     FROM flashscore_match_team_stats t
+    JOIN matches m ON t.match_id = m.match_id
     LEFT JOIN flashscore_match_team_stats opp
         ON t.flashscore_event_id = opp.flashscore_event_id
        AND t.period = opp.period
        AND t.flashscore_team_id != opp.flashscore_team_id
     WHERE t.team_id = ?
+      AND m.status = 'played'
+      AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+      {tourn_clause}
     GROUP BY t.period
     """
-    agg_rows = cursor.execute(agg_query, (team_id,)).fetchall()
+    agg_params = [team_id] + tourn_params
+    agg_rows = cursor.execute(agg_query, tuple(agg_params)).fetchall()
     rows_by_period = {r["period"]: r for r in agg_rows}
 
     # Matches analyzed: distinct matches with 'ALL' period (or max of periods)
@@ -238,6 +254,7 @@ def get_team_flashscore_summary(
         return {
             "team_id": team_id,
             "team_name": team_name,
+            "tournament": tournament or "all",
             "matches_analyzed": 0,
             "periods": {
                 "1T": dict(empty_period),
@@ -294,6 +311,7 @@ def get_team_flashscore_summary(
     return {
         "team_id": team_id,
         "team_name": team_name,
+        "tournament": tournament or "all",
         "matches_analyzed": matches_analyzed,
         "periods": periods,
         "goalkeeper_efficiency": goalkeeper_efficiency,

@@ -194,7 +194,7 @@ def resolve_match_id(
             SELECT match_id FROM matches
             WHERE home_team_id = ? AND away_team_id = ?
               AND match_date LIKE ?
-            ORDER BY match_date DESC LIMIT 1
+            ORDER BY (CASE WHEN status = 'played' THEN 0 ELSE 1 END), match_date DESC LIMIT 1
             """,
             (home_team_id, away_team_id, f"{date_prefix}%")
         ).fetchone()
@@ -208,7 +208,7 @@ def resolve_match_id(
                 SELECT match_id, abs(julianday(substr(match_date, 1, 10)) - julianday(?)) AS diff
                 FROM matches
                 WHERE home_team_id = ? AND away_team_id = ?
-                ORDER BY diff ASC LIMIT 1
+                ORDER BY (CASE WHEN status = 'played' THEN 0 ELSE 1 END), diff ASC LIMIT 1
                 """,
                 (date_prefix, home_team_id, away_team_id)
             ).fetchone()
@@ -222,7 +222,7 @@ def resolve_match_id(
         """
         SELECT match_id FROM matches
         WHERE home_team_id = ? AND away_team_id = ?
-        ORDER BY match_date DESC LIMIT 1
+        ORDER BY (CASE WHEN status = 'played' THEN 0 ELSE 1 END), match_date DESC LIMIT 1
         """,
         (home_team_id, away_team_id)
     ).fetchone()
@@ -237,7 +237,7 @@ def resolve_match_id(
             SELECT match_id FROM matches
             WHERE home_team_id = ? AND away_team_id = ?
               AND match_date LIKE ?
-            ORDER BY match_date DESC LIMIT 1
+            ORDER BY (CASE WHEN status = 'played' THEN 0 ELSE 1 END), match_date DESC LIMIT 1
             """,
             (away_team_id, home_team_id, f"{date_prefix}%")
         ).fetchone()

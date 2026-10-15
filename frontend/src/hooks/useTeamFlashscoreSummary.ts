@@ -6,12 +6,16 @@ import { teamsApi, TeamFlashscoreSummaryResponse } from '../services/api';
  * territorial metrics, and goalkeeper shot-stopping efficiency).
  *
  * @param teamId Internal team ID (or null/undefined when unselected).
+ * @param tournament Optional tournament filter ('all', 'Apertura', or 'Clausura').
  * @returns TanStack React Query result containing TeamFlashscoreSummaryResponse.
  */
-export const useTeamFlashscoreSummary = (teamId: number | null | undefined) => {
+export const useTeamFlashscoreSummary = (
+  teamId: number | null | undefined,
+  tournament?: string
+) => {
   return useQuery<TeamFlashscoreSummaryResponse>({
-    queryKey: ['teamFlashscoreSummary', teamId],
-    queryFn: () => teamsApi.getTeamFlashscoreSummary(teamId!),
+    queryKey: ['teamFlashscoreSummary', teamId, tournament ?? 'all'],
+    queryFn: () => teamsApi.getTeamFlashscoreSummary(teamId!, tournament),
     enabled: Boolean(teamId),
     staleTime: 1000 * 60 * 15, // 15 minutes
   });
