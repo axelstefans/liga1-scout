@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flag, Loader2 } from 'lucide-react';
 import { TeamMetricEntry, VenueFilter, ContextFilter } from '../../services/api';
+import { TeamFlashscoreSummaryResponse } from '../../types/flashscore';
 import { useTeamPeriodMetrics } from '../../hooks/useTeam';
 
 export interface TeamSetPiecesCardProps {
@@ -9,6 +10,7 @@ export interface TeamSetPiecesCardProps {
   venue?: VenueFilter;
   mode?: 'for' | 'against';
   contextFilter?: ContextFilter;
+  flashscoreSummary?: TeamFlashscoreSummaryResponse;
 }
 
 export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
@@ -17,6 +19,7 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
   venue = 'all',
   mode = 'for',
   contextFilter = 'all',
+  flashscoreSummary,
 }) => {
   const isAgainst = mode === 'against';
   const { data, isLoading, isError } = useTeamPeriodMetrics(
@@ -197,6 +200,26 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Flashscore Aerial & Cross Accuracy Strip */}
+          {flashscoreSummary && flashscoreSummary.matches_analyzed > 0 && (
+            <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
+              <span className="truncate">
+                <span className="font-semibold uppercase tracking-wider text-slate-500">CENTROS:</span>{' '}
+                <strong className="font-bold text-slate-800">
+                  {(flashscoreSummary.periods.ALL?.avg_crosses_completed ?? 0).toFixed(1)} / {(flashscoreSummary.periods.ALL?.avg_crosses_total ?? 0).toFixed(1)}
+                </strong>{' '}
+                ({(flashscoreSummary.periods.ALL?.cross_accuracy_pct ?? 0).toFixed(1)}%)
+              </span>
+              <span className="text-slate-300 mx-1">|</span>
+              <span className="shrink-0">
+                <span className="font-semibold uppercase tracking-wider text-slate-500">GOLES CABEZA:</span>{' '}
+                <strong className="font-bold text-slate-800">
+                  {flashscoreSummary.periods.ALL?.total_headed_goals ?? 0}
+                </strong>
+              </span>
+            </div>
+          )}
         </>
       )}
     </div>

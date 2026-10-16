@@ -29,6 +29,10 @@ export const TeamBoxControlCard: React.FC<TeamBoxControlCardProps> = ({
   const passesFinalThird1T = p1T?.avg_passes_final_third_completed ?? 0;
   const passesFinalThird2T = p2T?.avg_passes_final_third_completed ?? 0;
 
+  const totalBigChances = pAll?.total_big_chances ?? 0;
+  const totalBigChancesScored = pAll?.total_big_chances_scored ?? 0;
+  const totalBigChancesMissed = pAll?.total_big_chances_missed ?? 0;
+
   return (
     <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm flex flex-col justify-between h-full min-h-[385px]">
       {/* Header */}
@@ -110,6 +114,16 @@ export const TeamBoxControlCard: React.FC<TeamBoxControlCardProps> = ({
                   </span>
                   <span className="block text-[10px] text-slate-500">Peligro generado</span>
                 </div>
+              </div>
+
+              {/* Sub-stat: Grandes Ocasiones */}
+              <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-[11px] text-slate-600">
+                <span>
+                  Grandes Ocasiones:{' '}
+                  <strong className="text-slate-900 font-semibold">{totalBigChancesScored} anotadas</strong> /{' '}
+                  <strong className="text-slate-900 font-semibold">{totalBigChancesMissed} falladas</strong>{' '}
+                  ({totalBigChances} totales)
+                </span>
               </div>
             </div>
 

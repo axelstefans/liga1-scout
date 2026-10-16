@@ -665,11 +665,19 @@ export const ClubDetailAnalytics: React.FC = () => {
       const poss1T = (p1T?.avg_possession ?? 0).toFixed(1);
       const poss2T = (p2T?.avg_possession ?? 0).toFixed(1);
 
+      const bigScored = pAll?.total_big_chances_scored ?? 0;
+      const bigMissed = pAll?.total_big_chances_missed ?? 0;
+      const bigTotal = pAll?.total_big_chances ?? (bigScored + bigMissed);
+      const convPct = pAll?.big_chances_conversion_pct != null
+        ? pAll.big_chances_conversion_pct.toFixed(1)
+        : (bigTotal > 0 ? ((bigScored * 100.0) / bigTotal).toFixed(1) : '0.0');
+
       fsLines.push(
         '### 9. PRESENCIA OFENSIVA & EFICIENCIA DE TIRO',
         `- Toques en Área Rival: ${avgTouchesBox} / pj (1T: ${touches1T} | 2T: ${touches2T})`,
         `- Calidad de Definición Post-Impacto: ${avgXgot} xGOT vs ${avgXgVal} xG (${deltaSignStr}${deltaStr} delta)`,
         `- Pases al Último Tercio: ${avgP3} / pj (1T: ${p3_1T} | 2T: ${p3_2T})`,
+        `- Definición en Grandes Ocasiones: ${bigScored} convertidas / ${bigMissed} falladas (${convPct}% efectividad)`,
         '',
         '---',
         '',
@@ -740,6 +748,9 @@ export const ClubDetailAnalytics: React.FC = () => {
       `- **Concesión +4.5 Córners Rivales:** ${pct45Conceded}% (${o45Conceded?.count ?? cornerStats?.corners_conceded_over_4_5_count ?? 0} de ${o45Conceded?.total ?? activeTeam.matches_played} PJ)`,
       `- **Balance de Penales:** ${penAwarded} a favor (${penScored} convertidos) | ${penConceded} en contra`,
       `- **Goles a Balón Parado:** ${spGoals} a favor (${spGoalsScoredAvg.toFixed(2)}/pj, ${cornerGoals} de córner) | ${spGoalsConceded} concedidos (${spGoalsConcededAvg.toFixed(2)}/pj, ${cornerGoalsConceded} de córner)`,
+      ...(flashscoreSummary && flashscoreSummary.matches_analyzed > 0 ? [
+        `- Centros por Partido: ${(flashscoreSummary.periods?.ALL?.avg_crosses_total ?? 0).toFixed(1)} / pj (${(flashscoreSummary.periods?.ALL?.avg_crosses_completed ?? 0).toFixed(1)} compl. — ${(flashscoreSummary.periods?.ALL?.cross_accuracy_pct ?? 0).toFixed(1)}% acierto) | Goles de Cabeza: ${flashscoreSummary.periods?.ALL?.total_headed_goals ?? 0}`
+      ] : []),
       '',
       '---',
       '',
@@ -1295,6 +1306,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                 venue={venue}
                 mode={perspective}
                 contextFilter={contextFilter}
+                flashscoreSummary={flashscoreSummary}
               />
               <TeamPeriodMetricsCard
                 activeTeam={activeTeam}

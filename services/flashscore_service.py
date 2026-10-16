@@ -209,6 +209,12 @@ def get_team_flashscore_summary(
         AVG(t.passes_completed) AS avg_passes_completed,
         AVG(t.passes_final_third_completed) AS avg_passes_final_third_completed,
         AVG(t.touches_in_box) AS avg_touches_in_box,
+        AVG(t.crosses_total) AS avg_crosses_total,
+        AVG(t.crosses_completed) AS avg_crosses_completed,
+        COALESCE(SUM(t.headed_goals), 0) AS total_headed_goals,
+        COALESCE(SUM(t.big_chances), 0) AS total_big_chances,
+        COALESCE(SUM(t.big_chances_scored), 0) AS total_big_chances_scored,
+        COALESCE(SUM(t.big_chances_missed), 0) AS total_big_chances_missed,
         COALESCE(SUM(COALESCE(t.xgot_faced, opp.xgot, 0)), 0) AS total_xgot_faced,
         COALESCE(SUM(COALESCE(t.goals_conceded, 0)), 0) AS total_goals_conceded,
         COALESCE(SUM(COALESCE(t.goals_prevented, 0)), 0) AS total_goals_prevented
@@ -248,6 +254,14 @@ def get_team_flashscore_summary(
         "xgot_faced": 0.0,
         "goals_conceded": 0,
         "goals_prevented": 0.0,
+        "avg_crosses_total": 0.0,
+        "avg_crosses_completed": 0.0,
+        "cross_accuracy_pct": 0.0,
+        "total_headed_goals": 0,
+        "total_big_chances": 0,
+        "total_big_chances_scored": 0,
+        "total_big_chances_missed": 0,
+        "big_chances_conversion_pct": 0.0,
     }
 
     if matches_analyzed == 0:
@@ -274,6 +288,14 @@ def get_team_flashscore_summary(
             return dict(empty_period)
         total_xgot = round(float(r["total_xgot_faced"] or 0.0), 4)
         total_gc = int(r["total_goals_conceded"] or 0)
+        crosses_tot = round(float(r["avg_crosses_total"] or 0.0), 1) if "avg_crosses_total" in r.keys() else 0.0
+        crosses_comp = round(float(r["avg_crosses_completed"] or 0.0), 1) if "avg_crosses_completed" in r.keys() else 0.0
+        cross_acc = round((crosses_comp * 100.0) / crosses_tot, 1) if crosses_tot > 0 else 0.0
+        headed_g = int(r["total_headed_goals"] or 0) if "total_headed_goals" in r.keys() else 0
+        big_ch = int(r["total_big_chances"] or 0) if "total_big_chances" in r.keys() else 0
+        big_ch_sc = int(r["total_big_chances_scored"] or 0) if "total_big_chances_scored" in r.keys() else 0
+        big_ch_ms = int(r["total_big_chances_missed"] or 0) if "total_big_chances_missed" in r.keys() else 0
+        big_ch_conv = round((big_ch_sc * 100.0) / big_ch, 1) if big_ch > 0 else 0.0
         return {
             "avg_xg": round(float(r["avg_xg"] or 0.0), 4),
             "avg_xg_conceded": round(float(r["avg_xg_conceded"] or 0.0), 4),
@@ -287,6 +309,14 @@ def get_team_flashscore_summary(
             "xgot_faced": total_xgot,
             "goals_conceded": total_gc,
             "goals_prevented": round(total_xgot - total_gc, 4),
+            "avg_crosses_total": crosses_tot,
+            "avg_crosses_completed": crosses_comp,
+            "cross_accuracy_pct": cross_acc,
+            "total_headed_goals": headed_g,
+            "total_big_chances": big_ch,
+            "total_big_chances_scored": big_ch_sc,
+            "total_big_chances_missed": big_ch_ms,
+            "big_chances_conversion_pct": big_ch_conv,
         }
 
     periods = {
