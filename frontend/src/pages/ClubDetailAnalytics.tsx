@@ -253,6 +253,15 @@ export const ClubDetailAnalytics: React.FC = () => {
     selectedTournament
   );
 
+  // Validate that selectedMatchId strictly belongs to the currently active club's fixture cohort
+  const activeMatch = useMemo(() => {
+    if (!matches || !selectedMatchId) return null;
+    return matches.find((m) => m.match_id === selectedMatchId) || null;
+  }, [matches, selectedMatchId]);
+
+  const validMatchId = aggregationMode === 'match' && activeMatch ? activeMatch.match_id : null;
+  const isMatchQueryEnabled = Boolean(activeTeam?.team_id) && (aggregationMode === 'cumulative' || Boolean(validMatchId));
+
   // Auto-select latest match when entering match mode
   useEffect(() => {
     if (aggregationMode === 'match' && matches && matches.length > 0) {
@@ -270,19 +279,19 @@ export const ClubDetailAnalytics: React.FC = () => {
     setSelectedPlayer('all');
   }, [selectedTeamId, selectedTournament]);
 
-  // Reset player when perspective or match changes
+  // Reset player when perspective or validated match changes
   useEffect(() => {
     setSelectedPlayer('all');
-  }, [perspective, selectedMatchId]);
+  }, [perspective, validMatchId]);
 
   // Fetch shot map data for player dropdown options and export
   const { data: shotData } = useTeamShotMap(
     activeTeam?.team_id,
     selectedTournament,
-    aggregationMode === 'match' ? selectedMatchId : null,
+    validMatchId,
     perspective,
     venue,
-    true,
+    isMatchQueryEnabled,
     contextFilter
   );
 
@@ -290,9 +299,9 @@ export const ClubDetailAnalytics: React.FC = () => {
   const { data: passNetworkData } = useTeamPassNetwork(
     activeTeam?.team_id || 0,
     selectedTournament,
-    aggregationMode === 'match' ? selectedMatchId : null,
+    validMatchId,
     venue,
-    Boolean(activeTeam?.team_id),
+    isMatchQueryEnabled,
     contextFilter
   );
 
@@ -317,12 +326,6 @@ export const ClubDetailAnalytics: React.FC = () => {
 
   // Fetch Flashscore advanced team summary (Floor 2.5)
   const { data: flashscoreSummary, isLoading: isFlashscoreLoading } = useTeamFlashscoreSummary(selectedTeamId, selectedTournament);
-
-
-  const activeMatch = useMemo(() => {
-    if (!matches || !selectedMatchId) return null;
-    return matches.find((m) => m.match_id === selectedMatchId) || null;
-  }, [matches, selectedMatchId]);
 
   // Unique players for dropdown
   const availablePlayers = useMemo(() => {
@@ -665,7 +668,7 @@ export const ClubDetailAnalytics: React.FC = () => {
             {aggregationMode === 'match' && (
               <div className="flex items-center">
                 <select
-                  value={selectedMatchId || ''}
+                  value={validMatchId || ''}
                   onChange={(e) => setSelectedMatchId(Number(e.target.value))}
                   disabled={isLoadingMatches || !matches || matches.length === 0}
                   className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-navy focus:border-navy cursor-pointer max-w-[220px] sm:max-w-[280px]"
@@ -875,7 +878,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       activeTeam={activeTeam}
                       tournament={selectedTournament}
                       viewMode={aggregationMode}
-                      selectedMatchId={selectedMatchId}
+                      selectedMatchId={validMatchId}
                       venue={venue}
                       contextFilter={contextFilter}
                     />
@@ -891,7 +894,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       tournament={selectedTournament}
                       mode={perspective}
                       viewMode={aggregationMode}
-                      selectedMatchId={selectedMatchId}
+                      selectedMatchId={validMatchId}
                       selectedPlayer={selectedPlayer}
                       venue={venue}
                       contextFilter={contextFilter}
@@ -969,7 +972,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       tournament={selectedTournament}
                       mode={perspective}
                       viewMode={aggregationMode}
-                      selectedMatchId={selectedMatchId}
+                      selectedMatchId={validMatchId}
                       venue={venue}
                       contextFilter={contextFilter}
                     />
@@ -984,7 +987,7 @@ export const ClubDetailAnalytics: React.FC = () => {
                       activeTeam={activeTeam}
                       tournament={selectedTournament}
                       viewMode={aggregationMode}
-                      selectedMatchId={selectedMatchId}
+                      selectedMatchId={validMatchId}
                       venue={venue}
                       contextFilter={contextFilter}
                     />

@@ -274,7 +274,11 @@ def get_team_metrics(
     rows = db.execute(query, tuple(params)).fetchall()
 
     # Set-piece xG aggregation per team for the filtered cohort
-    sp_where = ["ps.situation IN ('corner', 'set_piece')", "m.status = 'played'"]
+    sp_where = [
+        "ps.situation IN ('corner', 'set_piece')",
+        "m.status = 'played'",
+        "(m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')"
+    ]
     sp_params: List[Any] = []
     if tournament and tournament.strip().lower() in ('apertura', 'clausura'):
         target_tourn = 'Apertura' if tournament.strip().lower() == 'apertura' else 'Clausura'
