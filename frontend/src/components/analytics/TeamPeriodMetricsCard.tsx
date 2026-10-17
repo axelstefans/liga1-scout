@@ -89,12 +89,12 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
   );
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col justify-between h-full min-h-[385px]">
+    <div className="flex flex-col justify-between h-full min-h-[425px] bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs">
       {/* Header with View Toggle Pill */}
       <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-slate-500" />
-          <h3 className="text-sm font-bold text-slate-800 tracking-tight">
+          <Clock className="w-4 h-4 text-slate-700" />
+          <h3 className="text-sm font-bold text-slate-900 tracking-tight">
             Goles & Dinámica
           </h3>
         </div>
@@ -140,75 +140,71 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
         /* TAB A: TIME SPLITS (1T vs 2T)                            */
         /* ======================================================== */
         <>
-          <div className="grid grid-cols-2 gap-2 sm:gap-2.5 flex-1">
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-200/60 bg-slate-50/50 rounded-lg border border-slate-200/60 overflow-hidden flex-1">
             {/* 1. Goles en 1T */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 {isAgainst ? 'Goles Recibidos 1T' : 'Goles Anotados 1T'}
               </span>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
+              <div>
+                <span className="text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums block">
                   {goals1T}
                 </span>
-                <span className="text-xs font-medium text-slate-500 mt-1">
+                <span className="text-[11px] font-normal text-slate-500 font-sans mt-0.5 block">
                   {goals1TPM.toFixed(2)} / pj
                 </span>
               </div>
             </div>
 
             {/* 2. Goles en 2T */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 {isAgainst ? 'Goles Recibidos 2T' : 'Goles Anotados 2T'}
               </span>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
+              <div>
+                <span className="text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums block">
                   {goals2T}
                 </span>
-                <span className="text-xs font-medium text-slate-500 mt-1">
+                <span className="text-[11px] font-normal text-slate-500 font-sans mt-0.5 block">
                   {goals2TPM.toFixed(2)} / pj
                 </span>
               </div>
             </div>
 
             {/* 3. Peligro xG / xGA en 1T */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 {isAgainst ? 'Peligro xGA 1T' : 'Peligro xG 1T'}
               </span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
-                  {xg1TPM.toFixed(2)}
-                </span>
-                <span className="text-xs font-medium text-slate-500">/ pj</span>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums flex items-baseline gap-1">
+                <span>{xg1TPM.toFixed(2)}</span>
+                <span className="text-xs font-normal text-slate-500 font-sans">/ pj</span>
               </div>
             </div>
 
             {/* 4. Peligro xG / xGA en 2T */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 {isAgainst ? 'Peligro xGA 2T' : 'Peligro xG 2T'}
               </span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
-                  {xg2TPM.toFixed(2)}
-                </span>
-                <span className="text-xs font-medium text-slate-500">/ pj</span>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums flex items-baseline gap-1">
+                <span>{xg2TPM.toFixed(2)}</span>
+                <span className="text-xs font-normal text-slate-500 font-sans">/ pj</span>
               </div>
             </div>
           </div>
 
           {/* Micro-bar: Concentración en Segundos Tiempos */}
-          <div className="mt-2.5 bg-slate-50/80 border border-slate-100 rounded-md px-2.5 py-2 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+          <div className="mt-2.5 bg-slate-50/50 rounded-lg border border-slate-200/60 py-2 px-3 flex items-center justify-between">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
                 Concentración en 2T
               </span>
-              <span className="text-xs font-bold text-slate-800">
+              <span className="text-xs font-bold font-mono text-slate-800 truncate">
                 {totalMatches > 0 ? `${pctGoals2T}% de los goles (${goals2T} de ${goals1T + goals2T})` : '—'}
               </span>
             </div>
-            <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
+            <div className="w-20 sm:w-24 h-1.5 bg-slate-200/80 rounded-full overflow-hidden shrink-0 ml-2">
               <div
                 className="bg-sky-600 h-full rounded-full"
                 style={{ width: `${totalMatches > 0 ? Math.min(100, Math.max(0, pctGoals2T)) : 0}%` }}
@@ -221,7 +217,7 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate mr-2">
               {isAgainst ? 'Tramo +goles recibidos' : 'Tramo con más goles'}
             </span>
-            <span className="text-xs font-bold text-slate-800 shrink-0">
+            <span className="text-xs font-bold font-mono text-slate-800 shrink-0">
               {totalMatches > 0 ? `Minutos ${peakInterval.replace('+', "'+")} (${peakGoals} ${peakGoals === 1 ? 'gol' : 'goles'})` : '—'}
             </span>
           </div>
@@ -231,52 +227,52 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
         /* TAB B: DYNAMICS & MATCH ESTIMATIONS                      */
         /* ======================================================== */
         <>
-          <div className="grid grid-cols-2 gap-2 sm:gap-2.5 flex-1">
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-200/60 bg-slate-50/50 rounded-lg border border-slate-200/60 overflow-hidden flex-1">
             {/* 1. Ambos Equipos Anotan (BTTS) */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Ambos Anotan (BTTS)
               </span>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums">
                   {totalMatches > 0 ? bttsCount : '—'}
                 </span>
-                <span className="text-xs font-medium text-slate-500 mt-1">
+                <span className="text-xs font-normal text-slate-500 font-sans">
                   {totalMatches > 0 && bttsTotal > 0 ? `de ${bttsTotal} PJ (${Math.round((bttsCount / bttsTotal) * 100)}%)` : '—'}
                 </span>
               </div>
             </div>
 
             {/* 2. Ganando al Descanso (HT) */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Lideró al Descanso (HT)
               </span>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums">
                   {totalMatches > 0 ? htWonCount : '—'}
                 </span>
-                <span className="text-xs font-medium text-slate-500 mt-1">
+                <span className="text-xs font-normal text-slate-500 font-sans">
                   {totalMatches > 0 && htTotal > 0 ? `de ${htTotal} PJ (${Math.round((htWonCount / htTotal) * 100)}%)` : '—'}
                 </span>
               </div>
             </div>
 
             {/* 3. Anotó 1º (Primer Gol) */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Anotó 1º (Primer Gol)
               </span>
-              <div className="flex flex-col">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
+              <div>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums">
                     {totalMatches > 0 ? scoredFirstCount : '—'}
                   </span>
-                  <span className="text-xs font-medium text-slate-500">
+                  <span className="text-xs font-normal text-slate-500 font-sans">
                     {totalMatches > 0 && scoredFirstTotal > 0 ? `de ${scoredFirstTotal} PJ` : '—'}
                   </span>
                 </div>
-                <span className="text-[11px] font-mono font-semibold text-emerald-700 mt-1">
+                <span className="text-[11px] font-mono font-semibold text-emerald-700 mt-1 block">
                   {totalMatches > 0
                     ? (scoredFirstBreakdown
                         ? `${scoredFirstBreakdown.wins}V · ${scoredFirstBreakdown.draws}E · ${scoredFirstBreakdown.losses}D`
@@ -287,20 +283,20 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
             </div>
 
             {/* 4. Recibió 1º (Gol Rival) */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Recibió 1º (Gol Rival)
               </span>
-              <div className="flex flex-col">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold text-slate-900 tracking-tight leading-none">
+              <div>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums">
                     {totalMatches > 0 ? concededFirstCount : '—'}
                   </span>
-                  <span className="text-xs font-medium text-slate-500">
+                  <span className="text-xs font-normal text-slate-500 font-sans">
                     {totalMatches > 0 && concededFirstTotal > 0 ? `de ${concededFirstTotal} PJ` : '—'}
                   </span>
                 </div>
-                <span className="text-[11px] font-mono font-semibold text-rose-700 mt-1">
+                <span className="text-[11px] font-mono font-semibold text-rose-700 mt-1 block">
                   {totalMatches > 0
                     ? (concededFirstBreakdown
                         ? `${concededFirstBreakdown.wins}V · ${concededFirstBreakdown.draws}E · ${concededFirstBreakdown.losses}D`
@@ -311,43 +307,43 @@ export const TeamPeriodMetricsCard: React.FC<TeamPeriodMetricsCardProps> = ({
             </div>
           </div>
 
-          {/* Micro-grid: Valla Invicta & Gol Recibido 0-20' */}
-          <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-slate-50/80 border border-slate-100 rounded-md p-2.5 flex items-center justify-between gap-1.5">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider truncate">
-                  Valla Invicta
+          {/* Integrated 2-Column Tabular Strip: Valla Invicta & Gol Recibido 0-20' */}
+          <div className="mt-2.5 grid grid-cols-2 divide-x divide-slate-200/60 bg-slate-50/50 rounded-lg border border-slate-200/60 py-2 px-1 text-center">
+            <div className="flex flex-col items-center justify-center px-1">
+              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                Valla Invicta
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-emerald-700">
+                  {totalMatches > 0 ? `${cleanSheetsPct}%` : '—'}
                 </span>
-                <span className="text-xs font-bold text-slate-800">
-                  {totalMatches > 0 && cleanSheetsTotal > 0 ? `${cleanSheetsCount} de ${cleanSheetsTotal} PJ` : '—'}
+                <span className="text-[10px] font-mono text-slate-400">
+                  ({cleanSheetsCount}/{cleanSheetsTotal})
                 </span>
               </div>
-              <span className="text-xs font-mono font-semibold text-emerald-700 bg-white px-2 py-0.5 rounded border border-slate-200/70 shadow-2xs shrink-0">
-                {totalMatches > 0 ? `${cleanSheetsPct}%` : '—'}
-              </span>
             </div>
 
-            <div className="bg-slate-50/80 border border-slate-100 rounded-md p-2.5 flex items-center justify-between gap-1.5">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider truncate">
-                  {isAgainst ? 'Gol Anotado 0-20\'' : 'Gol Rec. 0-20\''}
+            <div className="flex flex-col items-center justify-center px-1">
+              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                {isAgainst ? 'Gol Anotado 0-20\'' : 'Gol Rec. 0-20\''}
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-amber-700">
+                  {totalMatches > 0 ? `${concededEarlyPct}%` : '—'}
                 </span>
-                <span className="text-xs font-bold text-slate-800">
-                  {totalMatches > 0 && concededEarlyTotal > 0 ? `${concededEarlyCount} de ${concededEarlyTotal} PJ` : '—'}
+                <span className="text-[10px] font-mono text-slate-400">
+                  ({concededEarlyCount}/{concededEarlyTotal})
                 </span>
               </div>
-              <span className="text-xs font-mono font-semibold text-amber-700 bg-white px-2 py-0.5 rounded border border-slate-200/70 shadow-2xs shrink-0">
-                {totalMatches > 0 ? `${concededEarlyPct}%` : '—'}
-              </span>
             </div>
           </div>
 
           {/* Bottom row: Resumen HT y Sin Anotar */}
           <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate mr-2">
-              HT: {totalMatches > 0 && htTotal > 0 ? `${htWonCount}V · ${htDrawnCount}E · ${htLostCount}D (${htTotal} PJ)` : '—'}
+              HT: <span className="font-mono text-slate-800">{totalMatches > 0 && htTotal > 0 ? `${htWonCount}V · ${htDrawnCount}E · ${htLostCount}D (${htTotal} PJ)` : '—'}</span>
             </span>
-            <span className="text-xs font-bold text-slate-800 shrink-0">
+            <span className="text-xs font-bold font-mono text-slate-800 shrink-0">
               Sin Anotar: {totalMatches > 0 && failedToScoreTotal > 0 ? `${failedToScoreCount} de ${failedToScoreTotal} (${failedToScorePct}%)` : '—'}
             </span>
           </div>

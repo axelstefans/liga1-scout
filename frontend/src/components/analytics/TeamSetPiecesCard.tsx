@@ -60,12 +60,12 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
   const penaltiesConceded = setPieces?.penalties_conceded ?? data?.penalties_conceded ?? 0;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col justify-between h-full min-h-[385px]">
+    <div className="flex flex-col justify-between h-full min-h-[425px] bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs">
       {/* Header */}
       <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <Flag className="w-4 h-4 text-slate-500" />
-          <h3 className="text-sm font-bold text-slate-800 tracking-tight">
+          <Flag className="w-4 h-4 text-slate-700" />
+          <h3 className="text-sm font-bold text-slate-900 tracking-tight">
             Balón Parado & Córners
           </h3>
         </div>
@@ -85,136 +85,138 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:gap-2.5 flex-1">
-            {/* 1. Córners a Favor / PJ */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+          {/* Integrated 2x2 Tabular Grid */}
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-200/60 bg-slate-50/50 rounded-lg border border-slate-200/60 overflow-hidden flex-1">
+            {/* 1. Córners a Favor */}
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Córners a Favor
               </span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                  {cornersFor.toFixed(1)}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500">/ pj</span>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums flex items-baseline gap-1">
+                <span>{cornersFor.toFixed(1)}</span>
+                <span className="text-xs font-normal text-slate-500 font-sans">/ pj</span>
               </div>
             </div>
 
-            {/* 2. Córners Concedidos / PJ */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            {/* 2. Córners Concedidos */}
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Córners Concedidos
               </span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                  {cornersAgainst.toFixed(1)}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500">/ pj</span>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums flex items-baseline gap-1">
+                <span>{cornersAgainst.toFixed(1)}</span>
+                <span className="text-xs font-normal text-slate-500 font-sans">/ pj</span>
               </div>
             </div>
 
-            {/* 3. Total Córners Partido / PJ */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            {/* 3. Total Córners Partido */}
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Total Córners / PJ
               </span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                  {cornersTotal.toFixed(1)}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500">en partido</span>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums flex items-baseline gap-1">
+                <span>{cornersTotal.toFixed(1)}</span>
+                <span className="text-xs font-normal text-slate-500 font-sans">en partido</span>
               </div>
             </div>
 
-            {/* 4. Goles de Balón Parado (A favor & Concedidos) */}
-            <div className="bg-slate-50/70 border border-slate-100 rounded-lg p-2.5 flex flex-col justify-between">
+            {/* 4. Goles Balón Parado */}
+            <div className="p-3 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
                 Goles Balón Parado
               </span>
-              <div className="flex items-baseline gap-1.5 flex-wrap">
-                <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              <div>
+                <span className="text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums block mb-1">
                   {setPieceGoals}
                 </span>
-                <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200/60">
-                  {setPieceGoalsScoredAvg.toFixed(2)}/pj fav
-                </span>
-                <span className="text-[11px] font-medium text-rose-700 bg-rose-50 px-1 py-0.5 rounded border border-rose-200/60">
-                  {setPieceGoalsConceded} rec ({setPieceGoalsConcededAvg.toFixed(2)}/pj)
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-medium font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                    {setPieceGoalsScoredAvg.toFixed(2)}/pj fav
+                  </span>
+                  <span className="text-[10px] font-medium font-mono text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200/60">
+                    {setPieceGoalsConceded} rec ({setPieceGoalsConcededAvg.toFixed(2)}/pj)
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Frecuencias de Líneas Over & Concesión Córners (3-column micro-grid) */}
-          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-            <div className="bg-slate-50/80 border border-slate-100 rounded-md p-2.5 flex items-center justify-between gap-1.5">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider truncate">Línea +8.5 Córners</span>
-                <span className="text-xs font-bold text-slate-800">
-                  {totalMatches > 0 ? `${over85Count} de ${totalMatches} PJ` : '—'}
+          {/* Frecuencias de Líneas Over & Concesión Córners (Integrated 3-Column Tabular Strip) */}
+          <div className="mt-2.5 grid grid-cols-3 divide-x divide-slate-200/60 bg-slate-50/50 rounded-lg border border-slate-200/60 py-2 px-1 text-center">
+            <div className="flex flex-col items-center justify-center px-1">
+              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                Línea +8.5
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700">
+                  {totalMatches > 0 ? `${Math.round((over85Count / totalMatches) * 100)}%` : '—'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  ({over85Count}/{totalMatches})
                 </span>
               </div>
-              <span className="text-xs font-mono font-semibold text-sky-700 bg-white px-2 py-0.5 rounded border border-slate-200/70 shadow-2xs shrink-0">
-                {totalMatches > 0 ? `${Math.round((over85Count / totalMatches) * 100)}%` : '—'}
-              </span>
             </div>
 
-            <div className="bg-slate-50/80 border border-slate-100 rounded-md p-2.5 flex items-center justify-between gap-1.5">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider truncate">Línea +9.5 Córners</span>
-                <span className="text-xs font-bold text-slate-800">
-                  {totalMatches > 0 ? `${over95Count} de ${totalMatches} PJ` : '—'}
+            <div className="flex flex-col items-center justify-center px-1">
+              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                Línea +9.5
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700">
+                  {totalMatches > 0 ? `${Math.round((over95Count / totalMatches) * 100)}%` : '—'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  ({over95Count}/{totalMatches})
                 </span>
               </div>
-              <span className="text-xs font-mono font-semibold text-sky-700 bg-white px-2 py-0.5 rounded border border-slate-200/70 shadow-2xs shrink-0">
-                {totalMatches > 0 ? `${Math.round((over95Count / totalMatches) * 100)}%` : '—'}
-              </span>
             </div>
 
-            <div className="bg-slate-50/80 border border-slate-100 rounded-md p-2.5 flex items-center justify-between gap-1.5">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider truncate">Concedió +4.5 Córn.</span>
-                <span className="text-xs font-bold text-slate-800">
-                  {totalMatches > 0 ? `${concededOver45Count} de ${totalMatches} PJ` : '—'}
+            <div className="flex flex-col items-center justify-center px-1">
+              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                Concedió +4.5
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700">
+                  {totalMatches > 0 ? `${concededOver45Pct}%` : '—'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  ({concededOver45Count}/{totalMatches})
                 </span>
               </div>
-              <span className="text-xs font-mono font-semibold text-sky-700 bg-white px-2 py-0.5 rounded border border-slate-200/70 shadow-2xs shrink-0">
-                {totalMatches > 0 ? `${concededOver45Pct}%` : '—'}
-              </span>
             </div>
           </div>
 
           {/* Bottom row: Corner origin goals & Penalties balance */}
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slate-500">
-            <div className="flex items-center gap-1 text-[11px] truncate">
+          <div className="mt-2.5 pt-1.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-slate-500">
+            <div className="flex items-center gap-1 truncate">
               <span className="font-semibold text-slate-500 uppercase tracking-wider">
                 {isAgainst ? 'Goles Córner Rec.:' : 'Goles Córner:'}
               </span>
-              <span className="font-bold text-slate-800">
-                {cornerGoals} ({setPieceGoals > 0 ? Math.round((cornerGoals / setPieceGoals) * 100) : 0}% a balón parado)
+              <span className="font-bold font-mono text-slate-800">
+                {cornerGoals} ({setPieceGoals > 0 ? Math.round((cornerGoals / setPieceGoals) * 100) : 0}% bp)
               </span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] shrink-0">
-              <span className="font-semibold text-slate-500 uppercase tracking-wider">Penales:</span>
-              <span className="font-bold text-slate-800">
-                {penaltiesAwarded} a favor ({penaltiesScored} conv.) | {penaltiesConceded} en contra
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">PENALES:</span>
+              <span className="font-bold font-mono text-slate-800">
+                {penaltiesAwarded} fav ({penaltiesScored} conv.) | {penaltiesConceded} rec
               </span>
             </div>
           </div>
 
           {/* Flashscore Aerial & Cross Accuracy Strip */}
           {flashscoreSummary && flashscoreSummary.matches_analyzed > 0 && (
-            <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
+            <div className="text-[11px] text-slate-600 border-t border-slate-100 pt-1.5 mt-1.5 flex items-center justify-between">
               <span className="truncate">
                 <span className="font-semibold uppercase tracking-wider text-slate-500">CENTROS:</span>{' '}
-                <strong className="font-bold text-slate-800">
+                <strong className="font-bold font-mono text-slate-800">
                   {(flashscoreSummary.periods.ALL?.avg_crosses_completed ?? 0).toFixed(1)} / {(flashscoreSummary.periods.ALL?.avg_crosses_total ?? 0).toFixed(1)}
                 </strong>{' '}
-                ({(flashscoreSummary.periods.ALL?.cross_accuracy_pct ?? 0).toFixed(1)}%)
+                <span className="font-mono">({(flashscoreSummary.periods.ALL?.cross_accuracy_pct ?? 0).toFixed(1)}%)</span>
               </span>
-              <span className="text-slate-300 mx-1">|</span>
               <span className="shrink-0">
                 <span className="font-semibold uppercase tracking-wider text-slate-500">GOLES CABEZA:</span>{' '}
-                <strong className="font-bold text-slate-800">
+                <strong className="font-bold font-mono text-slate-800">
                   {flashscoreSummary.periods.ALL?.total_headed_goals ?? 0}
                 </strong>
               </span>
