@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Download, Loader2, AlertCircle, RefreshCw, Network } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { TeamMetricEntry, PassNetworkNode, VenueFilter, ContextFilter } from '../../services/api';
 import { useTeamPassNetwork, useTeamMatches } from '../../hooks/useTeam';
@@ -373,9 +373,10 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Network className="w-4 h-4 text-slate-700" />
               Red de Pases e Interacciones
-            </h2>
+            </h3>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
               {viewMode === 'cumulative'
                 ? `Posición media y circuitos del XI base (${tournament === 'all' ? 'Temporada Completa' : tournament})`
@@ -383,9 +384,9 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto export-ignore">
             {/* Filter Pills for Low-Volume Connections */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/60 text-xs">
               <button
                 type="button"
                 onClick={() => setMinPassThreshold(5)}
@@ -429,15 +430,15 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               type="button"
               onClick={handleExportPNG}
               disabled={isExporting}
-              className="export-ignore inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-lg text-xs font-medium transition-all shadow-2xs cursor-pointer"
-              title="Descargar imagen en alta resolución (2x)"
+              className="export-ignore inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg transition-colors border border-slate-200/60 shadow-xs cursor-pointer disabled:opacity-50"
+              title="Exportar imagen PNG"
             >
               {isExporting ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
               ) : (
-                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <Download className="w-3.5 h-3.5" />
               )}
-              <span>{isExporting ? '...' : 'PNG'}</span>
+              <span>PNG</span>
             </button>
           </div>
         </div>
@@ -519,7 +520,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               height={PITCH_HEIGHT}
               rx={8}
               fill="#f8fafc"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
 
@@ -529,7 +530,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               y1={PITCH_Y + PITCH_HEIGHT / 2}
               x2={PITCH_X + PITCH_WIDTH}
               y2={PITCH_Y + PITCH_HEIGHT / 2}
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
 
@@ -539,7 +540,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               cy={PITCH_Y + PITCH_HEIGHT / 2}
               r={46}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
             <circle
@@ -556,7 +557,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               width={180}
               height={74}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
             {/* Top 6-Yard Box */}
@@ -566,7 +567,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               width={84}
               height={26}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
             {/* Top Penalty Spot */}
@@ -580,7 +581,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
             <path
               d={`M ${PITCH_X + PITCH_WIDTH / 2 - 36} ${PITCH_Y + 74} A 42 42 0 0 0 ${PITCH_X + PITCH_WIDTH / 2 + 36} ${PITCH_Y + 74}`}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
             {/* Top Goal Net */}
@@ -601,7 +602,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               width={180}
               height={74}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
             {/* Bottom 6-Yard Box */}
@@ -611,7 +612,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
               width={84}
               height={26}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
             {/* Bottom Penalty Spot */}
@@ -625,7 +626,7 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
             <path
               d={`M ${PITCH_X + PITCH_WIDTH / 2 - 36} ${PITCH_Y + PITCH_HEIGHT - 74} A 42 42 0 0 1 ${PITCH_X + PITCH_WIDTH / 2 + 36} ${PITCH_Y + PITCH_HEIGHT - 74}`}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="1.5"
             />
             {/* Bottom Goal Net */}
@@ -640,10 +641,10 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
             />
 
             {/* Corner Arcs */}
-            <path d={`M ${PITCH_X} ${PITCH_Y + 10} A 10 10 0 0 0 ${PITCH_X + 10} ${PITCH_Y}`} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
-            <path d={`M ${PITCH_X + PITCH_WIDTH - 10} ${PITCH_Y} A 10 10 0 0 0 ${PITCH_X + PITCH_WIDTH} ${PITCH_Y + 10}`} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
-            <path d={`M ${PITCH_X} ${PITCH_Y + PITCH_HEIGHT - 10} A 10 10 0 0 1 ${PITCH_X + 10} ${PITCH_Y + PITCH_HEIGHT}`} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
-            <path d={`M ${PITCH_X + PITCH_WIDTH - 10} ${PITCH_Y + PITCH_HEIGHT} A 10 10 0 0 1 ${PITCH_X + PITCH_WIDTH} ${PITCH_Y + PITCH_HEIGHT - 10}`} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
+            <path d={`M ${PITCH_X} ${PITCH_Y + 10} A 10 10 0 0 0 ${PITCH_X + 10} ${PITCH_Y}`} fill="none" stroke="#cbd5e1" strokeWidth="1.5" />
+            <path d={`M ${PITCH_X + PITCH_WIDTH - 10} ${PITCH_Y} A 10 10 0 0 0 ${PITCH_X + PITCH_WIDTH} ${PITCH_Y + 10}`} fill="none" stroke="#cbd5e1" strokeWidth="1.5" />
+            <path d={`M ${PITCH_X} ${PITCH_Y + PITCH_HEIGHT - 10} A 10 10 0 0 1 ${PITCH_X + 10} ${PITCH_Y + PITCH_HEIGHT}`} fill="none" stroke="#cbd5e1" strokeWidth="1.5" />
+            <path d={`M ${PITCH_X + PITCH_WIDTH - 10} ${PITCH_Y + PITCH_HEIGHT} A 10 10 0 0 1 ${PITCH_X + PITCH_WIDTH} ${PITCH_Y + PITCH_HEIGHT - 10}`} fill="none" stroke="#cbd5e1" strokeWidth="1.5" />
 
             {/* Direction of Attack Indicator Header */}
             <g opacity="0.75">

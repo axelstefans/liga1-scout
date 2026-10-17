@@ -423,218 +423,247 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
       {/* 1. Header & Controls */}
       <div className="flex flex-col gap-2.5 pb-2.5 border-b border-slate-100">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          {/* Title Header */}
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-              <Target className="w-4 h-4 text-slate-700" />
-              Mapa de Tiros y Calidad (xG)
-            </h3>
+          {/* Title Block */}
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-slate-700" />
+                Mapa de Tiros y Calidad (xG)
+              </h3>
+              {/* Efficiency Balance Badge */}
+              {(() => {
+                const diff = activeSummary?.xg_difference ?? 0;
+                const formattedDiff = `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`;
+                if (mode === 'for') {
+                  if (diff >= 2.0) {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs whitespace-nowrap"
+                        title="Conversión por encima de la expectativa de gol"
+                      >
+                        <span className="font-mono font-bold">{formattedDiff} xG</span>
+                        <span>Sobrerendimiento</span>
+                      </span>
+                    );
+                  } else if (diff <= -2.0) {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs whitespace-nowrap"
+                        title="Genera más peligro esperado del que convierte"
+                      >
+                        <span className="font-mono font-bold">{formattedDiff} xG</span>
+                        <span>Déficit</span>
+                      </span>
+                    );
+                  } else {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap"
+                        title="Conversión alineada con la probabilidad de gol esperada"
+                      >
+                        <span className="font-mono font-bold">{formattedDiff} xG</span>
+                        <span className="text-slate-500">Conversión esperada</span>
+                      </span>
+                    );
+                  }
+                } else {
+                  // Defensive 'against' mode
+                  if (diff >= 2.0) {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs whitespace-nowrap"
+                        title="Concede más goles de lo esperado según la calidad del disparo rival"
+                      >
+                        <span className="font-mono font-bold">{formattedDiff} GC</span>
+                        <span>Vulnerabilidad</span>
+                      </span>
+                    );
+                  } else if (diff <= -2.0) {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs whitespace-nowrap"
+                        title="Eficacia defensiva: concede menos goles de lo esperado"
+                      >
+                        <span className="font-mono font-bold">{formattedDiff} GC</span>
+                        <span>Resistencia</span>
+                      </span>
+                    );
+                  } else {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap"
+                        title="Goles concedidos alineados con la expectativa del rival"
+                      >
+                        <span className="font-mono font-bold">{formattedDiff} GC</span>
+                        <span className="text-slate-500">Concesión esperada</span>
+                      </span>
+                    );
+                  }
+                }
+              })()}
+            </div>
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
+              {viewMode === 'cumulative'
+                ? `Distribución espacial y calidad de remates (${tournament === 'all' ? 'Temporada Completa' : tournament})`
+                : `Remates y calidad xG — ${activeMatch ? activeMatch.label : 'Partido seleccionado'}`}
+            </p>
           </div>
 
-          {/* Filter Row: Result Chips */}
-          <div className="flex flex-wrap items-center gap-1.5 export-ignore">
+          {/* Action Bar (Top Right) */}
+          <div className="flex items-center gap-2 self-start sm:self-auto export-ignore">
             <button
               type="button"
-              onClick={() => setResultFilter('all')}
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
-                resultFilter === 'all'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-              }`}
+              onClick={handleExportPNG}
+              disabled={isExporting || showLoading || rawShots.length === 0}
+              className="export-ignore inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg transition-colors border border-slate-200/60 shadow-xs cursor-pointer disabled:opacity-50"
+              title="Exportar imagen PNG"
             >
-              Todos
-              <span className="text-[10px] opacity-75">({counts.all})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setResultFilter('goal')}
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
-                resultFilter === 'goal'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Goles
-              <span className="text-[10px] opacity-75">({counts.goal})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setResultFilter('saved')}
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
-                resultFilter === 'saved'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              Atajados
-              <span className="text-[10px] opacity-75">({counts.saved})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setResultFilter('blocked')}
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
-                resultFilter === 'blocked'
-                  ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
-                  : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-xs bg-slate-500" />
-              Bloqueados
-              <span className="text-[10px] opacity-75">({counts.blocked})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setResultFilter('miss')}
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border transition cursor-pointer ${
-                resultFilter === 'miss'
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full border border-rose-500 bg-transparent" />
-              Desviados
-              <span className="text-[10px] opacity-75">({counts.miss})</span>
+              {isExporting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              <span>PNG</span>
             </button>
           </div>
         </div>
 
-        {/* Clean Single-Row KPI Summary Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-lg text-xs">
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500 font-medium">Remates:</span>
-            <span className="font-bold text-slate-900">
-              {activeSummary?.total_shots ?? 0}
+        {/* Tier 1: Outcome Filter Pills (Strict Single-Line No-Wrap) */}
+        <div className="flex flex-nowrap items-center justify-between gap-1 p-1 bg-slate-100/70 rounded-lg border border-slate-200/60 overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden export-ignore">
+          <button
+            type="button"
+            onClick={() => setResultFilter('all')}
+            className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap transition cursor-pointer flex-1 ${
+              resultFilter === 'all'
+                ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <span>Todos</span>
+            <span className="font-mono text-[10px] opacity-75">({counts.all})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setResultFilter('goal')}
+            className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap transition cursor-pointer flex-1 ${
+              resultFilter === 'goal'
+                ? 'bg-white text-emerald-700 shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-emerald-700 hover:bg-slate-200/60'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <span>Goles</span>
+            <span className="font-mono text-[10px] opacity-75">({counts.goal})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setResultFilter('saved')}
+            className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap transition cursor-pointer flex-1 ${
+              resultFilter === 'saved'
+                ? 'bg-white text-blue-700 shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-slate-200/60'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+            <span>Atajados</span>
+            <span className="font-mono text-[10px] opacity-75">({counts.saved})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setResultFilter('blocked')}
+            className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap transition cursor-pointer flex-1 ${
+              resultFilter === 'blocked'
+                ? 'bg-white text-slate-800 shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-xs bg-slate-500 shrink-0" />
+            <span>Bloqueados</span>
+            <span className="font-mono text-[10px] opacity-75">({counts.blocked})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setResultFilter('miss')}
+            className={`inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap transition cursor-pointer flex-1 ${
+              resultFilter === 'miss'
+                ? 'bg-white text-rose-700 shadow-xs font-semibold'
+                : 'text-slate-600 hover:text-rose-700 hover:bg-slate-200/60'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full border border-rose-500 bg-transparent shrink-0" />
+            <span>Desviados</span>
+            <span className="font-mono text-[10px] opacity-75">({counts.miss})</span>
+          </button>
+        </div>
+
+        {/* Tier 2: Opta-Style Tabular KPI Strip */}
+        <div className="grid grid-cols-5 divide-x divide-slate-200/60 py-1.5 px-1 bg-slate-50/70 rounded-lg border border-slate-200/60 text-center">
+          {/* 1. Remates */}
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+              Remates
+            </span>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="font-mono text-xs sm:text-sm font-bold text-slate-900">
+                {activeSummary?.total_shots ?? 0}
+              </span>
               {viewMode === 'cumulative' && activeSummary?.shots_per_match !== undefined && (
-                <span className="ml-1 text-[11px] font-normal text-slate-500">
-                  ({activeSummary.shots_per_match.toFixed(1)} / pj)
+                <span className="text-[10px] font-mono text-slate-400">
+                  {activeSummary.shots_per_match.toFixed(1)}/pj
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* 2. Goles / GC */}
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+              {mode === 'against' ? 'GC' : 'Goles'}
+            </span>
+            <span className="font-mono text-xs sm:text-sm font-bold text-slate-900 mt-0.5">
+              {activeSummary?.goals ?? 0}
             </span>
           </div>
-          <span className="text-slate-300">•</span>
 
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500 font-medium">{mode === 'against' ? 'GC:' : 'Goles:'}</span>
-            <span className="font-bold text-slate-900">{activeSummary?.goals ?? 0}</span>
-          </div>
-          <span className="text-slate-300">•</span>
-
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500 font-medium">{mode === 'against' ? 'xGA:' : 'xG:'}</span>
-            <span className="font-bold text-slate-900">
-              {(activeSummary?.total_xg ?? 0).toFixed(2)}
+          {/* 3. xG Total / xGA Total */}
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+              {mode === 'against' ? 'xGA Total' : 'xG Total'}
+            </span>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="font-mono text-xs sm:text-sm font-bold text-slate-900">
+                {(activeSummary?.total_xg ?? 0).toFixed(2)}
+              </span>
               {viewMode === 'cumulative' && activeSummary?.xg_per_match !== undefined && (
-                <span className="ml-1 text-[11px] font-normal text-slate-500">
-                  ({activeSummary.xg_per_match.toFixed(2)} {mode === 'against' ? 'xGA' : 'xG'} / pj)
+                <span className="text-[10px] font-mono text-slate-400">
+                  {activeSummary.xg_per_match.toFixed(2)}/pj
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* 4. xG / Tiro */}
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+              xG / Tiro
+            </span>
+            <span className="font-mono text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
+              {(activeSummary?.xg_per_shot ?? 0).toFixed(2)}
             </span>
           </div>
-          <span className="text-slate-300">•</span>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Dif:</span>
-            <span
-              className={`font-bold ${
-                mode === 'against'
-                  ? (activeSummary?.xg_difference ?? 0) > 0
-                    ? 'text-rose-700'
-                    : 'text-emerald-700'
-                  : (activeSummary?.xg_difference ?? 0) > 0
-                  ? 'text-emerald-700'
-                  : (activeSummary?.xg_difference ?? 0) < 0
-                  ? 'text-rose-700'
-                  : 'text-slate-700'
-              }`}
-            >
-              {(activeSummary?.xg_difference ?? 0) > 0 ? '+' : ''}
-              {(activeSummary?.xg_difference ?? 0).toFixed(2)}
+          {/* 5. % a Puerta */}
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+              % a Puerta
             </span>
-            {(() => {
-              const diff = activeSummary?.xg_difference ?? 0;
-              // For attacking 'for' mode:
-              // diff <= -2.0 -> Deficit de cara al arco (-X.XX xG)
-              // diff >= 2.0 -> Sobrerendimiento (+X.XX xG)
-              // else -> Conversión esperada
-              if (mode === 'for') {
-                if (diff <= -2.0) {
-                  return (
-                    <span
-                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap"
-                      title="Genera más peligro esperado del que convierte"
-                    >
-                      Déficit ({diff.toFixed(2)} xG)
-                    </span>
-                  );
-                } else if (diff >= 2.0) {
-                  return (
-                    <span
-                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap"
-                      title="Conversión por encima de la expectativa de gol"
-                    >
-                      Sobrerendimiento (+{diff.toFixed(2)} xG)
-                    </span>
-                  );
-                } else {
-                  return (
-                    <span
-                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80 shadow-2xs whitespace-nowrap"
-                      title="Conversión alineada con la probabilidad de gol esperada"
-                    >
-                      Conversión esperada
-                    </span>
-                  );
-                }
-              } else {
-                // Defensive 'against' mode
-                if (diff >= 2.0) {
-                  return (
-                    <span
-                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap"
-                      title="Concede más goles de lo esperado según la calidad del disparo rival"
-                    >
-                      Vulnerabilidad (+{diff.toFixed(2)} GC)
-                    </span>
-                  );
-                } else if (diff <= -2.0) {
-                  return (
-                    <span
-                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap"
-                      title="Eficacia defensiva: concede menos goles de lo esperado"
-                    >
-                      Resistencia ({diff.toFixed(2)} GC)
-                    </span>
-                  );
-                } else {
-                  return (
-                    <span
-                      className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80 shadow-2xs whitespace-nowrap"
-                      title="Goles concedidos alineados con la expectativa del rival"
-                    >
-                      Concesión esperada
-                    </span>
-                  );
-                }
-              }
-            })()}
-          </div>
-          <span className="text-slate-300 hidden sm:inline">•</span>
-
-          <div className="hidden sm:flex items-center gap-1">
-            <span className="text-slate-500 font-medium">xG/Tiro:</span>
-            <span className="font-semibold text-slate-800">{(activeSummary?.xg_per_shot ?? 0).toFixed(2)}</span>
-          </div>
-          <span className="text-slate-300 hidden sm:inline">•</span>
-
-          <div className="hidden sm:flex items-center gap-1">
-            <span className="text-slate-500 font-medium">% a puerta:</span>
-            <span className="font-semibold text-slate-800">{activeSummary?.on_target_pct ?? 0}%</span>
+            <span className="font-mono text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
+              {activeSummary?.on_target_pct ?? 0}%
+            </span>
           </div>
         </div>
       </div>
@@ -683,15 +712,15 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
                 </filter>
               </defs>
 
-              {/* Pitch Canvas Background (Warm Ivory) */}
+              {/* Pitch Canvas Background (Clean Technical Slate) */}
               <rect
                 x={PITCH_X}
                 y={PITCH_Y}
                 width={PITCH_WIDTH}
                 height={PITCH_HEIGHT}
-                fill="#FAF8F5"
-                stroke="#4A3525"
-                strokeWidth={1.8}
+                fill="#f8fafc"
+                stroke="#cbd5e1"
+                strokeWidth={1.5}
                 rx={4}
               />
 
@@ -701,7 +730,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
                 y1={PITCH_Y + PITCH_HEIGHT}
                 x2={PITCH_X + PITCH_WIDTH}
                 y2={PITCH_Y + PITCH_HEIGHT}
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
 
@@ -709,11 +738,11 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
               <path
                 d="M 203.8 415 A 66.2 66.2 0 0 1 336.2 415"
                 fill="none"
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
               {/* Center Spot */}
-              <circle cx={270} cy={415} r={3} fill="#4A3525" />
+              <circle cx={270} cy={415} r={2.5} fill="#cbd5e1" />
 
               {/* Attacking 18-yard Box (At Top: x=136.6, y=35, width=266.8, height=119.4) */}
               <rect
@@ -722,7 +751,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
                 width={266.8}
                 height={119.4}
                 fill="none"
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
 
@@ -733,18 +762,18 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
                 width={121.2}
                 height={39.8}
                 fill="none"
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
 
               {/* Penalty Spot (11m = y=114.6) */}
-              <circle cx={270} cy={114.6} r={2.8} fill="#4A3525" />
+              <circle cx={270} cy={114.6} r={2.5} fill="#cbd5e1" />
 
               {/* Penalty Arc (D) (Circle radius=66.2px extending downwards from y=154.4) */}
               <path
                 d="M 217.1 154.4 A 66.2 66.2 0 0 0 322.9 154.4"
                 fill="none"
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
 
@@ -755,7 +784,7 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
                 width={48.5}
                 height={14}
                 fill="none"
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
 
@@ -763,13 +792,13 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
               <path
                 d="M 45 44 A 9 9 0 0 1 54 35"
                 fill="none"
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
               <path
                 d="M 486 35 A 9 9 0 0 1 495 44"
                 fill="none"
-                stroke="#4A3525"
+                stroke="#cbd5e1"
                 strokeWidth={1.5}
               />
 
@@ -871,41 +900,41 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
             </svg>
 
             {/* Clean Bottom Strip with Direction Indicator & xG Bubble Scale */}
-            <div className="flex items-center justify-between gap-4 py-1.5 px-3.5 my-1 bg-slate-50/80 border border-slate-200/70 rounded-lg text-xs w-full">
+            <div className="flex items-center justify-between gap-4 py-1.5 px-3.5 my-1 bg-slate-50/90 border border-slate-200/70 rounded-lg text-xs w-full">
               {/* Direction Indicator placed cleanly at pitch base */}
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 select-none">
                 Dirección de Ataque ↑
               </span>
 
               {/* xG Bubble Size Scale */}
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider select-none">
                   Calidad xG:
                 </span>
                 <div className="flex items-center gap-3 text-[11px] text-slate-600">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span
-                      className={`rounded-full border border-slate-400 bg-slate-300 ${
+                      className={`rounded-full border border-slate-300 bg-slate-200/90 ${
                         isCumulative ? 'w-1.5 h-1.5' : 'w-2 h-2'
                       }`}
                     />
-                    <span>0.05</span>
+                    <span className="font-mono text-slate-500 text-[10.5px]">0.05</span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span
-                      className={`rounded-full border border-slate-400 bg-slate-300 ${
+                      className={`rounded-full border border-slate-300 bg-slate-200/90 ${
                         isCumulative ? 'w-2.5 h-2.5' : 'w-3 h-3'
                       }`}
                     />
-                    <span>0.15</span>
+                    <span className="font-mono text-slate-500 text-[10.5px]">0.15</span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span
-                      className={`rounded-full border border-slate-400 bg-slate-300 ${
+                      className={`rounded-full border border-slate-300 bg-slate-200/90 ${
                         isCumulative ? 'w-3.5 h-3.5' : 'w-4 h-4'
                       }`}
                     />
-                    <span>0.35+</span>
+                    <span className="font-mono text-slate-500 text-[10.5px]">0.35+</span>
                   </div>
                 </div>
               </div>
@@ -982,23 +1011,9 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
       {/* 5. Footer */}
       <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <span className="font-medium text-slate-400">Liga 1 Scout | Datos Oficiales</span>
-
-        {/* Action Button: Exportar PNG */}
-        <div className="flex items-center gap-2 export-ignore">
-          <button
-            type="button"
-            onClick={handleExportPNG}
-            disabled={isExporting || showLoading || rawShots.length === 0}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition cursor-pointer disabled:opacity-50"
-          >
-            {isExporting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Download className="w-3.5 h-3.5" />
-            )}
-            <span>Exportar PNG</span>
-          </button>
-        </div>
+        <span className="text-slate-400 font-normal">
+          {filteredShots.length} {filteredShots.length === 1 ? 'remate registrado' : 'remates registrados'}
+        </span>
       </div>
     </div>
   );

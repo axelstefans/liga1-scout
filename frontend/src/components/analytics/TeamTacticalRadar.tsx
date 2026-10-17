@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Download, Loader2, Info } from 'lucide-react';
+import { Download, Loader2, Info, Radar } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { TeamMetricEntry } from '../../services/api';
 import { getTeamThemeColor } from '../../utils/teams';
@@ -105,9 +105,9 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
     [activeTeam]
   );
 
-  // Geometry parameters (8-sided polygon in a 640 x 530 canvas)
+  // Geometry parameters (8-sided polygon in a 640 x 545 canvas)
   const CX = 320;
-  const CY = 265;
+  const CY = 262;
   const MAX_RADIUS = 165;
   const MIN_RADIUS = 16; // Avoid absolute zero pinch
   const LABEL_RADIUS = 198;
@@ -264,35 +264,50 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
       {/* Card Header Strip */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-100">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 tracking-tight flex items-center gap-2">
-            Perfil de Estilo Táctico
-          </h2>
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+            <Radar className="w-4 h-4 text-slate-700" />
+            <span>Perfil de Estilo Táctico</span>
+            <span className="relative group/info inline-flex items-center">
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-600 cursor-pointer focus:outline-none transition-colors ml-0.5 export-ignore"
+                aria-label="Información sobre percentiles tácticos"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+              <span className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-1.5 hidden group-hover/info:block z-30 w-64 p-2 bg-slate-900 text-white text-[11px] rounded-lg shadow-lg border border-slate-700/80 pointer-events-none font-normal leading-relaxed">
+                Línea segmentada central = P50 (Mediana de la liga). Los percentiles van de P0 (mínimo) a P100 (líder de la métrica en Liga 1).
+              </span>
+            </span>
+          </h3>
           <p className="text-xs text-slate-500 font-normal mt-0.5">
             Percentiles frente al promedio de los 18 clubes de Liga 1 ({tournament === 'all' ? 'Temporada Completa' : tournament})
           </p>
         </div>
 
-        {/* Export Button */}
-        <button
-          type="button"
-          onClick={handleExportPNG}
-          disabled={isExporting}
-          className="export-ignore inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-lg text-xs font-medium transition-all shadow-2xs self-start sm:self-auto cursor-pointer"
-          title="Descargar imagen en alta resolución (2x)"
-        >
-          {isExporting ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
-          ) : (
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-          )}
-          <span>{isExporting ? 'Exportando...' : 'Descargar PNG'}</span>
-        </button>
+        {/* Action Bar (Right) */}
+        <div className="flex items-center gap-2 self-start sm:self-auto export-ignore">
+          <button
+            type="button"
+            onClick={handleExportPNG}
+            disabled={isExporting}
+            className="export-ignore inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg transition-colors border border-slate-200/60 shadow-xs cursor-pointer disabled:opacity-50"
+            title="Exportar imagen PNG"
+          >
+            {isExporting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>PNG</span>
+          </button>
+        </div>
       </div>
 
       {/* Radar SVG Canvas */}
       <div className="flex-1 flex items-center justify-center min-h-[460px] lg:min-h-[500px] w-full overflow-hidden relative my-auto">
         <svg
-          viewBox="0 0 640 530"
+          viewBox="0 0 640 545"
           className="max-h-[480px] w-auto mx-auto overflow-visible select-none"
         >
           {/* Concentric Guideline Octagons */}
@@ -523,20 +538,15 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
         )}
       </div>
 
-      {/* Tactical Diagnostic Strip below Radar */}
-      <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 font-normal">
+      {/* Tactical Diagnostic Footer Strip below Radar */}
+      <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-normal">
+        <span className="text-slate-400 font-medium">Liga 1 Scout | Perfil Táctico</span>
         <div className="flex items-center gap-1.5">
-          <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span>Línea segmentada central = P50 (Mediana de la liga). Los percentiles van de P0 (mínimo) a P100 (líder).</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1">
-            <span
-              className="w-2.5 h-2.5 rounded-full inline-block"
-              style={{ backgroundColor: teamColor }}
-            />
-            <strong className="text-slate-800 font-medium">{activeTeam.name}</strong>
-          </span>
+          <span
+            className="w-2.5 h-2.5 rounded-full inline-block shadow-2xs"
+            style={{ backgroundColor: teamColor }}
+          />
+          <strong className="text-slate-800 font-medium">{activeTeam.name}</strong>
         </div>
       </div>
     </div>
