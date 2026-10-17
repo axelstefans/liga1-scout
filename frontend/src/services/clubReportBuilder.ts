@@ -142,6 +142,9 @@ export interface MostUsedXIReportPlayer {
   xg: string;
   shotsP90: string;
   yellowCards: string | number;
+  isGK?: boolean;
+  saves?: number;
+  savesP90?: number;
 }
 
 export interface FlashscoreAdvancedReport {
@@ -180,6 +183,9 @@ export interface ClubReportData {
   venueLabel: string;
   contextLabel: string;
   perspectiveLabel: string;
+  isNonDefaultVenue?: boolean;
+  isNonDefaultContext?: boolean;
+  isNonDefaultPerspective?: boolean;
   matchContextLines?: string[];
   leagueRank: number | string;
   record: {
@@ -196,6 +202,7 @@ export interface ClubReportData {
   passNetwork: {
     formation: string;
     edgeCount: number;
+    passVolume?: number;
   };
   shotMap: ShotMapReport;
   setPieces: SetPiecesReport;
@@ -364,9 +371,9 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
 
   // 1. Header & Labels
   const tournamentLabel =
-    selectedTournament === 'all' ? 'Temporada Completa 2026' : `${selectedTournament} 2026`;
+    selectedTournament === 'all' ? 'Temporada Completa' : `${selectedTournament}`;
   const venueLabel =
-    venue === 'home' ? 'Solo Local' : venue === 'away' ? 'Solo Visita' : 'Todos (Local y Visita)';
+    venue === 'home' ? 'Solo Local' : venue === 'away' ? 'Solo Visita' : 'Todos';
   const contextLabel =
     contextFilter === 'vs_elite'
       ? 'vs. Élite (Alianza Lima, Universitario, Cristal, Melgar)'
@@ -376,11 +383,15 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
       ? 'En Altura (>2,000m)'
       : contextFilter === 'sea_level'
       ? 'En Llano / Nivel del Mar'
-      : 'Todos los Rivales';
+      : 'Todos';
   const perspectiveLabel =
     perspective === 'for'
-      ? `A Favor (Producción ofensiva de ${activeTeam.name})`
-      : `En Contra (Fase defensiva y concesión)`;
+      ? 'A Favor'
+      : 'En Contra (Fase defensiva)';
+
+  const isNonDefaultVenue = venue !== 'all';
+  const isNonDefaultContext = contextFilter !== 'all';
+  const isNonDefaultPerspective = perspective !== 'for';
 
   const resolvedDateStr =
     dateStr ||
@@ -397,8 +408,7 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
         ? `${activeMatch.team_score} - ${activeMatch.opponent_score}`
         : 'Pendiente';
     matchContextLines.push(
-      `- **Modo Partido Seleccionado:** ${activeMatch.label} (${activeMatch.is_home ? 'Local' : 'Visita'})`,
-      `- **Rival:** ${activeMatch.opponent_name} | **Marcador:** ${matchScore}`
+      `- Partido Seleccionado: ${activeMatch.label} (${activeMatch.is_home ? 'Local' : 'Visita'}) | Rival: ${activeMatch.opponent_name} (${matchScore})`
     );
   }
 
@@ -408,6 +418,10 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
   // 3. Passing Network
   const formationStr = mostUsedXIData?.formation || '4-2-3-1';
   const edgeCount = passNetworkData?.edges?.length || 0;
+  const passVolume =
+    passNetworkData?.edges?.reduce((acc, e) => acc + (e.pass_count || 0), 0) ||
+    passNetworkData?.nodes?.reduce((acc, n) => acc + (n.total_passes || 0), 0) ||
+    0;
 
   // 4. Shotmap & Finishing
   const rawShots = shotData?.shots || [];
@@ -547,24 +561,22 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
   const xiPlayers = mostUsedXIData?.players || [];
   const transformedPlayers: MostUsedXIReportPlayer[] = xiPlayers.map((p) => {
     const slot = p.slot || '-';
-    const name = p.name || 'Desconocido';
+    const isGK = slot === 'GK' || slot === 'G' || p.position_group === 'Goalkeeper';
+
+    let name = p.name || 'Desconocido';
+    if (isGK && p.saves && p.saves > 0) {
+      const p90Str = p.saves_p90 ? ` — ${p.saves_p90.toFixed(1)}/pj` : '';
+      name = `${name} (${p.saves} atajadas${p90Str})`;
+    }
+
     const mins = Math.round(p.minutes_share || p.minutes_pct || 0);
     const age = p.age ?? '-';
     const starts = p.starts ?? p.appearances ?? '-';
-    const isGK = slot === 'GK' || slot === 'G' || p.position_group === 'Goalkeeper';
-    const ga = isGK
-      ? p.saves && p.saves > 0
-        ? `${p.saves} atajadas`
-        : '—'
-      : p.g_plus_a ?? p.goals + p.assists;
-    const xg = isGK
-      ? p.saves_p90
-        ? `${p.saves_p90.toFixed(1)} ata/pj`
-        : '—'
-      : (p.xg ?? 0).toFixed(2);
+    const ga = isGK ? '—' : (p.g_plus_a ?? p.goals + p.assists);
+    const xg = isGK ? '—' : (p.xg ?? 0).toFixed(2);
     const shotsP90 = isGK ? '—' : (p.shots_p90 ?? 0).toFixed(1);
     const rawYc = p.yellow_cards ?? 0;
-    const yc = rawYc === 4 ? '4 (⚠️ En Capilla)' : rawYc;
+    const yc = rawYc === 4 ? '4 (En Capilla)' : rawYc;
 
     return {
       slot,
@@ -576,6 +588,9 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
       xg,
       shotsP90,
       yellowCards: yc,
+      isGK,
+      saves: p.saves,
+      savesP90: p.saves_p90,
     };
   });
 
@@ -662,6 +677,9 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     venueLabel,
     contextLabel,
     perspectiveLabel,
+    isNonDefaultVenue,
+    isNonDefaultContext,
+    isNonDefaultPerspective,
     matchContextLines: matchContextLines.length > 0 ? matchContextLines : undefined,
     leagueRank,
     record: {
@@ -678,6 +696,7 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     passNetwork: {
       formation: formationStr,
       edgeCount,
+      passVolume,
     },
     shotMap: {
       totalShots: total_shots,
@@ -786,30 +805,32 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
   const teamNameUpper = (data.teamName || 'CLUB').toUpperCase();
   const gdSign = data.record.goalDifference > 0 ? '+' : '';
 
-  // 1. Header & Performance
+  // Non-default filter tracking
+  const activeFilters: string[] = [];
+  if (data.isNonDefaultVenue) {
+    activeFilters.push(`Sede: ${data.venueLabel}`);
+  }
+  if (data.isNonDefaultContext) {
+    activeFilters.push(`Contexto: ${data.contextLabel}`);
+  }
+  if (data.isNonDefaultPerspective) {
+    activeFilters.push(`Perspectiva: ${data.perspectiveLabel}`);
+  }
+
+  // 1. Executive Header (Task 1)
   const headerLines = [
-    '# 📋 INFORME DE SCOUTING & INTELIGENCIA TÁCTICA',
-    `**Club:** ${teamNameUpper} | **Competición:** Liga 1 de Fútbol Profesional (Perú)`,
-    `*Fecha de emisión:* ${data.dateStr}`,
-    '',
-    '---',
-    '',
-    '### 1. ALCANCE Y RENDIMIENTO COMPETITIVO',
-    `- **Torneo:** ${data.tournamentLabel}`,
-    `- **Sede:** ${data.venueLabel}`,
-    `- **Contexto Táctico:** ${data.contextLabel}`,
-    `- **Perspectiva:** ${data.perspectiveLabel}`,
+    `# REPORTE DE RENDIMIENTO TÁCTICO: ${teamNameUpper}`,
+    `Competición: Liga 1 2026 (${data.tournamentLabel}) | Fecha: ${data.dateStr}`,
+    `Muestra: ${data.record.matchesPlayed} PJ (${data.record.wins}V - ${data.record.draws}E - ${data.record.losses}D) | Puntos: ${data.record.points} | Goles: ${data.record.goalsScored} GF : ${data.record.goalsConceded} GC (${gdSign}${data.record.goalDifference})`,
+    ...(activeFilters.length > 0 ? [`Filtros activos: ${activeFilters.join(' | ')}`] : []),
     ...(data.matchContextLines && data.matchContextLines.length > 0
       ? data.matchContextLines
       : []),
-    `- **Clasificación:** Puesto #${data.leagueRank} en Liga 1`,
-    `- **Récord Global:** ${data.record.matchesPlayed} PJ | ${data.record.wins}V - ${data.record.draws}E - ${data.record.losses}D (${data.record.points} Pts)`,
-    `- **Goles:** ${data.record.goalsScored} GF : ${data.record.goalsConceded} GC (Diferencial: ${gdSign}${data.record.goalDifference})`,
   ];
 
-  // 2. Tactical Radar Cohort
+  // Section 1: PERFIL DE ESTILO (PERCENTILES LIGA 1)
   const radarLines: string[] = [
-    '### 2. PERFIL DE ESTILO TÁCTICO (RADAR COHORTE LIGA 1)',
+    '### 1. PERFIL DE ESTILO (PERCENTILES LIGA 1)',
     '| Dimensión Táctica | Valor Equipo | Percentil Liga | Rango Liga |',
     '| :--- | :---: | :---: | :---: |',
   ];
@@ -824,14 +845,7 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     radarLines.push('| Sin datos de radar para la cohorte activa | - | - | - |');
   }
 
-  // 3. Passing Network
-  const passLines = [
-    '### 3. RED DE PASES & ESTRUCTURA TÁCTICA',
-    `- **Esquema Táctico Base:** ${data.passNetwork.formation}`,
-    `- **Circuitos Registrados:** ${data.passNetwork.edgeCount} conexiones espaciales analizadas`,
-  ];
-
-  // 4. Shotmap & Finishing
+  // Section 2: REMATES & EFICIENCIA DE TIRO (xG)
   const sm = data.shotMap;
   const deltaSign = sm.xgDelta >= 0 ? '+' : '';
   const topShooterLines =
@@ -843,7 +857,7 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
       : ['  - Sin rematadores registrados en la muestra activa.'];
 
   const shotLines = [
-    '### 4. MAPA DE TIROS & EFICIENCIA DE FINALIZACIÓN',
+    '### 2. REMATES & EFICIENCIA DE TIRO (xG)',
     `- **Volumen Total:** ${sm.totalShots} remates analizados (${sm.shotsPerMatch.toFixed(1)} / pj)`,
     `- **Goles / Conversión:** ${sm.goals} goles anotados (${deltaSign}${sm.xgDelta.toFixed(2)} vs xG)`,
     `- **Peligro Esperado (xG):** ${sm.totalXg.toFixed(2)} xG acumulados`,
@@ -854,14 +868,14 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     ...topShooterLines,
   ];
 
-  // 5. Set Pieces & Corners
+  // Section 3: BALÓN PARADO & CÓRNERS
   const sp = data.setPieces;
   const cornersForStr = sp.cornersForAvg != null ? sp.cornersForAvg.toFixed(1) : 'N/D';
   const cornersAgStr = sp.cornersAgainstAvg != null ? sp.cornersAgainstAvg.toFixed(1) : 'N/D';
   const cornersTotStr = sp.cornersTotalAvg != null ? sp.cornersTotalAvg.toFixed(1) : 'N/D';
 
   const setPieceLines = [
-    '### 5. BALÓN PARADO & CÓRNERS',
+    '### 3. BALÓN PARADO & CÓRNERS',
     `- **Córners / PJ:** ${cornersForStr} a favor | ${cornersAgStr} en contra | ${cornersTotStr} total partido`,
     `- **Cumplimiento Línea +8.5 Córners:** ${sp.over85CornersPct}% (${sp.over85CornersCount} de ${sp.over85CornersTotal} PJ)`,
     `- **Cumplimiento Línea +9.5 Córners:** ${sp.over95CornersPct}% (${sp.over95CornersCount} de ${sp.over95CornersTotal} PJ)`,
@@ -870,15 +884,15 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     `- **Goles a Balón Parado:** ${sp.setPieceGoals} a favor (${sp.setPieceGoalsAvg.toFixed(2)}/pj, ${sp.cornerGoals} de córner) | ${sp.setPieceGoalsConceded} concedidos (${sp.setPieceGoalsConcededAvg.toFixed(2)}/pj, ${sp.cornerGoalsConceded} de córner)`,
     ...(sp.crossesAvailable
       ? [
-          `- Centros por Partido: ${(sp.avgCrossesTotal ?? 0).toFixed(1)} / pj (${(sp.avgCrossesCompleted ?? 0).toFixed(1)} compl. — ${(sp.crossAccuracyPct ?? 0).toFixed(1)}% acierto) | Goles de Cabeza: ${sp.headedGoals ?? 0}`,
+          `- **Centros por Partido:** ${(sp.avgCrossesTotal ?? 0).toFixed(1)} / pj (${(sp.avgCrossesCompleted ?? 0).toFixed(1)} compl. — ${(sp.crossAccuracyPct ?? 0).toFixed(1)}% acierto) | Goles de Cabeza: ${sp.headedGoals ?? 0}`,
         ]
       : []),
   ];
 
-  // 6. Balance & Dynamics
+  // Section 4: DINÁMICA DE PARTIDO & ESTADOS DE JUEGO (1T vs 2T)
   const pd = data.periodDynamics;
   const dynamicsLines = [
-    '### 6. BALANCE 1T vs 2T & DINÁMICA DE PARTIDO',
+    '### 4. DINÁMICA DE PARTIDO & ESTADOS DE JUEGO (1T vs 2T)',
     `- **Distribución Temporal:** ${pd.goals1T} goles en 1T vs ${pd.goals2T} goles en 2T (${pd.pctGoals2T}% en el complemento)`,
     `- **xG Medio por Período:** ${pd.xg1T} xG en 1T vs ${pd.xg2T} xG en 2T`,
     `- **Intervalo Pico de Gol:** ${pd.peakScoringInterval}`,
@@ -891,7 +905,7 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     `- **Al Conceder Primero:** ${pd.conceded1stCount} de ${pd.conceded1stTotal} PJ (${pd.conceded1stPct}%) — Récord: ${pd.conceded1stRecord}`,
   ];
 
-  // 7. Discipline & Fouls
+  // Section 5: DISCIPLINA & FALTAS
   const disc = data.discipline;
   const cardsForcedStr =
     disc.cardsForcedAvg != null ? disc.cardsForcedAvg.toFixed(1) : 'N/D';
@@ -903,18 +917,24 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     disc.foulsDrawnAvg != null ? disc.foulsDrawnAvg.toFixed(1) : 'N/D';
 
   const disciplineLines = [
-    '### 7. PERFIL DISCIPLINARIO & FALTAS',
+    '### 5. DISCIPLINA & FALTAS',
     `- **Tarjetas / PJ:** ${disc.yellowsAvg.toFixed(1)} amarillas/pj + ${disc.redsAvg.toFixed(1)} rojas/pj (${disc.cardsTotalAvg.toFixed(1)} total/pj)`,
     `- **Tarjetas Provocadas:** ${cardsForcedStr} / pj | Total partido: ${cardsMatchTotStr} / pj`,
     `- **Tarjetas Rojas:** ${disc.redCardsTotal} totales (${disc.redCardsAvg.toFixed(2)} / pj)`,
-    `- **Concentración 2T:** ${disc.cards2hPct}% de las tarjetas recibidas ocurren en el segundo tiempo`,
+    `- **Concentración 2T:** ${disc.cards2hPct}% de las tarjetas recibidas en el segundo tiempo`,
     `- **Cumplimiento Línea +3.5 Tarjetas:** ${disc.over35CardsPct}% (${disc.over35CardsCount} de ${disc.over35CardsTotal} PJ)`,
     `- **Faltas / PJ:** ${foulsCommittedStr} cometidas vs ${foulsDrawnStr} recibidas (${disc.foulsNetStr})`,
   ];
 
-  // 8. Base Starting XI
+  // Section 6: ONCE BASE MÁS UTILIZADO ({formation})
+  const passVolumeInfo =
+    data.passNetwork.passVolume && data.passNetwork.passVolume > 0
+      ? ` | **Frecuencia de Red:** ${data.passNetwork.passVolume} pases combinados en XI titular`
+      : '';
+
   const xiLines: string[] = [
-    `### 8. ONCE BASE MÁS UTILIZADO (XI TITULAR — ${data.mostUsedXI.formation})`,
+    `### 6. ONCE BASE MÁS UTILIZADO (${data.mostUsedXI.formation})`,
+    `- **Esquema Base:** ${data.mostUsedXI.formation}${passVolumeInfo}`,
     '| Pos | Jugador | % Minutos | Edad | Titular | G+A | xG | Tiros/90 | Amarillas |',
     '| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |',
   ];
@@ -931,8 +951,11 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     );
   }
 
-  // 9 & 10. Flashscore Advanced Metrics (Piso 2.5)
-  const fsLines: string[] = [];
+  // Section 7: CONTROL DE ÁREA & EFICIENCIA POST-IMPACTO (xGOT)
+  const fsLines: string[] = [
+    '### 7. CONTROL DE ÁREA & EFICIENCIA POST-IMPACTO (xGOT)',
+  ];
+
   if (data.flashscore && data.flashscore.available) {
     const fs = data.flashscore;
     const avgTouchesBox = fs.avgTouchesBox.toFixed(1);
@@ -963,47 +986,30 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
 
     const poss1T = fs.possession1T.toFixed(1);
     const poss2T = fs.possession2T.toFixed(1);
-
     const convPct = fs.bigConvPct.toFixed(1);
 
     fsLines.push(
-      '### 9. PRESENCIA OFENSIVA & EFICIENCIA DE TIRO',
-      `- Toques en Área Rival: ${avgTouchesBox} / pj (1T: ${touches1T} | 2T: ${touches2T})`,
-      `- Calidad de Definición Post-Impacto: ${avgXgot} xGOT vs ${avgXgVal} xG (${deltaSignStr}${deltaStr} delta)`,
-      `- Pases al Último Tercio: ${avgP3} / pj (1T: ${p3_1T} | 2T: ${p3_2T})`,
-      `- Definición en Grandes Ocasiones: ${fs.bigScored} convertidas / ${fs.bigMissed} falladas (${convPct}% efectividad)`,
-      '',
-      '---',
-      '',
-      '### 10. RENDIMIENTO DEFENSIVO & BALANCE TÁCTICO',
-      `- Goles Salvados por Portería: ${gpStr} totales (${gpmStr} / pj) | xGOT recibido: ${xgotFacedStr} vs ${gcStr} GC`,
-      `- Diferencial xG Neto 1T: ${net1TStr} (${xgFav1T} fav - ${xgCon1T} con)`,
-      `- Diferencial xG Neto 2T: ${net2TStr} (${xgFav2T} fav - ${xgCon2T} con)`,
-      `- Dominio de Posesión: ${poss1T}% (1T) vs ${poss2T}% (2T)`
+      `- **Toques en Área Rival:** ${avgTouchesBox} / pj (1T: ${touches1T} | 2T: ${touches2T})`,
+      `- **Calidad de Definición Post-Impacto:** ${avgXgot} xGOT vs ${avgXgVal} xG (${deltaSignStr}${deltaStr} delta)`,
+      `- **Pases al Último Tercio:** ${avgP3} / pj (1T: ${p3_1T} | 2T: ${p3_2T})`,
+      `- **Definición en Grandes Ocasiones:** ${fs.bigScored} convertidas / ${fs.bigMissed} falladas (${convPct}% efectividad)`,
+      `- **Goles Salvados por Portería:** ${gpStr} totales (${gpmStr} / pj) | xGOT recibido: ${xgotFacedStr} vs ${gcStr} GC`,
+      `- **Diferencial xG Neto:** 1T: ${net1TStr} (${xgFav1T} fav - ${xgCon1T} con) | 2T: ${net2TStr} (${xgFav2T} fav - ${xgCon2T} con)`,
+      `- **Dominio de Posesión:** ${poss1T}% (1T) vs ${poss2T}% (2T)`
     );
   } else {
     fsLines.push(
-      '### 9. PRESENCIA OFENSIVA & EFICIENCIA DE TIRO',
-      '- Sin datos de presencia ofensiva disponibles.',
-      '',
-      '---',
-      '',
-      '### 10. RENDIMIENTO DEFENSIVO & BALANCE TÁCTICO',
-      '- Sin datos de rendimiento defensivo disponibles.'
+      '- Sin datos avanzados de control de área y post-impacto disponibles en la muestra seleccionada.'
     );
   }
 
-  // Assemble full document
+  // Assemble full document with clean dividers and zero promotional watermark
   const docLines = [
     ...headerLines,
     '',
     '---',
     '',
     ...radarLines,
-    '',
-    '---',
-    '',
-    ...passLines,
     '',
     '---',
     '',
@@ -1028,9 +1034,6 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     '---',
     '',
     ...fsLines,
-    '',
-    '---',
-    `> *Informe exportado desde Liga 1 Scout Intelligence Suite.*`,
   ];
 
   return docLines.join('\n');
