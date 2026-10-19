@@ -479,19 +479,22 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
                   className="select-none"
                 >
                   <tspan
-                    className={`text-xs ${
-                      isHovered ? 'fill-slate-950 font-semibold' : 'fill-slate-600 font-normal'
+                    x={dim.labelX}
+                    dy="-0.2em"
+                    className={`font-bold text-[10px] sm:text-[11px] ${
+                      isHovered ? 'fill-slate-950 font-black' : 'fill-slate-800'
                     }`}
                   >
-                    {dim.def.shortName}
+                    {dim.def.shortName} • {activeTeam.matches_played === 0 ? 'P—' : `P${dim.percentile}`}
                   </tspan>
-                  <tspan className="fill-slate-300 font-light"> • </tspan>
                   <tspan
-                    className={`text-xs ${
-                      isHovered ? 'fill-navy font-bold' : 'fill-slate-800 font-medium'
+                    x={dim.labelX}
+                    dy="1.25em"
+                    className={`font-mono font-semibold text-[9.5px] sm:text-[10px] ${
+                      isHovered ? 'fill-emerald-600 font-bold' : 'fill-slate-500'
                     }`}
                   >
-                    {activeTeam.matches_played === 0 ? 'P—' : `P${dim.percentile}`}
+                    {activeTeam.matches_played === 0 ? '—' : dim.def.format(dim.rawVal)}
                   </tspan>
                 </text>
               </g>
@@ -502,7 +505,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
         {/* Interactive Editorial Floating Tooltip */}
         {hoveredDim && tooltipPos && (
           <div
-            className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full mb-2 bg-slate-900 text-white rounded-xl px-3.5 py-2.5 text-xs shadow-xl border border-slate-700/60 max-w-[260px] transition-all duration-100"
+            className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full mb-2 bg-slate-900 text-white rounded-xl px-3.5 py-2.5 text-xs shadow-xl border border-slate-700/60 max-w-[280px] transition-all duration-100"
             style={{
               left: `${tooltipPos.x}px`,
               top: `${tooltipPos.y - 8}px`,
@@ -515,6 +518,13 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-400 text-slate-950">
                 {activeTeam.matches_played === 0 ? 'P—' : `P${hoveredDim.percentile}`}
               </span>
+            </div>
+
+            <div className="bg-slate-800/80 rounded px-2 py-1 mb-2 font-mono text-[11px] text-emerald-400 font-semibold border border-slate-700/50">
+              {hoveredDim.def.name}:{' '}
+              {activeTeam.matches_played === 0
+                ? '—'
+                : `${hoveredDim.def.format(hoveredDim.rawVal)} (Percentil ${hoveredDim.percentile})`}
             </div>
 
             <p className="text-[11px] text-slate-300 leading-snug mb-2 font-normal">
