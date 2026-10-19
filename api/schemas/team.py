@@ -386,8 +386,16 @@ class CornerStats(BaseModel):
     corners_for_avg: float
     corners_against_avg: float
     corners_total_avg: float
+    corners_1t_avg: Optional[float] = 0.0
+    corners_2t_avg: Optional[float] = 0.0
     over_8_5_corners: FrequencyCount
     over_9_5_corners: FrequencyCount
+    over_4_5_corners_for: Optional[FrequencyCount] = None
+    over_4_5_corners_for_count: int = 0
+    over_4_5_corners_for_pct: float = 0.0
+    over_5_5_corners_for: Optional[FrequencyCount] = None
+    over_5_5_corners_for_count: int = 0
+    over_5_5_corners_for_pct: float = 0.0
     corners_conceded_over_4_5: Optional[FrequencyCount] = None
     corners_conceded_over_4_5_count: int = 0
     corners_conceded_over_4_5_pct: float = 0.0
@@ -400,6 +408,8 @@ class TimeSplits(BaseModel):
     goals_2t: int
     pct_goals_2t: float
     peak_scoring_interval: str
+    corners_1t_avg: Optional[float] = 0.0
+    corners_2t_avg: Optional[float] = 0.0
 
 
 class RecordBreakdown(BaseModel):
@@ -439,6 +449,9 @@ class DisciplineStats(BaseModel):
     red_cards_total: int = 0
     red_cards_avg: float = 0.0
     over_3_5_cards: FrequencyCount
+    over_4_5_cards: Optional[FrequencyCount] = None
+    over_4_5_cards_count: Optional[int] = 0
+    over_4_5_cards_pct: Optional[float] = 0.0
     cards_2h_pct: float = 0.0
 
 
@@ -462,6 +475,14 @@ class TeamPeriodMetricsResponse(BaseModel):
     penalties_conceded: Optional[int] = None
     corners_conceded_over_4_5_count: Optional[int] = None
     corners_conceded_over_4_5_pct: Optional[float] = None
+    over_4_5_corners_for_count: Optional[int] = None
+    over_4_5_corners_for_pct: Optional[float] = None
+    over_5_5_corners_for_count: Optional[int] = None
+    over_5_5_corners_for_pct: Optional[float] = None
+    over_4_5_cards_count: Optional[int] = None
+    over_4_5_cards_pct: Optional[float] = None
+    corners_1t_avg: Optional[float] = None
+    corners_2t_avg: Optional[float] = None
     ht_won: int = 0
     ht_drawn: int = 0
     ht_lost: int = 0

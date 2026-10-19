@@ -936,7 +936,12 @@ export const ClubDetailAnalytics: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <TeamBoxControlCard data={flashscoreSummary} isLoading={isFlashscoreLoading} />
-              <TeamGoalkeeperCard data={flashscoreSummary} isLoading={isFlashscoreLoading} />
+              <TeamGoalkeeperCard
+                data={flashscoreSummary}
+                isLoading={isFlashscoreLoading}
+                goalkeeperName={mostUsedXIData?.players?.find((p) => p.slot === 'GK' || p.position_group === 'Goalkeeper')?.name}
+                teamId={activeTeam?.team_id}
+              />
               <TeamPeriodDominanceCard data={flashscoreSummary} isLoading={isFlashscoreLoading} />
             </div>
 

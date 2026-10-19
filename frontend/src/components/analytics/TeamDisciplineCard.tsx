@@ -39,8 +39,9 @@ export const TeamDisciplineCard: React.FC<TeamDisciplineCardProps> = ({
   const cardsForcedPM = discipline?.cards_forced_avg ?? 0;
   const redCardsTotal = discipline?.red_cards_total ?? (data?.red_cards_total ?? (allPeriod?.total_red_cards ?? 0));
 
-  // Línea Over 3.5 tarjetas
-  const over35CardsCount = discipline?.over_3_5_cards?.count ?? 0;
+  // Línea Over 4.5 tarjetas
+  const over45CardsCount = discipline?.over_4_5_cards?.count ?? discipline?.over_4_5_cards_count ?? (data?.over_4_5_cards_count ?? 0);
+  const over45CardsPct = discipline?.over_4_5_cards_pct ?? (data?.over_4_5_cards_pct ?? (totalMatches > 0 ? Math.round((over45CardsCount / totalMatches) * 100) : 0));
 
   // Concentración de tarjetas en 2T
   const cards2HPct = discipline?.cards_2h_pct ?? 0;
@@ -145,14 +146,14 @@ export const TeamDisciplineCard: React.FC<TeamDisciplineCardProps> = ({
 
             <div className="flex flex-col items-center justify-center px-1">
               <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
-                Línea +3.5 Tarjetas
+                Línea +4.5 Tarjetas
               </span>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="font-mono text-xs sm:text-sm font-bold text-amber-700">
-                  {totalMatches > 0 ? `${Math.round((over35CardsCount / totalMatches) * 100)}%` : '—'}
+                <span className="font-mono text-xs sm:text-sm font-bold text-amber-700 tabular-nums">
+                  {totalMatches > 0 ? `${over45CardsPct}%` : '—'}
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">
-                  ({over35CardsCount}/{totalMatches})
+                <span className="text-[10px] font-mono text-slate-400 tabular-nums">
+                  ({over45CardsCount}/{totalMatches})
                 </span>
               </div>
             </div>

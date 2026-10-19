@@ -914,8 +914,16 @@ export interface CornerStats {
   corners_for_avg: number;
   corners_against_avg: number;
   corners_total_avg: number;
+  corners_1t_avg?: number;
+  corners_2t_avg?: number;
   over_8_5_corners: FrequencyCount;
   over_9_5_corners: FrequencyCount;
+  over_4_5_corners_for?: FrequencyCount;
+  over_4_5_corners_for_count?: number;
+  over_4_5_corners_for_pct?: number;
+  over_5_5_corners_for?: FrequencyCount;
+  over_5_5_corners_for_count?: number;
+  over_5_5_corners_for_pct?: number;
   corners_conceded_over_4_5?: FrequencyCount;
   corners_conceded_over_4_5_count?: number;
   corners_conceded_over_4_5_pct?: number;
@@ -928,6 +936,8 @@ export interface TimeSplits {
   goals_2t: number;
   pct_goals_2t: number;
   peak_scoring_interval: string;
+  corners_1t_avg?: number;
+  corners_2t_avg?: number;
 }
 
 export interface RecordBreakdown {
@@ -967,6 +977,9 @@ export interface DisciplineStats {
   red_cards_total?: number;
   red_cards_avg?: number;
   over_3_5_cards: FrequencyCount;
+  over_4_5_cards?: FrequencyCount;
+  over_4_5_cards_count?: number;
+  over_4_5_cards_pct?: number;
   cards_2h_pct?: number;
 }
 
@@ -994,6 +1007,14 @@ export interface TeamPeriodMetricsResponse {
   penalties_conceded?: number;
   corners_conceded_over_4_5_count?: number;
   corners_conceded_over_4_5_pct?: number;
+  over_4_5_corners_for_count?: number;
+  over_4_5_corners_for_pct?: number;
+  over_5_5_corners_for_count?: number;
+  over_5_5_corners_for_pct?: number;
+  over_4_5_cards_count?: number;
+  over_4_5_cards_pct?: number;
+  corners_1t_avg?: number;
+  corners_2t_avg?: number;
   ht_won?: number;
   ht_drawn?: number;
   ht_lost?: number;
@@ -1016,6 +1037,7 @@ export interface FlashscorePeriodStats {
   avg_xg_conceded: number;
   avg_shots_total: number;
   avg_shots_on_target: number;
+  avg_corner_kicks?: number;
   avg_xgot: number;
   avg_possession: number;
   avg_passes_completed: number;

@@ -43,9 +43,15 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
   // 2. Líneas Over / Concesión / Totales
   const totalMatches = cornerStats?.over_8_5_corners?.total ?? (data?.matches_count ?? 0);
   const over85Count = cornerStats?.over_8_5_corners?.count ?? 0;
-  const over95Count = cornerStats?.over_9_5_corners?.count ?? 0;
   const concededOver45Count = cornerStats?.corners_conceded_over_4_5?.count ?? cornerStats?.corners_conceded_over_4_5_count ?? 0;
   const concededOver45Pct = cornerStats?.corners_conceded_over_4_5_pct ?? (totalMatches > 0 ? Math.round((concededOver45Count / totalMatches) * 100) : 0);
+
+  // Líneas a Favor (+4.5 y +5.5)
+  const over45ForCount = cornerStats?.over_4_5_corners_for?.count ?? cornerStats?.over_4_5_corners_for_count ?? (data?.over_4_5_corners_for_count ?? 0);
+  const over45ForPct = cornerStats?.over_4_5_corners_for_pct ?? (data?.over_4_5_corners_for_pct ?? (totalMatches > 0 ? Math.round((over45ForCount / totalMatches) * 100) : 0));
+
+  const over55ForCount = cornerStats?.over_5_5_corners_for?.count ?? cornerStats?.over_5_5_corners_for_count ?? (data?.over_5_5_corners_for_count ?? 0);
+  const over55ForPct = cornerStats?.over_5_5_corners_for_pct ?? (data?.over_5_5_corners_for_pct ?? (totalMatches > 0 ? Math.round((over55ForCount / totalMatches) * 100) : 0));
 
   // 3. Goles de córner y balón parado
   const cornerGoals = cornerStats?.corner_goals ?? (setPieces?.corner_goals ?? 0);
@@ -141,45 +147,63 @@ export const TeamSetPiecesCard: React.FC<TeamSetPiecesCardProps> = ({
             </div>
           </div>
 
-          {/* Frecuencias de Líneas Over & Concesión Córners (Integrated 3-Column Tabular Strip) */}
-          <div className="mt-2.5 grid grid-cols-3 divide-x divide-slate-200/60 bg-slate-50/50 rounded-lg border border-slate-200/60 py-2 px-1 text-center">
-            <div className="flex flex-col items-center justify-center px-1">
-              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
-                Línea +8.5
+          {/* Frecuencias de Líneas Over & Concesión Córners (Integrated 4-Column Tabular Strip) */}
+          <div className="mt-2.5 grid grid-cols-4 divide-x divide-slate-200/60 bg-slate-50/50 rounded-lg border border-slate-200/60 py-2 px-0.5 text-center">
+            {/* 1. Favor +4.5 */}
+            <div className="flex flex-col items-center justify-center px-0.5 min-w-0">
+              <span className="text-[9px] sm:text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                Favor +4.5
               </span>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700">
+                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700 tabular-nums">
+                  {totalMatches > 0 ? `${over45ForPct}%` : '—'}
+                </span>
+                <span className="text-[9.5px] sm:text-[10px] font-mono text-slate-400 tabular-nums">
+                  ({over45ForCount}/{totalMatches})
+                </span>
+              </div>
+            </div>
+
+            {/* 2. Favor +5.5 */}
+            <div className="flex flex-col items-center justify-center px-0.5 min-w-0">
+              <span className="text-[9px] sm:text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                Favor +5.5
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700 tabular-nums">
+                  {totalMatches > 0 ? `${over55ForPct}%` : '—'}
+                </span>
+                <span className="text-[9.5px] sm:text-[10px] font-mono text-slate-400 tabular-nums">
+                  ({over55ForCount}/{totalMatches})
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Total +8.5 */}
+            <div className="flex flex-col items-center justify-center px-0.5 min-w-0">
+              <span className="text-[9px] sm:text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                Total +8.5
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700 tabular-nums">
                   {totalMatches > 0 ? `${Math.round((over85Count / totalMatches) * 100)}%` : '—'}
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-[9.5px] sm:text-[10px] font-mono text-slate-400 tabular-nums">
                   ({over85Count}/{totalMatches})
                 </span>
               </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center px-1">
-              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
-                Línea +9.5
-              </span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700">
-                  {totalMatches > 0 ? `${Math.round((over95Count / totalMatches) * 100)}%` : '—'}
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">
-                  ({over95Count}/{totalMatches})
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center justify-center px-1">
-              <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
+            {/* 4. Concedió +4.5 */}
+            <div className="flex flex-col items-center justify-center px-0.5 min-w-0">
+              <span className="text-[9px] sm:text-[9.5px] font-bold text-slate-400 uppercase tracking-wider truncate">
                 Concedió +4.5
               </span>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700">
+                <span className="font-mono text-xs sm:text-sm font-bold text-sky-700 tabular-nums">
                   {totalMatches > 0 ? `${concededOver45Pct}%` : '—'}
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-[9.5px] sm:text-[10px] font-mono text-slate-400 tabular-nums">
                   ({concededOver45Count}/{totalMatches})
                 </span>
               </div>

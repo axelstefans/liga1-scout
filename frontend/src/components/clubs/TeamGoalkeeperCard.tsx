@@ -1,18 +1,31 @@
 import React from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { TeamFlashscoreSummaryResponse } from '../../types/flashscore';
+import { useTeamMostUsedXI } from '../../hooks/useTeam';
 
 export interface TeamGoalkeeperCardProps {
   data?: TeamFlashscoreSummaryResponse;
   isLoading?: boolean;
+  goalkeeperName?: string;
+  teamId?: number;
 }
 
 export const TeamGoalkeeperCard: React.FC<TeamGoalkeeperCardProps> = ({
   data,
   isLoading = false,
+  goalkeeperName,
+  teamId,
 }) => {
   const gk = data?.goalkeeper_efficiency;
   const hasData = Boolean(data && data.matches_analyzed > 0 && gk);
+
+  const effectiveTeamId = teamId ?? data?.team_id;
+  const { data: xiData } = useTeamMostUsedXI(
+    goalkeeperName ? undefined : effectiveTeamId
+  );
+  const startingGkName =
+    goalkeeperName ||
+    xiData?.players?.find((p) => p.slot === 'GK' || p.position_group === 'Goalkeeper')?.name;
 
   const goalsPrevented = gk?.goals_prevented ?? 0;
   const preventedPerMatch = gk?.prevented_per_match ?? 0;
@@ -25,14 +38,17 @@ export const TeamGoalkeeperCard: React.FC<TeamGoalkeeperCardProps> = ({
     <div className="flex flex-col justify-between h-full min-h-[425px] bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs">
       {/* Header */}
       <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-slate-700" />
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+        <div className="flex items-center gap-2 min-w-0">
+          <ShieldCheck className="w-4 h-4 text-slate-700 shrink-0" />
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight truncate">
             Rendimiento de Portería
           </h3>
         </div>
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-          Eficiencia Bajo Palos
+        <span
+          className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/90 px-2 py-0.5 rounded border border-slate-200/80 truncate max-w-[190px]"
+          title={startingGkName ? `Portero Titular: ${startingGkName}` : 'Eficiencia Bajo Palos'}
+        >
+          {startingGkName ? `PORTERO: ${startingGkName}` : 'Eficiencia Bajo Palos'}
         </span>
       </div>
 

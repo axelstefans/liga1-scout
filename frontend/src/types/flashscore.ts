@@ -3,6 +3,7 @@ export interface FlashscorePeriodStats {
   avg_xg_conceded: number;
   avg_shots_total: number;
   avg_shots_on_target: number;
+  avg_corner_kicks?: number;
   avg_xgot: number;
   avg_possession: number;
   avg_passes_completed: number;

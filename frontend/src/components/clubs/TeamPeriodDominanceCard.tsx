@@ -25,10 +25,10 @@ export const TeamPeriodDominanceCard: React.FC<TeamPeriodDominanceCardProps> = (
   const possTotal = poss1T + poss2T > 0 ? poss1T + poss2T : 100;
   const possRatio1T = (poss1T / possTotal) * 100;
 
-  const passes1T = p1T?.avg_passes_completed ?? 0;
-  const passes2T = p2T?.avg_passes_completed ?? 0;
-  const totalPasses = passes1T + passes2T;
-  const passRatio1T = totalPasses > 0 ? (passes1T / totalPasses) * 100 : 50;
+  const corners1T = p1T?.avg_corner_kicks ?? 0;
+  const corners2T = p2T?.avg_corner_kicks ?? 0;
+  const totalCorners = corners1T + corners2T;
+  const cornerRatio1T = totalCorners > 0 ? (corners1T / totalCorners) * 100 : 50;
 
   const shotsOnTarget1T = p1T?.avg_shots_on_target ?? 0;
   const shotsOnTarget2T = p2T?.avg_shots_on_target ?? 0;
@@ -128,25 +128,25 @@ export const TeamPeriodDominanceCard: React.FC<TeamPeriodDominanceCardProps> = (
               </div>
             </div>
 
-            {/* Row B: Pases Completados */}
+            {/* Row B: Córners por Mitad (1T vs 2T) */}
             <div className="pt-2 border-t border-slate-200/60">
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-xs font-semibold text-slate-600">Pases Completados</span>
+                <span className="text-xs font-semibold text-slate-600">Córners / Mitad</span>
                 <div className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-600">
-                  <span>1T: <strong className="text-slate-900 font-bold tabular-nums">{passes1T.toFixed(0)}</strong></span>
+                  <span>1T: <strong className="text-slate-900 font-bold tabular-nums">{corners1T.toFixed(1)}</strong></span>
                   <span className="text-slate-300">|</span>
-                  <span>2T: <strong className="text-slate-900 font-bold tabular-nums">{passes2T.toFixed(0)}</strong></span>
+                  <span>2T: <strong className="text-slate-900 font-bold tabular-nums">{corners2T.toFixed(1)}</strong></span>
                 </div>
               </div>
               {/* Visual Balance Bar */}
               <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden flex">
                 <div
                   className="bg-sky-600 h-full rounded-l-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.max(0, passRatio1T))}%` }}
+                  style={{ width: `${Math.min(100, Math.max(0, cornerRatio1T))}%` }}
                 />
                 <div
                   className="bg-slate-300 h-full rounded-r-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.max(0, 100 - passRatio1T))}%` }}
+                  style={{ width: `${Math.min(100, Math.max(0, 100 - cornerRatio1T))}%` }}
                 />
               </div>
             </div>

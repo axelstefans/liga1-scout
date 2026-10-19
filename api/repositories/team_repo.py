@@ -2333,6 +2333,8 @@ def get_team_period_metrics(
             m.away_score,
             mps_team_1t.goals AS team_1t_goals,
             mps_opp_1t.goals AS opp_1t_goals,
+            mps_team_1t.corner_kicks AS ck_for_1t,
+            mps_team_2t.corner_kicks AS ck_for_2t,
             mps_team_all.corner_kicks AS ck_for,
             mps_opp_all.corner_kicks AS ck_against,
             mps_team_all.fouls AS fouls_for,
@@ -2360,12 +2362,16 @@ def get_team_period_metrics(
           ON m.match_id = mps_opp_1t.match_id
          AND mps_opp_1t.team_id != ?
          AND mps_opp_1t.period = '1ST'
+        LEFT JOIN match_period_stats mps_team_2t
+          ON m.match_id = mps_team_2t.match_id
+         AND mps_team_2t.team_id = ?
+         AND mps_team_2t.period = '2ND'
         WHERE 1=1
           {tourn_clause}
           {venue_clause}
           {ctx_clause}
     """
-    cohort_params = [team_id, team_id, team_id, team_id] + tourn_param + venue_param + ctx_params
+    cohort_params = [team_id, team_id, team_id, team_id, team_id] + tourn_param + venue_param + ctx_params
     cohort_matches = db.execute(query_cohort_matches, tuple(cohort_params)).fetchall()
     total_cohort_matches = len(cohort_matches)
 
@@ -2375,8 +2381,12 @@ def get_team_period_metrics(
 
     ck_for_sum = 0
     ck_against_sum = 0
+    ck_for_1t_sum = 0
+    ck_for_2t_sum = 0
     over_8_5_corners_count = 0
     over_9_5_corners_count = 0
+    over_4_5_corners_for_count = 0
+    over_5_5_corners_for_count = 0
     corners_conceded_over_4_5_count = 0
 
     btts_count = 0
@@ -2390,6 +2400,7 @@ def get_team_period_metrics(
     red_cards_for_sum = 0
     red_cards_against_sum = 0
     over_3_5_cards_count = 0
+    over_4_5_cards_count = 0
 
     for m in cohort_matches:
         t_1t = m["team_1t_goals"]
@@ -2407,10 +2418,21 @@ def get_team_period_metrics(
         c_against = int(m["ck_against"] or 0)
         ck_for_sum += c_for
         ck_against_sum += c_against
+
+        c_1t = int(m["ck_for_1t"] or 0) if m["ck_for_1t"] is not None else 0
+        c_2t = int(m["ck_for_2t"] or 0) if m["ck_for_2t"] is not None else (c_for - c_1t if c_for >= c_1t else 0)
+        ck_for_1t_sum += c_1t
+        ck_for_2t_sum += c_2t
+
         if (c_for + c_against) > 8.5:
             over_8_5_corners_count += 1
         if (c_for + c_against) > 9.5:
             over_9_5_corners_count += 1
+
+        if c_for >= 5:
+            over_4_5_corners_for_count += 1
+        if c_for >= 6:
+            over_5_5_corners_for_count += 1
 
         c_conceded = c_for if norm_mode == "against" else c_against
         if c_conceded >= 5:
@@ -2450,6 +2472,8 @@ def get_team_period_metrics(
         red_cards_against_sum += int(m["red_cards_against"] or 0)
         if (cd_for + cd_against) > 3.5:
             over_3_5_cards_count += 1
+        if (cd_for + cd_against) > 4.5:
+            over_4_5_cards_count += 1
 
     match_ids = [m["match_id"] for m in cohort_matches]
     first_goal_team_by_match = {}
@@ -2571,7 +2595,12 @@ def get_team_period_metrics(
     corners_against_avg = round(float(ck_against_sum) / denom_matches, 2)
     corners_total_avg = round(float(ck_for_sum + ck_against_sum) / denom_matches, 2)
 
+    corners_1t_avg = round(float(ck_for_1t_sum) / denom_matches, 2)
+    corners_2t_avg = round(float(ck_for_2t_sum) / denom_matches, 2)
+    over_4_5_corners_for_pct = round((over_4_5_corners_for_count * 100.0) / denom_matches, 1) if total_cohort_matches > 0 else 0.0
+    over_5_5_corners_for_pct = round((over_5_5_corners_for_count * 100.0) / denom_matches, 1) if total_cohort_matches > 0 else 0.0
     corners_conceded_over_4_5_pct = round((corners_conceded_over_4_5_count * 100.0) / denom_matches, 1) if total_cohort_matches > 0 else 0.0
+    over_4_5_cards_pct = round((over_4_5_cards_count * 100.0) / denom_matches, 1) if total_cohort_matches > 0 else 0.0
 
     clean_sheets_pct = round((clean_sheets_count * 100.0) / denom_matches, 1) if total_cohort_matches > 0 else 0.0
     failed_to_score_pct = round((failed_to_score_count * 100.0) / denom_matches, 1) if total_cohort_matches > 0 else 0.0
@@ -2618,6 +2647,14 @@ def get_team_period_metrics(
         "penalties_conceded": penalties_conceded,
         "corners_conceded_over_4_5_count": corners_conceded_over_4_5_count,
         "corners_conceded_over_4_5_pct": corners_conceded_over_4_5_pct,
+        "over_4_5_corners_for_count": over_4_5_corners_for_count,
+        "over_4_5_corners_for_pct": over_4_5_corners_for_pct,
+        "over_5_5_corners_for_count": over_5_5_corners_for_count,
+        "over_5_5_corners_for_pct": over_5_5_corners_for_pct,
+        "over_4_5_cards_count": over_4_5_cards_count,
+        "over_4_5_cards_pct": over_4_5_cards_pct,
+        "corners_1t_avg": corners_1t_avg,
+        "corners_2t_avg": corners_2t_avg,
         "ht_won": ht_won,
         "ht_drawn": ht_drawn,
         "ht_lost": ht_lost,
@@ -2664,6 +2701,8 @@ def get_team_period_metrics(
             "corners_for_avg": corners_for_avg,
             "corners_against_avg": corners_against_avg,
             "corners_total_avg": corners_total_avg,
+            "corners_1t_avg": corners_1t_avg,
+            "corners_2t_avg": corners_2t_avg,
             "over_8_5_corners": {
                 "count": over_8_5_corners_count,
                 "total": total_cohort_matches,
@@ -2672,6 +2711,18 @@ def get_team_period_metrics(
                 "count": over_9_5_corners_count,
                 "total": total_cohort_matches,
             },
+            "over_4_5_corners_for": {
+                "count": over_4_5_corners_for_count,
+                "total": total_cohort_matches,
+            },
+            "over_4_5_corners_for_count": over_4_5_corners_for_count,
+            "over_4_5_corners_for_pct": over_4_5_corners_for_pct,
+            "over_5_5_corners_for": {
+                "count": over_5_5_corners_for_count,
+                "total": total_cohort_matches,
+            },
+            "over_5_5_corners_for_count": over_5_5_corners_for_count,
+            "over_5_5_corners_for_pct": over_5_5_corners_for_pct,
             "corners_conceded_over_4_5": {
                 "count": corners_conceded_over_4_5_count,
                 "total": total_cohort_matches,
@@ -2686,6 +2737,8 @@ def get_team_period_metrics(
             "goals_2t": goals_2t,
             "pct_goals_2t": pct_goals_2t,
             "peak_scoring_interval": peak_interval,
+            "corners_1t_avg": corners_1t_avg,
+            "corners_2t_avg": corners_2t_avg,
         },
         "match_dynamics": {
             "btts": {
@@ -2752,6 +2805,12 @@ def get_team_period_metrics(
                 "count": over_3_5_cards_count,
                 "total": total_cohort_matches,
             },
+            "over_4_5_cards": {
+                "count": over_4_5_cards_count,
+                "total": total_cohort_matches,
+            },
+            "over_4_5_cards_count": over_4_5_cards_count,
+            "over_4_5_cards_pct": over_4_5_cards_pct,
             "cards_2h_pct": cards_2h_pct,
         },
     }
