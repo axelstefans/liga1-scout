@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 class TeamProfile(BaseModel):
@@ -292,6 +292,10 @@ class MostUsedXIPlayer(BaseModel):
     shots_p90: float = 0.0
     total_shots: int = 0
     yellow_cards: int = 0
+    red_cards: int = 0
+    fouls: int = 0
+    fouls_p90: float = 0.0
+    set_piece_roles: List[str] = Field(default_factory=list)
     g_plus_a: int
     goal_contributions: int
     pitch_x: float

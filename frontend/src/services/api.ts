@@ -792,6 +792,10 @@ export interface MostUsedXIPlayer {
   shots_p90?: number;
   total_shots?: number;
   yellow_cards?: number;
+  red_cards?: number;
+  fouls?: number;
+  fouls_p90?: number;
+  set_piece_roles?: string[];
   saves?: number;
   saves_p90?: number;
   g_plus_a: number;

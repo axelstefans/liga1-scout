@@ -35,6 +35,7 @@ export interface ShotMapTopShooter {
   shots: number;
   goals: number;
   xg: number;
+  roles?: string[];
 }
 
 export interface ShotMapReport {
@@ -50,12 +51,29 @@ export interface ShotMapReport {
   inBoxCount: number;
   outBoxCount: number;
   topShooters: ShotMapTopShooter[];
+  // Moved from Sec 7 to Sec 2
+  postImpact?: {
+    avgXgot: number;
+    avgXg: number;
+    deltaXgotXg: number;
+  };
+  bigChances?: {
+    scored: number;
+    missed: number;
+    convPct: number;
+  };
 }
 
 export interface SetPiecesReport {
   cornersForAvg?: number | null;
   cornersAgainstAvg?: number | null;
   cornersTotalAvg?: number | null;
+  over45CornersForPct?: number;
+  over45CornersForCount?: number;
+  over45CornersForTotal?: number;
+  over55CornersForPct?: number;
+  over55CornersForCount?: number;
+  over55CornersForTotal?: number;
   over85CornersPct: number;
   over85CornersCount: number;
   over85CornersTotal: number;
@@ -88,6 +106,8 @@ export interface PeriodDynamicsReport {
   pctGoals2T: number;
   xg1T: string;
   xg2T: string;
+  corners1T?: string;
+  corners2T?: string;
   peakScoringInterval: string;
   bttsPct: number;
   bttsCount: number;
@@ -127,6 +147,9 @@ export interface DisciplineReport {
   over35CardsPct: number;
   over35CardsCount: number;
   over35CardsTotal: number;
+  over45CardsPct: number;
+  over45CardsCount: number;
+  over45CardsTotal: number;
   foulsCommittedAvg?: number | null;
   foulsDrawnAvg?: number | null;
   foulsNetStr: string;
@@ -141,7 +164,13 @@ export interface MostUsedXIReportPlayer {
   ga: string | number;
   xg: string;
   shotsP90: string;
-  yellowCards: string | number;
+  foulsP90: string;
+  yellowCards: number;
+  redCards: number;
+  isEnCapilla: boolean;
+  disciplineStr: string;
+  setPieceRoles: string[];
+  setPieceRolesStr: string;
   isGK?: boolean;
   saves?: number;
   savesP90?: number;
@@ -225,7 +254,7 @@ export interface RadarDimDef {
 }
 
 // ============================================================================
-// Constants & Radar Dimension Definitions
+// Constants & Radar Dimension Definitions (Sec 1: exactly 4 core dimensions)
 // ============================================================================
 
 export const TACTICAL_RADAR_DIMS: RadarDimDef[] = [
@@ -246,18 +275,6 @@ export const TACTICAL_RADAR_DIMS: RadarDimDef[] = [
     higherIsBetter: true,
   },
   {
-    key: 'progressive_passes',
-    name: 'Pases al Último Tercio / Progresivos',
-    shortName: 'Pases Últ. 3ro / PJ',
-    extractor: (t) =>
-      t.final_third_passes_p90 ??
-      (t.matches_played > 0
-        ? (t.passes_into_final_third ?? t.progressive_passes) / t.matches_played
-        : 0),
-    format: (v) => `${v.toFixed(1)} / pj`,
-    higherIsBetter: true,
-  },
-  {
     key: 'shot_quality',
     name: 'Calidad de Remate (xG/tiro)',
     shortName: 'xG / Tiro',
@@ -274,14 +291,6 @@ export const TACTICAL_RADAR_DIMS: RadarDimDef[] = [
       t.set_piece_xg_per_match ??
       (t.matches_played > 0 && t.set_piece_xg ? t.set_piece_xg / t.matches_played : 0),
     format: (v) => `${v.toFixed(2)} xG / pj`,
-    higherIsBetter: true,
-  },
-  {
-    key: 'high_recoveries',
-    name: 'Recuperaciones Altas',
-    shortName: 'Recup. Altas / PJ',
-    extractor: (t) => (t.matches_played > 0 ? t.high_recoveries / t.matches_played : 0),
-    format: (v) => `${v.toFixed(1)} / pj`,
     higherIsBetter: true,
   },
 ];
@@ -412,7 +421,7 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     );
   }
 
-  // 2. Tactical Radar Cohort
+  // 2. Tactical Radar Cohort (Filtered to 4 core dimensions)
   const tacticalRadarAxes = calculateTacticalRadarCohort(activeTeam, teams);
 
   // 3. Passing Network
@@ -423,7 +432,7 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     passNetworkData?.nodes?.reduce((acc, n) => acc + (n.total_passes || 0), 0) ||
     0;
 
-  // 4. Shotmap & Finishing
+  // 4. Shotmap & Finishing (Sec 2)
   const rawShots = shotData?.shots || [];
   const total_shots = rawShots.length;
   const goals = rawShots.filter((s) => s.result === 'goal').length;
@@ -437,26 +446,88 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
   const pctInBox = total_shots > 0 ? Math.round((inBoxCount / total_shots) * 100) : 0;
   const shotsPerMatch = total_shots / (activeTeam.matches_played || 1);
 
-  const shooterMap = new Map<string, { shots: number; xg: number; goals: number }>();
+  // Player set-piece role lookup from XI
+  const playerRolesByName = new Map<string, string[]>();
+  if (mostUsedXIData?.players) {
+    for (const p of mostUsedXIData.players) {
+      if (p.name && p.set_piece_roles && p.set_piece_roles.length > 0) {
+        playerRolesByName.set(p.name.trim().toLowerCase(), p.set_piece_roles);
+      }
+    }
+  }
+
+  const shooterMap = new Map<string, { shots: number; xg: number; goals: number; roles: Set<string> }>();
   for (const s of rawShots) {
     const name = s.player_name || 'Desconocido';
-    const curr = shooterMap.get(name) || { shots: 0, xg: 0, goals: 0 };
+    const curr = shooterMap.get(name) || { shots: 0, xg: 0, goals: 0, roles: new Set<string>() };
     curr.shots += 1;
     curr.xg += s.xg;
     if (s.result === 'goal') curr.goals += 1;
+    if (s.situation === 'penalty') curr.roles.add('PEN');
+    if (s.situation === 'free-kick') curr.roles.add('FK');
     shooterMap.set(name, curr);
   }
+
   const topShooters: ShotMapTopShooter[] = Array.from(shooterMap.entries())
-    .map(([name, d]) => ({
-      name,
-      shots: d.shots,
-      goals: d.goals,
-      xg: Math.round(d.xg * 100) / 100,
-    }))
+    .map(([name, d]) => {
+      const normName = name.trim().toLowerCase();
+      const rolesFromXI = playerRolesByName.get(normName) || [];
+      rolesFromXI.forEach((r) => d.roles.add(r));
+
+      if (rolesFromXI.length === 0) {
+        for (const [xiName, xiRoles] of playerRolesByName.entries()) {
+          if (xiName.includes(normName) || normName.includes(xiName)) {
+            xiRoles.forEach((r) => d.roles.add(r));
+          }
+        }
+      }
+
+      const roleList = Array.from(d.roles);
+      const roleOrder: Record<string, number> = { PEN: 1, FK: 2, COR: 3 };
+      roleList.sort((a, b) => (roleOrder[a] || 9) - (roleOrder[b] || 9));
+
+      const tag = roleList.length > 0 ? ` (${roleList.join(', ')})` : '';
+      return {
+        name: `${name}${tag}`,
+        shots: d.shots,
+        goals: d.goals,
+        xg: Math.round(d.xg * 100) / 100,
+        roles: roleList,
+      };
+    })
     .sort((a, b) => b.xg - a.xg || b.shots - a.shots)
     .slice(0, 4);
 
-  // 5. Set Pieces & Corners
+  const hasFsMatches = Boolean(flashscoreSummary && flashscoreSummary.matches_analyzed > 0);
+  const pAll = flashscoreSummary?.periods?.ALL;
+
+  const postImpact = hasFsMatches && pAll
+    ? {
+        avgXgot: pAll.avg_xgot ?? 0,
+        avgXg: pAll.avg_xg ?? 0,
+        deltaXgotXg: (pAll.avg_xgot ?? 0) - (pAll.avg_xg ?? 0),
+      }
+    : undefined;
+
+  const bigScored = pAll?.total_big_chances_scored ?? 0;
+  const bigMissed = pAll?.total_big_chances_missed ?? 0;
+  const bigTotal = pAll?.total_big_chances ?? (bigScored + bigMissed);
+  const bigConvPct =
+    pAll?.big_chances_conversion_pct != null
+      ? pAll.big_chances_conversion_pct
+      : bigTotal > 0
+      ? (bigScored * 100.0) / bigTotal
+      : 0;
+
+  const bigChances = hasFsMatches && pAll
+    ? {
+        scored: bigScored,
+        missed: bigMissed,
+        convPct: bigConvPct,
+      }
+    : undefined;
+
+  // 5. Set Pieces & Corners (Sec 3)
   const cornerStats = periodMetricsData?.corner_stats;
   const o85 = cornerStats?.over_8_5_corners;
   const o95 = cornerStats?.over_9_5_corners;
@@ -467,6 +538,29 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     cornerStats?.corners_conceded_over_4_5_pct ??
     (o45Conceded && o45Conceded.total > 0
       ? Math.round((o45Conceded.count / o45Conceded.total) * 100)
+      : 0);
+
+  // Own Corner Lines (+4.5 and +5.5 corners for)
+  const o45ForPct =
+    periodMetricsData?.over_4_5_corners_for_pct ??
+    cornerStats?.over_4_5_corners_for_pct ??
+    (cornerStats?.over_4_5_corners_for && cornerStats.over_4_5_corners_for.total > 0
+      ? Math.round(
+          (cornerStats.over_4_5_corners_for.count /
+            cornerStats.over_4_5_corners_for.total) *
+            100
+        )
+      : 0);
+
+  const o55ForPct =
+    periodMetricsData?.over_5_5_corners_for_pct ??
+    cornerStats?.over_5_5_corners_for_pct ??
+    (cornerStats?.over_5_5_corners_for && cornerStats.over_5_5_corners_for.total > 0
+      ? Math.round(
+          (cornerStats.over_5_5_corners_for.count /
+            cornerStats.over_5_5_corners_for.total) *
+            100
+        )
       : 0);
 
   const spGoals = periodMetricsData?.set_pieces?.set_piece_goals ?? 0;
@@ -492,14 +586,13 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     periodMetricsData?.set_pieces?.penalties_conceded ??
     0;
 
-  const hasFsMatches = Boolean(flashscoreSummary && flashscoreSummary.matches_analyzed > 0);
   const crossesAvailable = hasFsMatches;
-  const avgCrossesTotal = flashscoreSummary?.periods?.ALL?.avg_crosses_total ?? 0;
-  const avgCrossesCompleted = flashscoreSummary?.periods?.ALL?.avg_crosses_completed ?? 0;
-  const crossAccuracyPct = flashscoreSummary?.periods?.ALL?.cross_accuracy_pct ?? 0;
-  const headedGoals = flashscoreSummary?.periods?.ALL?.total_headed_goals ?? 0;
+  const avgCrossesTotal = pAll?.avg_crosses_total ?? 0;
+  const avgCrossesCompleted = pAll?.avg_crosses_completed ?? 0;
+  const crossAccuracyPct = pAll?.cross_accuracy_pct ?? 0;
+  const headedGoals = pAll?.total_headed_goals ?? 0;
 
-  // 6. Balance & Dynamics
+  // 6. Balance & Dynamics (Sec 4)
   const splits = periodMetricsData?.time_splits;
   const periods = periodMetricsData?.periods;
   const dynamics = periodMetricsData?.match_dynamics;
@@ -541,7 +634,18 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
   const xg2T =
     periods?.['2ND']?.avg_xg !== undefined ? periods['2ND'].avg_xg.toFixed(2) : 'N/D';
 
-  // 7. Discipline & Fouls
+  const ck1tVal =
+    periodMetricsData?.corners_1t_avg ??
+    cornerStats?.corners_1t_avg ??
+    splits?.corners_1t_avg;
+  const ck2tVal =
+    periodMetricsData?.corners_2t_avg ??
+    cornerStats?.corners_2t_avg ??
+    splits?.corners_2t_avg;
+  const corners1T = ck1tVal != null ? ck1tVal.toFixed(1) : 'N/D';
+  const corners2T = ck2tVal != null ? ck2tVal.toFixed(1) : 'N/D';
+
+  // 7. Discipline & Fouls (Sec 5)
   const disc = periodMetricsData?.discipline_stats;
   const cardsTotalAvg = disc ? disc.cards_for_avg : 0;
   const redsAvg = disc ? disc.red_cards_avg ?? 0 : 0;
@@ -553,21 +657,30 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
       : foulsNet < 0
       ? `+${Math.abs(foulsNet).toFixed(1)} recibidas vs cometidas`
       : '0.0 balance neutral';
+
   const o35Cards = disc?.over_3_5_cards;
   const pctCards =
     o35Cards && o35Cards.total > 0 ? Math.round((o35Cards.count / o35Cards.total) * 100) : 0;
 
-  // 8. Base Starting XI
+  const o45Cards = disc?.over_4_5_cards;
+  const pctCards45 =
+    periodMetricsData?.over_4_5_cards_pct ??
+    disc?.over_4_5_cards_pct ??
+    (o45Cards && o45Cards.total > 0
+      ? Math.round((o45Cards.count / o45Cards.total) * 100)
+      : 0);
+  const countCards45 =
+    periodMetricsData?.over_4_5_cards_count ??
+    disc?.over_4_5_cards_count ??
+    (o45Cards?.count ?? 0);
+  const totalCards45 = o45Cards?.total ?? activeTeam.matches_played;
+
+  // 8. Base Starting XI (Sec 6)
   const xiPlayers = mostUsedXIData?.players || [];
   const transformedPlayers: MostUsedXIReportPlayer[] = xiPlayers.map((p) => {
     const slot = p.slot || '-';
     const isGK = slot === 'GK' || slot === 'G' || p.position_group === 'Goalkeeper';
-
-    let name = p.name || 'Desconocido';
-    if (isGK && p.saves && p.saves > 0) {
-      const p90Str = p.saves_p90 ? ` — ${p.saves_p90.toFixed(1)}/pj` : '';
-      name = `${name} (${p.saves} atajadas${p90Str})`;
-    }
+    const name = p.name || 'Desconocido';
 
     const mins = Math.round(p.minutes_share || p.minutes_pct || 0);
     const age = p.age ?? '-';
@@ -575,8 +688,23 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     const ga = isGK ? '—' : (p.g_plus_a ?? p.goals + p.assists);
     const xg = isGK ? '—' : (p.xg ?? 0).toFixed(2);
     const shotsP90 = isGK ? '—' : (p.shots_p90 ?? 0).toFixed(1);
+    const foulsP90 = isGK ? '—' : (p.fouls_p90 ?? 0).toFixed(1);
+
     const rawYc = p.yellow_cards ?? 0;
-    const yc = rawYc === 4 ? '4 (En Capilla)' : rawYc;
+    const rawRc = p.red_cards ?? 0;
+    const isEnCapilla = rawYc === 4 || (rawYc > 0 && rawYc % 5 === 4);
+
+    const discParts: string[] = [];
+    if (rawYc > 0) {
+      discParts.push(`${rawYc} 🟨${isEnCapilla ? ' (En Capilla)' : ''}`);
+    }
+    if (rawRc > 0) {
+      discParts.push(`${rawRc} 🟥`);
+    }
+    const disciplineStr = discParts.length > 0 ? discParts.join(' ') : '—';
+
+    const setPieceRoles = p.set_piece_roles || [];
+    const setPieceRolesStr = setPieceRoles.length > 0 ? setPieceRoles.join(', ') : '—';
 
     return {
       slot,
@@ -587,17 +715,22 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
       ga,
       xg,
       shotsP90,
-      yellowCards: yc,
+      foulsP90,
+      yellowCards: rawYc,
+      redCards: rawRc,
+      isEnCapilla,
+      disciplineStr,
+      setPieceRoles,
+      setPieceRolesStr,
       isGK,
       saves: p.saves,
       savesP90: p.saves_p90,
     };
   });
 
-  // 9 & 10. Flashscore Advanced Metrics
+  // 9. Flashscore Advanced Metrics (Sec 7)
   let flashscore: FlashscoreAdvancedReport | undefined;
   if (hasFsMatches && flashscoreSummary) {
-    const pAll = flashscoreSummary.periods?.ALL;
     const p1T = flashscoreSummary.periods?.['1T'];
     const p2T = flashscoreSummary.periods?.['2T'];
     const gk = flashscoreSummary.goalkeeper_efficiency;
@@ -613,16 +746,6 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
     const avgP3 = pAll?.avg_passes_final_third_completed ?? 0;
     const p3_1T = p1T?.avg_passes_final_third_completed ?? 0;
     const p3_2T = p2T?.avg_passes_final_third_completed ?? 0;
-
-    const bigScored = pAll?.total_big_chances_scored ?? 0;
-    const bigMissed = pAll?.total_big_chances_missed ?? 0;
-    const bigTotal = pAll?.total_big_chances ?? bigScored + bigMissed;
-    const bigConvPct =
-      pAll?.big_chances_conversion_pct != null
-        ? pAll.big_chances_conversion_pct
-        : bigTotal > 0
-        ? (bigScored * 100.0) / bigTotal
-        : 0;
 
     const goalsPrevented = gk?.goals_prevented ?? 0;
     const preventedPerMatch = gk?.prevented_per_match ?? 0;
@@ -711,11 +834,29 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
       inBoxCount,
       outBoxCount: total_shots - inBoxCount,
       topShooters,
+      postImpact,
+      bigChances,
     },
     setPieces: {
       cornersForAvg: cornerStats?.corners_for_avg ?? null,
       cornersAgainstAvg: cornerStats?.corners_against_avg ?? null,
       cornersTotalAvg: cornerStats?.corners_total_avg ?? null,
+      over45CornersForPct: o45ForPct,
+      over45CornersForCount:
+        periodMetricsData?.over_4_5_corners_for_count ??
+        cornerStats?.over_4_5_corners_for_count ??
+        cornerStats?.over_4_5_corners_for?.count ??
+        0,
+      over45CornersForTotal:
+        cornerStats?.over_4_5_corners_for?.total ?? activeTeam.matches_played,
+      over55CornersForPct: o55ForPct,
+      over55CornersForCount:
+        periodMetricsData?.over_5_5_corners_for_count ??
+        cornerStats?.over_5_5_corners_for_count ??
+        cornerStats?.over_5_5_corners_for?.count ??
+        0,
+      over55CornersForTotal:
+        cornerStats?.over_5_5_corners_for?.total ?? activeTeam.matches_played,
       over85CornersPct: pct85,
       over85CornersCount: o85?.count ?? 0,
       over85CornersTotal: o85?.total ?? 0,
@@ -747,6 +888,8 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
       pctGoals2T: splits?.pct_goals_2t ?? 0,
       xg1T,
       xg2T,
+      corners1T,
+      corners2T,
       peakScoringInterval: splits?.peak_scoring_interval || 'N/D',
       bttsPct: pctBtts,
       bttsCount: btts?.count ?? 0,
@@ -785,6 +928,9 @@ export function prepareClubReportData(params: PrepareClubReportParams): ClubRepo
       over35CardsPct: pctCards,
       over35CardsCount: o35Cards?.count ?? 0,
       over35CardsTotal: o35Cards?.total ?? 0,
+      over45CardsPct: pctCards45,
+      over45CardsCount: countCards45,
+      over45CardsTotal: totalCards45,
       foulsCommittedAvg: disc?.fouls_committed_avg ?? null,
       foulsDrawnAvg: disc?.fouls_drawn_avg ?? null,
       foulsNetStr,
@@ -817,7 +963,7 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     activeFilters.push(`Perspectiva: ${data.perspectiveLabel}`);
   }
 
-  // 1. Executive Header (Task 1)
+  // 1. Executive Header
   const headerLines = [
     `# REPORTE DE RENDIMIENTO TÁCTICO: ${teamNameUpper}`,
     `Competición: Liga 1 2026 (${data.tournamentLabel}) | Fecha: ${data.dateStr}`,
@@ -828,7 +974,7 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
       : []),
   ];
 
-  // Section 1: PERFIL DE ESTILO (PERCENTILES LIGA 1)
+  // Section 1: PERFIL DE ESTILO (PERCENTILES LIGA 1) - exactly 4 core dimensions
   const radarLines: string[] = [
     '### 1. PERFIL DE ESTILO (PERCENTILES LIGA 1)',
     '| Dimensión Táctica | Valor Equipo | Percentil Liga | Rango Liga |',
@@ -845,7 +991,7 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     radarLines.push('| Sin datos de radar para la cohorte activa | - | - | - |');
   }
 
-  // Section 2: REMATES & EFICIENCIA DE TIRO (xG)
+  // Section 2: REMATES & EFICIENCIA OFENSIVA (xG)
   const sm = data.shotMap;
   const deltaSign = sm.xgDelta >= 0 ? '+' : '';
   const topShooterLines =
@@ -856,15 +1002,25 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
         )
       : ['  - Sin rematadores registrados en la muestra activa.'];
 
+  const postImpactLine = sm.postImpact
+    ? `- **Calidad Post-Impacto:** ${sm.postImpact.avgXgot.toFixed(2)} xGOT vs ${sm.postImpact.avgXg.toFixed(2)} xG (${sm.postImpact.deltaXgotXg >= 0 ? '+' : ''}${sm.postImpact.deltaXgotXg.toFixed(2)} delta)`
+    : null;
+
+  const bigChancesLine = sm.bigChances
+    ? `- **Grandes Ocasiones:** ${sm.bigChances.scored} convertidas / ${sm.bigChances.missed} falladas (${sm.bigChances.convPct.toFixed(1)}% efectividad)`
+    : null;
+
   const shotLines = [
-    '### 2. REMATES & EFICIENCIA DE TIRO (xG)',
+    '### 2. REMATES & EFICIENCIA OFENSIVA (xG)',
     `- **Volumen Total:** ${sm.totalShots} remates analizados (${sm.shotsPerMatch.toFixed(1)} / pj)`,
     `- **Goles / Conversión:** ${sm.goals} goles anotados (${deltaSign}${sm.xgDelta.toFixed(2)} vs xG)`,
     `- **Peligro Esperado (xG):** ${sm.totalXg.toFixed(2)} xG acumulados`,
     `- **Calidad Media por Disparo:** ${sm.xgPerShot.toFixed(2)} xG / tiro`,
+    ...(postImpactLine ? [postImpactLine] : []),
+    ...(bigChancesLine ? [bigChancesLine] : []),
     `- **Efectividad a Puerta:** ${sm.onTargetPct.toFixed(1)}% (${sm.shotsOnTarget} disparos entre los tres palos)`,
     `- **Distribución Espacial:** ${sm.pctInBox}% dentro del área (${sm.inBoxCount}) | ${100 - sm.pctInBox}% fuera del área (${sm.outBoxCount})`,
-    `- **Top Rematadores:**`,
+    `- **Top Finalizadores:**`,
     ...topShooterLines,
   ];
 
@@ -874,9 +1030,15 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
   const cornersAgStr = sp.cornersAgainstAvg != null ? sp.cornersAgainstAvg.toFixed(1) : 'N/D';
   const cornersTotStr = sp.cornersTotalAvg != null ? sp.cornersTotalAvg.toFixed(1) : 'N/D';
 
+  const ownCornerLinesStr =
+    sp.over45CornersForPct != null && sp.over55CornersForPct != null
+      ? `- **Líneas Propias:** +4.5 Córners a Favor (${sp.over45CornersForPct}%) | +5.5 Córners a Favor (${sp.over55CornersForPct}%)`
+      : null;
+
   const setPieceLines = [
     '### 3. BALÓN PARADO & CÓRNERS',
     `- **Córners / PJ:** ${cornersForStr} a favor | ${cornersAgStr} en contra | ${cornersTotStr} total partido`,
+    ...(ownCornerLinesStr ? [ownCornerLinesStr] : []),
     `- **Cumplimiento Línea +8.5 Córners:** ${sp.over85CornersPct}% (${sp.over85CornersCount} de ${sp.over85CornersTotal} PJ)`,
     `- **Cumplimiento Línea +9.5 Córners:** ${sp.over95CornersPct}% (${sp.over95CornersCount} de ${sp.over95CornersTotal} PJ)`,
     `- **Concesión +4.5 Córners Rivales:** ${sp.concededOver45Pct}% (${sp.concededOver45Count} de ${sp.concededOver45Total} PJ)`,
@@ -895,6 +1057,7 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     '### 4. DINÁMICA DE PARTIDO & ESTADOS DE JUEGO (1T vs 2T)',
     `- **Distribución Temporal:** ${pd.goals1T} goles en 1T vs ${pd.goals2T} goles en 2T (${pd.pctGoals2T}% en el complemento)`,
     `- **xG Medio por Período:** ${pd.xg1T} xG en 1T vs ${pd.xg2T} xG en 2T`,
+    `- **Córners por Mitad:** 1T: ${pd.corners1T ?? 'N/D'} vs 2T: ${pd.corners2T ?? 'N/D'}`,
     `- **Intervalo Pico de Gol:** ${pd.peakScoringInterval}`,
     `- **Ambos Anotan (BTTS):** ${pd.bttsPct}% (${pd.bttsCount} de ${pd.bttsTotal} PJ)`,
     `- **Valla Invicta:** ${pd.cleanSheetsCount} de ${pd.cleanSheetsTotal} PJ (${pd.cleanSheetsPct}%)`,
@@ -922,50 +1085,53 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     `- **Tarjetas Provocadas:** ${cardsForcedStr} / pj | Total partido: ${cardsMatchTotStr} / pj`,
     `- **Tarjetas Rojas:** ${disc.redCardsTotal} totales (${disc.redCardsAvg.toFixed(2)} / pj)`,
     `- **Concentración 2T:** ${disc.cards2hPct}% de las tarjetas recibidas en el segundo tiempo`,
-    `- **Cumplimiento Línea +3.5 Tarjetas:** ${disc.over35CardsPct}% (${disc.over35CardsCount} de ${disc.over35CardsTotal} PJ)`,
+    `- **Líneas de Tarjetas:** Línea +3.5 (${disc.over35CardsPct}%) | Línea +4.5 (${disc.over45CardsPct}%)`,
     `- **Faltas / PJ:** ${foulsCommittedStr} cometidas vs ${foulsDrawnStr} recibidas (${disc.foulsNetStr})`,
   ];
 
   // Section 6: ONCE BASE MÁS UTILIZADO ({formation})
-  const passVolumeInfo =
-    data.passNetwork.passVolume && data.passNetwork.passVolume > 0
-      ? ` | **Frecuencia de Red:** ${data.passNetwork.passVolume} pases combinados en XI titular`
-      : '';
-
   const xiLines: string[] = [
     `### 6. ONCE BASE MÁS UTILIZADO (${data.mostUsedXI.formation})`,
-    `- **Esquema Base:** ${data.mostUsedXI.formation}${passVolumeInfo}`,
-    '| Pos | Jugador | % Minutos | Edad | Titular | G+A | xG | Tiros/90 | Amarillas |',
-    '| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |',
+    `- **Esquema Base:** ${data.mostUsedXI.formation}`,
+    '| Pos | Jugador | % Min | Tit | G+A | xG | Tiros/90 | Faltas/90 | Disciplina | Rol BP |',
+    '| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |',
   ];
 
   if (data.mostUsedXI.players.length > 0) {
     data.mostUsedXI.players.forEach((p) => {
       xiLines.push(
-        `| ${p.slot} | ${p.name} | ${p.minutesSharePct}% | ${p.age} | ${p.starts} | ${p.ga} | ${p.xg} | ${p.shotsP90} | ${p.yellowCards} |`
+        `| ${p.slot} | ${p.name} | ${p.minutesSharePct}% | ${p.starts} | ${p.ga} | ${p.xg} | ${p.shotsP90} | ${p.foulsP90} | ${p.disciplineStr} | ${p.setPieceRolesStr} |`
       );
     });
   } else {
     xiLines.push(
-      '| - | Sin datos de alineación base disponibles | - | - | - | - | - | - | - |'
+      '| - | Sin datos de alineación base disponibles | - | - | - | - | - | - | - | - |'
     );
   }
 
-  // Section 7: CONTROL DE ÁREA & EFICIENCIA POST-IMPACTO (xGOT)
+  // Section 7: SOLIDEZ DEFENSIVA & ARQUERO (xGOT)
   const fsLines: string[] = [
-    '### 7. CONTROL DE ÁREA & EFICIENCIA POST-IMPACTO (xGOT)',
+    '### 7. SOLIDEZ DEFENSIVA & ARQUERO (xGOT)',
   ];
+
+  const gk = data.mostUsedXI.players.find((p) => p.isGK);
+  let gkInfoStr = 'Sin guardameta titular asignado';
+  if (gk) {
+    if (gk.saves != null && gk.saves > 0) {
+      const p90Str = gk.savesP90 != null ? ` — ${gk.savesP90.toFixed(1)}/pj` : '';
+      gkInfoStr = `${gk.name} (${gk.saves} atajadas${p90Str})`;
+    } else {
+      gkInfoStr = gk.name;
+    }
+  }
+
+  fsLines.push(`- **Portero Titular:** ${gkInfoStr}`);
 
   if (data.flashscore && data.flashscore.available) {
     const fs = data.flashscore;
     const avgTouchesBox = fs.avgTouchesBox.toFixed(1);
     const touches1T = fs.touches1T.toFixed(1);
     const touches2T = fs.touches2T.toFixed(1);
-
-    const avgXgot = fs.avgXgot.toFixed(2);
-    const avgXgVal = fs.avgXg.toFixed(2);
-    const deltaSignStr = fs.deltaXgotXg >= 0 ? '+' : '';
-    const deltaStr = fs.deltaXgotXg.toFixed(2);
 
     const avgP3 = fs.avgP3.toFixed(1);
     const p3_1T = fs.p3_1T.toFixed(1);
@@ -976,26 +1142,10 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     const xgotFacedStr = fs.xgotFaced.toFixed(2);
     const gcStr = `${fs.goalsConceded}`;
 
-    const net1TStr = `${fs.netXg1T >= 0 ? '+' : ''}${fs.netXg1T.toFixed(2)}`;
-    const xgFav1T = fs.xgFav1T.toFixed(2);
-    const xgCon1T = fs.xgCon1T.toFixed(2);
-
-    const net2TStr = `${fs.netXg2T >= 0 ? '+' : ''}${fs.netXg2T.toFixed(2)}`;
-    const xgFav2T = fs.xgFav2T.toFixed(2);
-    const xgCon2T = fs.xgCon2T.toFixed(2);
-
-    const poss1T = fs.possession1T.toFixed(1);
-    const poss2T = fs.possession2T.toFixed(1);
-    const convPct = fs.bigConvPct.toFixed(1);
-
     fsLines.push(
-      `- **Toques en Área Rival:** ${avgTouchesBox} / pj (1T: ${touches1T} | 2T: ${touches2T})`,
-      `- **Calidad de Definición Post-Impacto:** ${avgXgot} xGOT vs ${avgXgVal} xG (${deltaSignStr}${deltaStr} delta)`,
-      `- **Pases al Último Tercio:** ${avgP3} / pj (1T: ${p3_1T} | 2T: ${p3_2T})`,
-      `- **Definición en Grandes Ocasiones:** ${fs.bigScored} convertidas / ${fs.bigMissed} falladas (${convPct}% efectividad)`,
-      `- **Goles Salvados por Portería:** ${gpStr} totales (${gpmStr} / pj) | xGOT recibido: ${xgotFacedStr} vs ${gcStr} GC`,
-      `- **Diferencial xG Neto:** 1T: ${net1TStr} (${xgFav1T} fav - ${xgCon1T} con) | 2T: ${net2TStr} (${xgFav2T} fav - ${xgCon2T} con)`,
-      `- **Dominio de Posesión:** ${poss1T}% (1T) vs ${poss2T}% (2T)`
+      `- **Rendimiento Bajo Palos:** ${gpStr} goles prevenidos (${gpmStr} / pj) | xGOT recibido: ${xgotFacedStr} vs ${gcStr} GC`,
+      `- **Toques en Área Rival:** ${avgTouchesBox} / pj (1T: ${touches1T} vs 2T: ${touches2T})`,
+      `- **Pases al Último Tercio:** ${avgP3} / pj (1T: ${p3_1T} vs 2T: ${p3_2T})`
     );
   } else {
     fsLines.push(

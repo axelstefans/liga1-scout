@@ -3237,13 +3237,123 @@ def get_team_most_used_xi(
     overall_rows = db.execute(overall_stats_query, overall_params).fetchall()
     overall_map = {r["player_id"]: dict(r) for r in overall_rows}
 
-    # Query season yellow cards, saves, and season minutes for cohort scaling
+    # Query season cards, fouls, saves, and season minutes for cohort scaling
     cards_rows = db.execute(
-        "SELECT player_id, COALESCE(yellow_cards, 0) as yellow_cards, COALESCE(saves, 0) as saves FROM player_season_stats WHERE team_id = ?",
+        """
+        SELECT 
+            player_id, 
+            COALESCE(yellow_cards, 0) as yellow_cards, 
+            COALESCE(red_cards, 0) as red_cards, 
+            COALESCE(fouls, 0) as fouls, 
+            COALESCE(saves, 0) as saves 
+        FROM player_season_stats 
+        WHERE team_id = ?
+        """,
         (team_id,)
     ).fetchall()
     cards_map = {r["player_id"]: int(r["yellow_cards"] or 0) for r in cards_rows}
+    red_cards_map = {r["player_id"]: int(r["red_cards"] or 0) for r in cards_rows}
+    fouls_map = {r["player_id"]: int(r["fouls"] or 0) for r in cards_rows}
     saves_map = {r["player_id"]: int(r["saves"] or 0) for r in cards_rows}
+
+    # Query set-piece specialists (PEN, FK, COR) for the team in the selected cohort
+    pen_query = f"""
+        SELECT ps.player_id, COUNT(*) as cnt
+        FROM player_shots ps
+        JOIN matches m ON ps.match_id = m.match_id
+        WHERE (CASE WHEN ps.is_home = 1 THEN m.home_team_id ELSE m.away_team_id END) = ?
+          AND ps.situation = 'penalty'
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
+          {venue_clause}
+          {ctx_clause}
+        GROUP BY ps.player_id
+        ORDER BY cnt DESC
+    """
+    pen_params = [team_id] + tourn_param + venue_param + ctx_params
+    pen_rows = db.execute(pen_query, pen_params).fetchall()
+    if not pen_rows and (tourn_param or venue_param or ctx_params):
+        pen_rows = db.execute("""
+            SELECT ps.player_id, COUNT(*) as cnt
+            FROM player_shots ps
+            JOIN matches m ON ps.match_id = m.match_id
+            WHERE (CASE WHEN ps.is_home = 1 THEN m.home_team_id ELSE m.away_team_id END) = ?
+              AND ps.situation = 'penalty'
+              AND m.status = 'played'
+              AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+            GROUP BY ps.player_id
+            ORDER BY cnt DESC
+        """, (team_id,)).fetchall()
+    pen_takers = {r["player_id"] for r in pen_rows if r["cnt"] >= 1}
+
+    fk_query = f"""
+        SELECT ps.player_id, COUNT(*) as cnt
+        FROM player_shots ps
+        JOIN matches m ON ps.match_id = m.match_id
+        WHERE (CASE WHEN ps.is_home = 1 THEN m.home_team_id ELSE m.away_team_id END) = ?
+          AND ps.situation = 'free-kick'
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
+          {venue_clause}
+          {ctx_clause}
+        GROUP BY ps.player_id
+        ORDER BY cnt DESC
+    """
+    fk_params = [team_id] + tourn_param + venue_param + ctx_params
+    fk_rows = db.execute(fk_query, fk_params).fetchall()
+    if not fk_rows and (tourn_param or venue_param or ctx_params):
+        fk_rows = db.execute("""
+            SELECT ps.player_id, COUNT(*) as cnt
+            FROM player_shots ps
+            JOIN matches m ON ps.match_id = m.match_id
+            WHERE (CASE WHEN ps.is_home = 1 THEN m.home_team_id ELSE m.away_team_id END) = ?
+              AND ps.situation = 'free-kick'
+              AND m.status = 'played'
+              AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+            GROUP BY ps.player_id
+            ORDER BY cnt DESC
+        """, (team_id,)).fetchall()
+    fk_top = [r for r in fk_rows if r["cnt"] >= 2][:2]
+    if not fk_top and fk_rows:
+        fk_top = fk_rows[:1]
+    fk_takers = {r["player_id"] for r in fk_top}
+
+    cor_query = f"""
+        SELECT pp.player_id, COUNT(*) as cnt
+        FROM player_passes pp
+        JOIN matches m ON pp.match_id = m.match_id
+        JOIN player_match_stats pms ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
+        WHERE pms.team_id = ?
+          AND pp.x_start >= 95.0 AND (pp.y_start <= 5.0 OR pp.y_start >= 95.0)
+          AND m.status = 'played'
+          AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+          {tourn_clause}
+          {venue_clause}
+          {ctx_clause}
+        GROUP BY pp.player_id
+        ORDER BY cnt DESC
+    """
+    cor_params = [team_id] + tourn_param + venue_param + ctx_params
+    cor_rows = db.execute(cor_query, cor_params).fetchall()
+    if not cor_rows and (tourn_param or venue_param or ctx_params):
+        cor_rows = db.execute("""
+            SELECT pp.player_id, COUNT(*) as cnt
+            FROM player_passes pp
+            JOIN matches m ON pp.match_id = m.match_id
+            JOIN player_match_stats pms ON pp.match_id = pms.match_id AND pp.player_id = pms.player_id
+            WHERE pms.team_id = ?
+              AND pp.x_start >= 95.0 AND (pp.y_start <= 5.0 OR pp.y_start >= 95.0)
+              AND m.status = 'played'
+              AND (m.season_id = 88529 OR strftime('%Y', m.match_date) = '2026')
+            GROUP BY pp.player_id
+            ORDER BY cnt DESC
+        """, (team_id,)).fetchall()
+    cor_top = [r for r in cor_rows if r["cnt"] >= 3][:2]
+    if not cor_top and cor_rows:
+        cor_top = cor_rows[:1]
+    cor_takers = {r["player_id"] for r in cor_top}
 
     season_mins_rows = db.execute(
         "SELECT player_id, SUM(minutes_played) as season_minutes FROM player_match_stats WHERE team_id = ? AND minutes_played > 0 GROUP BY player_id",
@@ -3408,12 +3518,25 @@ def get_team_most_used_xi(
             cohort_mins = mins
             s_mins = max(season_mins_map.get(pid, 0), cohort_mins, 1)
             player_yellows = round(cards_map.get(pid, 0) * (cohort_mins / s_mins))
+            player_reds = round(red_cards_map.get(pid, 0) * (cohort_mins / s_mins))
+            player_fouls = round(fouls_map.get(pid, 0) * (cohort_mins / s_mins))
             player_saves = round(saves_map.get(pid, 0) * (cohort_mins / s_mins))
         else:
             player_yellows = cards_map.get(pid, 0)
+            player_reds = red_cards_map.get(pid, 0)
+            player_fouls = fouls_map.get(pid, 0)
             player_saves = saves_map.get(pid, 0)
 
         saves_p90 = round((player_saves * 90.0) / max(mins, 1), 2) if (is_gk and mins > 0) else None
+        fouls_p90 = round((player_fouls * 90.0) / max(mins, 1), 2) if (mins > 0 and not is_gk) else 0.0
+
+        roles = []
+        if pid in pen_takers:
+            roles.append("PEN")
+        if pid in fk_takers:
+            roles.append("FK")
+        if pid in cor_takers:
+            roles.append("COR")
 
         players_list.append({
             "slot": s,
@@ -3436,6 +3559,10 @@ def get_team_most_used_xi(
             "shots_p90": shots_p90,
             "total_shots": total_shots,
             "yellow_cards": player_yellows,
+            "red_cards": player_reds,
+            "fouls": player_fouls,
+            "fouls_p90": fouls_p90,
+            "set_piece_roles": roles,
             "saves": player_saves if is_gk else None,
             "saves_p90": saves_p90 if is_gk else None,
             "pitch_x": pitch_coords[0],

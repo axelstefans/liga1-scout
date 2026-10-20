@@ -347,23 +347,25 @@ export const TeamMostUsedXICard: React.FC<TeamMostUsedXICardProps> = ({
 
           {/* Right Column: Tabular Breakdown matching Opta exact columns (~55%) */}
           <div className="w-full lg:w-[55%] overflow-x-auto min-w-0">
-            <table className="w-full text-left border-collapse min-w-[620px]">
+            <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   <th className="py-2.5 px-1.5 text-center w-11">POS</th>
                   <th className="py-2.5 px-2 text-left">JUGADOR</th>
-                  <th className="py-2.5 px-2 text-left w-32">CUOTA MINUTOS</th>
-                  <th className="py-2.5 px-1.5 text-center w-10">EDAD</th>
+                  <th className="py-2.5 px-2 text-left w-28 sm:w-32">CUOTA MINUTOS</th>
+                  <th className="py-2.5 px-1.5 text-center w-24">ROL BP</th>
                   <th className="py-2.5 px-1.5 text-center w-14">TIT/PJ</th>
                   <th className="py-2.5 px-1.5 text-center w-12">G+A</th>
                   <th className="py-2.5 px-1.5 text-center w-12">xG</th>
                   <th className="py-2.5 px-1.5 text-center w-16">TIROS/90</th>
-                  <th className="py-2.5 px-1.5 text-center w-14">AMARILLAS</th>
+                  <th className="py-2.5 px-1.5 text-center w-16">FALTAS/90</th>
+                  <th className="py-2.5 px-1.5 text-center w-24">DISCIPLINA</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {players.map((p) => {
                   const isGK = p.slot === 'GK' || p.slot === 'G' || p.position_group === 'Goalkeeper';
+                  const isEnCapilla = p.yellow_cards === 4 || ((p.yellow_cards ?? 0) > 0 && (p.yellow_cards ?? 0) % 5 === 4);
                   return (
                     <tr
                       key={p.slot}
@@ -391,7 +393,7 @@ export const TeamMostUsedXICard: React.FC<TeamMostUsedXICardProps> = ({
                       {/* 3. Horizontal Progress Bar + Percentage */}
                       <td className="py-2 px-2">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-[75px] sm:w-[85px] h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60 shrink-0">
+                          <div className="w-[70px] sm:w-[80px] h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60 shrink-0">
                             <div
                               className="h-full rounded-full bg-blue-600 transition-all duration-500"
                               style={{ width: `${Math.min(100, p.minutes_share)}%` }}
@@ -403,9 +405,57 @@ export const TeamMostUsedXICard: React.FC<TeamMostUsedXICardProps> = ({
                         </div>
                       </td>
 
-                      {/* 4. Age */}
-                      <td className="py-2 px-1.5 text-center font-medium text-slate-600">
-                        {p.age ?? '—'}
+                      {/* 4. ROL BP (Balón Parado) */}
+                      <td className="py-2 px-1.5 text-center">
+                        {p.set_piece_roles && p.set_piece_roles.length > 0 ? (
+                          <div className="flex items-center justify-center gap-1 flex-wrap">
+                            {p.set_piece_roles.map((role) => {
+                              if (role === 'PEN') {
+                                return (
+                                  <span
+                                    key={role}
+                                    className="inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/15 text-amber-700 border border-amber-300 shadow-2xs tracking-tight"
+                                    title="Ejecutor de Penales (PEN)"
+                                  >
+                                    PEN
+                                  </span>
+                                );
+                              }
+                              if (role === 'FK') {
+                                return (
+                                  <span
+                                    key={role}
+                                    className="inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-sky-500/15 text-sky-700 border border-sky-300 shadow-2xs tracking-tight"
+                                    title="Tiros Libres Directos (FK)"
+                                  >
+                                    FK
+                                  </span>
+                                );
+                              }
+                              if (role === 'COR') {
+                                return (
+                                  <span
+                                    key={role}
+                                    className="inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-indigo-500/15 text-indigo-700 border border-indigo-300 shadow-2xs tracking-tight"
+                                    title="Lanzador de Córners (COR)"
+                                  >
+                                    COR
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span
+                                  key={role}
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200"
+                                >
+                                  {role}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 font-mono text-[11px]">—</span>
+                        )}
                       </td>
 
                       {/* 5. TIT / PJ */}
@@ -466,27 +516,61 @@ export const TeamMostUsedXICard: React.FC<TeamMostUsedXICardProps> = ({
                         )}
                       </td>
 
-                      {/* 9. Amarillas con alerta "En Capilla" */}
-                      <td className="py-2 px-1.5 text-center">
-                        {p.yellow_cards === 4 ? (
-                          <span
-                            className="inline-flex items-center gap-1 font-mono font-extrabold text-amber-950 text-[11px] bg-amber-500/20 border-2 border-amber-500 px-1.5 py-0.5 rounded shadow-xs animate-pulse cursor-help"
-                            title="En Capilla: 4 amonestaciones acumuladas (a 1 de suspensión)"
-                          >
-                            <span className="w-2 h-2.5 bg-amber-500 border border-amber-600 rounded-[1px] inline-block shadow-2xs shrink-0" />
-                            <span>4</span>
-                            <span className="text-[9px] font-sans font-black text-amber-900 tracking-tighter">
-                              ⚠️
-                            </span>
-                          </span>
-                        ) : (p.yellow_cards ?? 0) > 0 ? (
-                          <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-800 text-[11px] bg-amber-50 border border-amber-200/90 px-1.5 py-0.5 rounded shadow-2xs">
-                            <span className="w-2 h-2.5 bg-amber-400 border border-amber-500/80 rounded-[1px] inline-block shadow-2xs shrink-0" />
-                            {p.yellow_cards}
-                          </span>
-                        ) : (
+                      {/* 9. Faltas/90 */}
+                      <td className="py-2 px-1.5 text-center font-mono text-xs text-slate-700 whitespace-nowrap">
+                        {isGK ? (
                           <span className="text-slate-300 font-mono text-[11px]">—</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-slate-900">
+                              {(p.fouls_p90 ?? 0).toFixed(1)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-sans ml-0.5">/90m</span>
+                          </>
                         )}
+                      </td>
+
+                      {/* 10. Disciplina: Amarillas con alerta "En Capilla" y Rojas */}
+                      <td className="py-2 px-1.5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Yellow Cards / En Capilla */}
+                          {isEnCapilla ? (
+                            <span
+                              className="inline-flex items-center gap-1 font-mono font-extrabold text-amber-950 text-[11px] bg-amber-500/20 border-2 border-amber-500 px-1.5 py-0.5 rounded shadow-xs animate-pulse cursor-help"
+                              title={`En Capilla: ${p.yellow_cards} amonestaciones acumuladas (a 1 de suspensión)`}
+                            >
+                              <span className="w-2 h-2.5 bg-amber-500 border border-amber-600 rounded-[1px] inline-block shadow-2xs shrink-0" />
+                              <span>{p.yellow_cards}</span>
+                              <span className="text-[9px] font-sans font-black text-amber-900 tracking-tighter">
+                                ⚠️
+                              </span>
+                            </span>
+                          ) : (p.yellow_cards ?? 0) > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 font-mono font-bold text-amber-800 text-[11px] bg-amber-50 border border-amber-200/90 px-1.5 py-0.5 rounded shadow-2xs"
+                              title={`${p.yellow_cards} tarjetas amarillas`}
+                            >
+                              <span className="w-2 h-2.5 bg-amber-400 border border-amber-500/80 rounded-[1px] inline-block shadow-2xs shrink-0" />
+                              {p.yellow_cards}
+                            </span>
+                          ) : null}
+
+                          {/* Red Cards */}
+                          {(p.red_cards ?? 0) > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 font-mono font-bold text-rose-800 text-[11px] bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded shadow-2xs"
+                              title={`${p.red_cards} tarjeta${(p.red_cards ?? 0) > 1 ? 's' : ''} roja${(p.red_cards ?? 0) > 1 ? 's' : ''}`}
+                            >
+                              <span className="w-2 h-2.5 bg-rose-600 border border-rose-700 rounded-[1px] inline-block shadow-2xs shrink-0" />
+                              {p.red_cards}
+                            </span>
+                          )}
+
+                          {/* If neither yellow nor red */}
+                          {(p.yellow_cards ?? 0) === 0 && (p.red_cards ?? 0) === 0 && (
+                            <span className="text-slate-300 font-mono text-[11px]">—</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
