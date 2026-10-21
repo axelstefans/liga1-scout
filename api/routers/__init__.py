@@ -1,3 +1,3 @@
-from . import players, teams, rankings, matches
+from . import players, teams, rankings, matches, referees
 
-__all__ = ["players", "teams", "rankings", "matches"]
+__all__ = ["players", "teams", "rankings", "matches", "referees"]

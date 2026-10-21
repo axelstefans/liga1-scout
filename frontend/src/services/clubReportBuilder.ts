@@ -1109,9 +1109,9 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     );
   }
 
-  // Section 7: SOLIDEZ DEFENSIVA & ARQUERO (xGOT)
+  // Section 7: ARQUERO (xGOT) & CONTROL TERRITORIAL
   const fsLines: string[] = [
-    '### 7. SOLIDEZ DEFENSIVA & ARQUERO (xGOT)',
+    '### 7. ARQUERO (xGOT) & CONTROL TERRITORIAL',
   ];
 
   const gk = data.mostUsedXI.players.find((p) => p.isGK);
@@ -1142,8 +1142,12 @@ export function buildClubMarkdownReport(data: ClubReportData): string {
     const xgotFacedStr = fs.xgotFaced.toFixed(2);
     const gcStr = `${fs.goalsConceded}`;
 
+    const net1TStr = `${fs.netXg1T >= 0 ? '+' : ''}${fs.netXg1T.toFixed(2)}`;
+    const net2TStr = `${fs.netXg2T >= 0 ? '+' : ''}${fs.netXg2T.toFixed(2)}`;
+
     fsLines.push(
       `- **Rendimiento Bajo Palos:** ${gpStr} goles prevenidos (${gpmStr} / pj) | xGOT recibido: ${xgotFacedStr} vs ${gcStr} GC`,
+      `- **Diferencial xG Neto:** 1T: ${net1TStr} vs 2T: ${net2TStr}`,
       `- **Toques en Área Rival:** ${avgTouchesBox} / pj (1T: ${touches1T} vs 2T: ${touches2T})`,
       `- **Pases al Último Tercio:** ${avgP3} / pj (1T: ${p3_1T} vs 2T: ${p3_2T})`
     );
