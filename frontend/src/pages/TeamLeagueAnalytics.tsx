@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Loader2, AlertCircle, RefreshCw, ArrowLeftRight,
-  Square, LayoutGrid, Compass, BarChart3, Target,
+  Square, LayoutGrid, Compass, BarChart3, Target, ShieldAlert,
   ArrowDownWideNarrow, ArrowUpNarrowWide
 } from 'lucide-react';
 import { useTeamMetrics } from '../hooks/useTeam';
 import TeamScatterPlot from '../components/TeamScatterPlot';
 import TeamBarRanking from '../components/analytics/TeamBarRanking';
 import TeamShotZones, { ShotPerspective, ShotDisplayMode } from '../components/analytics/TeamShotZones';
+import RefereeMonitor from '../components/referees/RefereeMonitor';
 import { 
   Team34MetricKey, 
   METRIC_CATALOG, 
@@ -18,7 +19,7 @@ import { getTeamTricode } from '../utils/teams';
 
 type TournamentFilter = 'all' | 'Apertura' | 'Clausura';
 type ViewMode = 'single' | 'multi';
-type ActiveChart = 'scatter' | 'bar_ranking' | 'shot_zones';
+type ActiveChart = 'scatter' | 'bar_ranking' | 'shot_zones' | 'referees';
 type ReferenceLineMode = 'median' | 'mean';
 type SortOrder = 'desc' | 'asc';
 
@@ -200,13 +201,26 @@ export const TeamLeagueAnalytics: React.FC = () => {
               <Target className="w-3.5 h-3.5" />
               <span>3. Zonas de Remate (5×6)</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveChart('referees')}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                activeChart === 'referees'
+                  ? 'bg-navy text-white border-navy shadow-xs'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>4. Monitor Arbitral</span>
+            </button>
           </div>
         )}
 
         {/* =================================================================== */}
         {/* 3. DYNAMIC CONTROL BAR BASED ON ACTIVE CHART (Single View Only)     */}
         {/* =================================================================== */}
-        {viewMode === 'single' && (
+        {viewMode === 'single' && activeChart !== 'referees' && (
           <div className="bg-white border border-slate-200/80 rounded-xl px-4 py-3 shadow-xs space-y-2.5">
             {/* Case A: SCATTER PLOT CONTROLS */}
             {activeChart === 'scatter' && (
@@ -630,6 +644,11 @@ export const TeamLeagueAnalytics: React.FC = () => {
                   onDisplayModeChange={setShotDisplayMode}
                 />
               )}
+
+              {/* Option 4: Monitor Arbitral */}
+              {activeChart === 'referees' && (
+                <RefereeMonitor tournament={tournament} />
+              )}
             </>
           ) : (
             /* Multi View Mode: Renders Scatter Plot, Bar Ranking, and Shot Zones */
@@ -675,6 +694,15 @@ export const TeamLeagueAnalytics: React.FC = () => {
                 displayMode={shotDisplayMode}
                 onDisplayModeChange={setShotDisplayMode}
               />
+
+              {/* Monitor Arbitral in Multi View */}
+              <div className="pt-4 border-t border-slate-200">
+                <div className="mb-3 flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-navy" />
+                  <h3 className="text-sm font-bold text-slate-800">4. Monitor Arbitral de la Liga 1</h3>
+                </div>
+                <RefereeMonitor tournament={tournament} />
+              </div>
             </div>
           )}
         </>
