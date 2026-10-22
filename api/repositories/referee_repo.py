@@ -10,7 +10,8 @@ def get_referees_summary(
 ) -> List[RefereeSummary]:
     """
     Aggregates cards, fouls, and penalties for each referee across played/finished matches.
-    Computes cards_avg, penalties_avg, fouls_avg, over_4_5_cards_pct, and home_cards_pct.
+    Computes cards_avg, cards_1t_avg, cards_2t_avg, over_1_5_cards_1t_pct,
+    over_4_5_cards_pct, penalties_avg, fouls_avg, and home_cards_pct.
     """
     # 1. Build filter conditions
     conditions = ["m.referee_id IS NOT NULL", "m.status IN ('played', 'finished', 'FT')"]
@@ -28,7 +29,7 @@ def get_referees_summary(
 
     where_clause = " AND ".join(conditions)
 
-    # We extract metrics per match first to calculate over_4_5_cards accurately
+    # We extract metrics per match first to calculate over_4_5_cards and over_1_5_cards_1t accurately
     query = f"""
     WITH filtered_matches AS (
         SELECT DISTINCT
@@ -45,13 +46,17 @@ def get_referees_summary(
             fm.match_id,
             fm.referee_id,
             fm.home_team_id,
-            COALESCE(SUM(mps.yellow_cards), 0) AS match_yellows,
-            COALESCE(SUM(mps.red_cards), 0) AS match_reds,
-            COALESCE(SUM(mps.fouls), 0) AS match_fouls,
-            COALESCE(SUM(CASE WHEN mps.team_id = fm.home_team_id THEN (mps.yellow_cards + mps.red_cards) ELSE 0 END), 0) AS home_cards,
-            COALESCE(SUM(mps.yellow_cards + mps.red_cards), 0) AS total_cards
+            COALESCE(SUM(mps_all.yellow_cards), 0) AS match_yellows,
+            COALESCE(SUM(mps_all.red_cards), 0) AS match_reds,
+            COALESCE(SUM(mps_all.fouls), 0) AS match_fouls,
+            COALESCE(SUM(CASE WHEN mps_all.team_id = fm.home_team_id THEN (mps_all.yellow_cards + mps_all.red_cards) ELSE 0 END), 0) AS home_cards,
+            COALESCE(SUM(mps_all.yellow_cards + mps_all.red_cards), 0) AS total_cards,
+            COALESCE(SUM(mps_1t.yellow_cards + mps_1t.red_cards), 0) AS total_cards_1t,
+            COALESCE(SUM(mps_2t.yellow_cards + mps_2t.red_cards), 0) AS total_cards_2t
         FROM filtered_matches fm
-        LEFT JOIN match_period_stats mps ON fm.match_id = mps.match_id AND mps.period = 'ALL'
+        LEFT JOIN match_period_stats mps_all ON fm.match_id = mps_all.match_id AND mps_all.period = 'ALL'
+        LEFT JOIN match_period_stats mps_1t ON fm.match_id = mps_1t.match_id AND mps_1t.period = '1ST' AND mps_1t.team_id = mps_all.team_id
+        LEFT JOIN match_period_stats mps_2t ON fm.match_id = mps_2t.match_id AND mps_2t.period = '2ND' AND mps_2t.team_id = mps_all.team_id
         GROUP BY fm.match_id, fm.referee_id, fm.home_team_id
     ),
     match_penalties AS (
@@ -71,9 +76,12 @@ def get_referees_summary(
         COALESCE(SUM(md.match_yellows), 0) AS yellow_cards_total,
         COALESCE(SUM(md.match_reds), 0) AS red_cards_total,
         COALESCE(SUM(md.total_cards), 0) AS total_cards_sum,
+        COALESCE(SUM(md.total_cards_1t), 0) AS total_cards_1t_sum,
+        COALESCE(SUM(md.total_cards_2t), 0) AS total_cards_2t_sum,
         COALESCE(SUM(mp.match_pens), 0) AS penalties_total,
         COALESCE(SUM(md.match_fouls), 0) AS fouls_total,
         COALESCE(SUM(CASE WHEN md.total_cards > 4.5 THEN 1 ELSE 0 END), 0) AS over_4_5_count,
+        COALESCE(SUM(CASE WHEN md.total_cards_1t > 1.5 THEN 1 ELSE 0 END), 0) AS over_1_5_1t_count,
         COALESCE(SUM(md.home_cards), 0) AS home_cards_sum
     FROM referees r
     JOIN match_discipline md ON r.referee_id = md.referee_id
@@ -91,14 +99,19 @@ def get_referees_summary(
         (
             ref_id, name, slug, country,
             m_count, y_total, r_total, total_cards,
-            pens_total, fouls_total, over_4_5_count, home_cards_sum
+            cards_1t_sum, cards_2t_sum,
+            pens_total, fouls_total,
+            over_4_5_count, over_1_5_1t_count, home_cards_sum
         ) = row
 
         y_avg = round(y_total / m_count, 2) if m_count > 0 else 0.0
         r_avg = round(r_total / m_count, 2) if m_count > 0 else 0.0
         cards_avg = round(total_cards / m_count, 2) if m_count > 0 else 0.0
+        cards_1t_avg = round(cards_1t_sum / m_count, 1) if m_count > 0 else 0.0
+        cards_2t_avg = round(cards_2t_sum / m_count, 1) if m_count > 0 else 0.0
+        over_1_5_1t_pct = round((over_1_5_1t_count / m_count) * 100.0, 1) if m_count > 0 else 0.0
         pens_avg = round(pens_total / m_count, 2) if m_count > 0 else 0.0
-        fouls_avg = round(fouls_total / m_count, 2) if m_count > 0 else 0.0
+        fouls_avg = round(fouls_total / m_count, 1) if m_count > 0 else 0.0
         over_4_5_pct = round((over_4_5_count / m_count) * 100.0, 1) if m_count > 0 else 0.0
         home_cards_pct = round((home_cards_sum / total_cards) * 100.0, 1) if total_cards > 0 else 50.0
 
@@ -108,12 +121,17 @@ def get_referees_summary(
                 name=name,
                 slug=slug,
                 country=country,
+                category="FIFA / CONAR",
                 matches_count=m_count,
                 yellow_cards_total=y_total,
                 yellow_cards_avg=y_avg,
                 red_cards_total=r_total,
                 red_cards_avg=r_avg,
                 cards_avg=cards_avg,
+                cards_1t_avg=cards_1t_avg,
+                cards_2t_avg=cards_2t_avg,
+                over_1_5_cards_1t_pct=over_1_5_1t_pct,
+                over_1_5_cards_1t_count=over_1_5_1t_count,
                 penalties_total=pens_total,
                 penalties_avg=pens_avg,
                 fouls_avg=fouls_avg,
@@ -246,12 +264,17 @@ def get_referee_detail(
             name=row[1],
             slug=row[2],
             country=row[3] or "Peru",
+            category="FIFA / CONAR",
             matches_count=0,
             yellow_cards_total=0,
             yellow_cards_avg=0.0,
             red_cards_total=0,
             red_cards_avg=0.0,
             cards_avg=0.0,
+            cards_1t_avg=0.0,
+            cards_2t_avg=0.0,
+            over_1_5_cards_1t_pct=0.0,
+            over_1_5_cards_1t_count=0,
             penalties_total=0,
             penalties_avg=0.0,
             fouls_avg=0.0,

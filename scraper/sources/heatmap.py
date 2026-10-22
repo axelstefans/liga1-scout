@@ -1,61 +1,64 @@
 import logging
+import random
 import time
 import json
 from datetime import datetime
 import LanusStats as ls
 
-from ..db import is_cached, log_scrape
+from ..db import log_scrape
 from .. import config
 
 logger = logging.getLogger(__name__)
 
+
+def get_stale_heatmap_candidates(conn, season_id: int = config.SEASON_ID):
+    """
+    Returns player_id, name, and latest_match_date for players with no heatmap,
+    or whose latest match is later than their heatmap's scraped_at.
+    """
+    query = """
+        SELECT pms.player_id, p.name, MAX(m.match_date) AS latest_match_date
+        FROM player_match_stats pms
+        JOIN matches m ON m.match_id = pms.match_id
+        JOIN players p ON p.player_id = pms.player_id
+        LEFT JOIN player_heatmaps ph ON ph.player_id = pms.player_id AND ph.season_id = :season_id
+        WHERE m.season_id = :season_id AND pms.minutes_played > 0
+        GROUP BY pms.player_id
+        HAVING ph.scraped_at IS NULL OR datetime(MAX(m.match_date)) > datetime(ph.scraped_at)
+        ORDER BY latest_match_date DESC, p.name ASC;
+    """
+    return conn.execute(query, {"season_id": season_id}).fetchall()
+
+
 def scrape_and_store_heatmaps(conn, api_client) -> int:
     """
-    Scrape and store heatmap data as JSON blobs.
+    Scrape and store heatmap data as JSON blobs for missing or stale players.
     """
     logger.info("Starting heatmap scrape...")
-    
-    # 1. Fast In-Memory Set Pre-check:
-    # Query all player IDs that already have a heatmap recorded in the database
-    existing_heatmaps = {
-        row["player_id"]
-        for row in conn.execute("SELECT DISTINCT player_id FROM player_heatmaps").fetchall()
-    }
 
-    # Query candidate players from player_season_stats
-    players = conn.execute(
-        "SELECT player_id, COALESCE(minutes_played, 0) AS minutes_played FROM player_season_stats"
-    ).fetchall()
+    candidates = get_stale_heatmap_candidates(conn, config.SEASON_ID)
+    total = len(candidates)
+
+    if total == 0:
+        logger.info("All player heatmaps are up to date. Nothing to scrape.")
+        return 0
+
+    logger.info(f"Found {total} stale/missing player heatmaps to sync.")
 
     total_inserted = 0
     sofascore = None
 
     try:
-        for row in players:
+        for idx, row in enumerate(candidates, start=1):
             player_id = row["player_id"]
-            minutes_played = row["minutes_played"]
-
-            # Skip if heatmap already exists in DB
-            if player_id in existing_heatmaps:
-                logger.info(f"Heatmap for player {player_id} already exists in database, skipping API call")
-                continue
-
-            # Skip players with 0 or negative minutes played
-            if minutes_played <= 0:
-                logger.info(f"Player {player_id} has 0 minutes played, skipping heatmap API call")
-                continue
-
-            # Fallback check against scrape_log cache
-            if is_cached(conn, "heatmap_json", str(player_id)):
-                logger.debug(f"Skipping cached heatmap for player {player_id}")
-                continue
+            name = row["name"]
 
             # Lazy initialize LanusStats SofaScore to avoid spinning up Chrome if no players need scraping
             if sofascore is None:
                 sofascore = ls.SofaScore()
 
             try:
-                logger.info(f"Fetching heatmap for player {player_id}...")
+                logger.info(f"Syncing heatmap {idx}/{total} for player {player_id} ({name})")
 
                 # Use LanusStats
                 heatmap_data = sofascore.get_player_season_heatmap("Peru Liga 1", "2026", player_id)
@@ -83,29 +86,26 @@ def scrape_and_store_heatmaps(conn, api_client) -> int:
                             points_json,
                             datetime.utcnow().isoformat()
                         ))
-                    existing_heatmaps.add(player_id)
                     log_scrape(conn, "heatmap_json", str(player_id), 'success')
-                    continue
+                else:
+                    points_json = json.dumps(points)
 
-                points_json = json.dumps(points)
+                    with conn:
+                        conn.execute("""
+                            INSERT INTO player_heatmaps (player_id, season_id, heatmap_json, scraped_at)
+                            VALUES (?, ?, ?, ?)
+                            ON CONFLICT(player_id, season_id) DO UPDATE SET
+                            heatmap_json = excluded.heatmap_json,
+                            scraped_at = excluded.scraped_at
+                        """, (
+                            player_id,
+                            config.SEASON_ID,
+                            points_json,
+                            datetime.utcnow().isoformat()
+                        ))
+                        total_inserted += 1
 
-                with conn:
-                    conn.execute("""
-                        INSERT INTO player_heatmaps (player_id, season_id, heatmap_json, scraped_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(player_id, season_id) DO UPDATE SET
-                        heatmap_json = excluded.heatmap_json,
-                        scraped_at = excluded.scraped_at
-                    """, (
-                        player_id,
-                        config.SEASON_ID,
-                        points_json,
-                        datetime.utcnow().isoformat()
-                    ))
-                    total_inserted += 1
-
-                existing_heatmaps.add(player_id)
-                log_scrape(conn, "heatmap_json", str(player_id), 'success')
+                    log_scrape(conn, "heatmap_json", str(player_id), 'success')
 
             except Exception as e:
                 if "PlayerDoesntHaveInfo" in type(e).__name__ or "PlayerDoesntHaveInfo" in str(e):
@@ -125,7 +125,6 @@ def scrape_and_store_heatmaps(conn, api_client) -> int:
                                 points_json,
                                 datetime.utcnow().isoformat()
                             ))
-                        existing_heatmaps.add(player_id)
                     except Exception as db_err:
                         logger.error(f"Failed to record tombstone for player {player_id}: {db_err}")
 
@@ -134,7 +133,11 @@ def scrape_and_store_heatmaps(conn, api_client) -> int:
                     logger.error(f"Failed to scrape heatmap for player {player_id}: {e}")
                     log_scrape(conn, "heatmap_json", str(player_id), 'failed', error_message=str(e))
 
-            time.sleep(1.5)
+            time.sleep(random.uniform(3.5, 5.5))
+            if idx % 20 == 0:
+                cooldown = random.uniform(14.0, 18.0)
+                logger.info(f"[COOLDOWN] {cooldown:.1f}s after {idx} heatmaps")
+                time.sleep(cooldown)
 
     finally:
         if sofascore is not None:

@@ -16,12 +16,17 @@ export interface RefereeSummary {
   name: string;
   slug?: string | null;
   country: string;
+  category?: string;
   matches_count: number;
   yellow_cards_total: number;
   yellow_cards_avg: number;
   red_cards_total: number;
   red_cards_avg: number;
   cards_avg: number;
+  cards_1t_avg: number;
+  cards_2t_avg: number;
+  over_1_5_cards_1t_pct: number;
+  over_1_5_cards_1t_count: number;
   penalties_total: number;
   penalties_avg: number;
   fouls_avg: number;
