@@ -640,7 +640,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     const angleStep = (2 * Math.PI) / numSlices;
     const cx = 225;
     const cy = 240;
-    const rMin = 30;
+    const rMin = 0;
     const rMax = 195;
     const rLabel = 218;
 
@@ -662,17 +662,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       // Scaled outer radius proportional to percentile
       const rOuter = rMin + (pct / 100) * (rMax - rMin);
 
-      // Annular wedge coordinates centered at (cx, cy)
-      const x0 = cx + rMin * Math.cos(thetaStart);
-      const y0 = cy + rMin * Math.sin(thetaStart);
+      // Wedge coordinates converging at center (cx, cy)
       const x1 = cx + rOuter * Math.cos(thetaStart);
       const y1 = cy + rOuter * Math.sin(thetaStart);
       const x2 = cx + rOuter * Math.cos(thetaEnd);
       const y2 = cy + rOuter * Math.sin(thetaEnd);
-      const x3 = cx + rMin * Math.cos(thetaEnd);
-      const y3 = cy + rMin * Math.sin(thetaEnd);
 
-      const pathData = `M ${x0} ${y0} L ${x1} ${y1} A ${rOuter} ${rOuter} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${rMin} ${rMin} 0 0 0 ${x0} ${y0} Z`;
+      const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${rOuter} ${rOuter} 0 0 1 ${x2} ${y2} Z`;
 
       // Value calculation
       let rawVal = seasonStats ? (seasonStats[metric.key as keyof PlayerSeasonStats] as number | undefined | null) : null;
@@ -718,11 +714,6 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       };
     });
   }, [activeMetrics, seasonStats]);
-
-  const hoveredWedge = useMemo(() => {
-    if (!hoveredMetric) return null;
-    return radarGeometry.find(w => w.metric.key === hoveredMetric) || null;
-  }, [hoveredMetric, radarGeometry]);
 
   // --------------------------------------------------------------------------
   // Event Calculations for Floor 2 Mini-Pitches
@@ -1590,8 +1581,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
   }, [rawScatterPoints, xRankings, selectedPositionGroup]);
 
   // --------------------------------------------------------------------------
-  // Export Handlers
+  // Export Handlers & Dimension Constants (2832 x 3562 px standard)
   // --------------------------------------------------------------------------
+  const EXPORT_WIDTH = 1416;
+  const EXPORT_PIXEL_RATIO = 2;
+
   const handleDownloadPNG = async () => {
     if (isExportingPng || isExportingPdf) return;
     const targetElement = dossierRef.current || document.getElementById('scouting-dossier-canvas');
@@ -1610,21 +1604,17 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       await document.fonts.ready;
       await new Promise((resolve) => setTimeout(resolve, 60));
 
-      const fullHeight = Math.max(targetElement.scrollHeight, targetElement.offsetHeight, targetElement.clientHeight);
-      const fullWidth = Math.max(targetElement.scrollWidth, targetElement.offsetWidth, targetElement.clientWidth);
-
       const dataUrl = await toPng(targetElement, {
-        pixelRatio: 2,
+        pixelRatio: EXPORT_PIXEL_RATIO,
         cacheBust: true,
         backgroundColor: '#f8fafc',
-        width: fullWidth,
-        height: fullHeight,
+        width: EXPORT_WIDTH,
+        canvasWidth: EXPORT_WIDTH * EXPORT_PIXEL_RATIO,
         style: {
           cursor: 'none',
-          width: `${fullWidth}px`,
-          height: `${fullHeight}px`,
-          maxHeight: 'none',
-          overflow: 'visible',
+          width: `${EXPORT_WIDTH}px`,
+          minWidth: `${EXPORT_WIDTH}px`,
+          maxWidth: `${EXPORT_WIDTH}px`,
         },
         filter: (node) => {
           if (node instanceof HTMLElement && node.classList.contains('export-ignore')) {
@@ -2224,7 +2214,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       {/* =================================================================== */}
       {/* TIER 2: FULL-BLEED PANORAMIC DOSSIER CANVAS                         */}
       {/* =================================================================== */}
-      <div id="scouting-dossier-canvas" ref={dossierRef} className="w-full max-w-[1520px] mx-auto px-6 py-8 space-y-6 bg-slate-50">
+      <div id="scouting-dossier-canvas" ref={dossierRef} className="w-full max-w-[1520px] mx-auto p-2.5 flex flex-col gap-2 bg-slate-100">
         
         {/* ----------------------------------------------------------------- */}
         {/* FLOOR 1: Bio & Polar Pizza Rose Radar Section                     */}
@@ -2232,12 +2222,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         <div className="flex flex-col lg:flex-row gap-4 items-stretch w-full">
           
           {/* FLOOR 1 LEFT: Two Distinct Stacked Cards (Bio Card + Standalone Percentile Mini-Table) */}
-          <div className="w-full lg:w-[235px] shrink-0 flex flex-col gap-3 justify-start">
+          <div className="w-full lg:w-[235px] shrink-0 flex flex-col justify-start gap-2.5">
             {/* Card 1: Player Bio Card (Top) */}
-            <div className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs h-fit">
-              {/* Top Header Row */}
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div className="flex items-center gap-1.5 min-w-0">
+            <div className="bg-white rounded-xl border border-slate-200/80 p-2 shadow-sm h-fit">
+              {/* Inset Frame */}
+              <div className="border border-slate-200/90 rounded-xl p-2.5 flex flex-col justify-between bg-white">
+                {/* Top Identity Row */}
+                <div className="flex items-start justify-between">
                   <img
                     src={getTeamCrestUrl(profile?.team?.team_id, profile?.team?.logo_url)}
                     alt=""
@@ -2247,95 +2238,97 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         target.src = '/liga1-logo.png';
                       }
                     }}
-                    className="w-7 h-7 object-contain shrink-0"
+                    className="w-6 h-6 object-contain shrink-0"
                   />
-                  <span className="text-[11px] font-semibold text-slate-700 truncate">
-                    {profile?.team?.name || 'Alianza Lima'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
+                  <div className="text-center flex-1 mx-2 min-w-0">
+                    {(() => {
+                      const parts = playerName.trim().split(/\s+/);
+                      const firstName = parts[0] || playerName;
+                      const lastName = parts.slice(1).join(' ');
+                      return (
+                        <>
+                          <div className="text-xs font-semibold text-slate-700 leading-tight text-center">
+                            {firstName}
+                          </div>
+                          {lastName && (
+                            <div className="text-sm font-black text-slate-900 leading-tight text-center">
+                              {lastName}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                    <div className="text-[10.5px] font-medium text-slate-500 leading-tight text-center mt-0.5">
+                      {profile?.team?.name || 'Alianza Lima'}
+                    </div>
+                  </div>
                   <img
                     src="/liga1-logo.png"
                     alt="Liga 1"
-                    className="h-3.5 object-contain"
+                    className="w-4 h-4 object-contain shrink-0"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                  <span className="text-[10px] font-bold text-slate-500 font-mono tracking-tight">
-                    Liga 1
-                  </span>
                 </div>
-              </div>
 
-              {/* Centered Circular Headshot Container */}
-              <div className="w-20 h-20 mx-auto rounded-full overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center my-2 shadow-2xs relative">
-                <img
-                  src={`/players/${playerId}.png`}
-                  alt={playerName}
-                  className="w-full h-full object-cover object-top"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    if (target.src !== '/liga1-logo.png') {
-                      target.src = '/liga1-logo.png';
-                    }
-                  }}
-                />
-              </div>
+                {/* Centered Circular Headshot Container */}
+                <div className="w-16 h-16 rounded-full mx-auto my-2 border border-slate-200/80 shadow-sm overflow-hidden bg-slate-50 flex items-center justify-center relative">
+                  <img
+                    src={`/players/${playerId}.png`}
+                    alt={playerName}
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (target.src !== '/liga1-logo.png') {
+                        target.src = '/liga1-logo.png';
+                      }
+                    }}
+                  />
+                </div>
 
-              {/* Centered Player Name */}
-              <div className="text-center font-bold text-slate-800 text-[14px] leading-tight mb-2">
-                {playerName}
-              </div>
+                {/* Bottom Technical Spec List: Compact 2-Column Left-Aligned Grid */}
+                <div className="grid grid-cols-[62px_1fr] gap-x-2 gap-y-1 pt-1.5 border-t border-slate-100 text-[11px]">
+                <span className="text-slate-400 font-medium text-left">Position</span>
+                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">Full Back</span>
 
-              {/* Bottom Technical Spec List */}
-              <div className="pt-2 border-t border-slate-100 space-y-1 text-[10px]">
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400 font-medium">Position</span>
-                  <span className="font-bold text-slate-800">Full Back</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400 font-medium">Age</span>
-                  <span className="font-bold text-slate-800 font-mono">{playerAge || 24}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400 font-medium">Minutes</span>
-                  <span className="font-bold text-slate-800 font-mono">
-                    {(seasonStats?.minutes_played || 1869).toLocaleString()}&apos;
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400 font-medium">Country</span>
-                  <span className="font-bold text-slate-800 flex items-center gap-1">
-                    <img 
-                      src={`https://flagcdn.com/w20/${countryCode}.png`} 
-                      crossOrigin="anonymous"
-                      alt="" 
-                      className="w-3.5 h-2.5 object-cover rounded-xs shrink-0" 
-                    />
-                    <span>{profile?.nationality || 'Peru'}</span>
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400 font-medium">Shirt #</span>
-                  <span className="font-bold text-slate-800 font-mono">{profile?.shirt_number || '23'}</span>
-                </div>
-                <div className="flex justify-between items-center py-0.5">
-                  <span className="text-slate-400 font-medium">League</span>
-                  <span className="font-bold text-slate-800">Liga 1</span>
+                <span className="text-slate-400 font-medium text-left">Age</span>
+                <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">{playerAge || 24}</span>
+
+                <span className="text-slate-400 font-medium text-left">Minutes</span>
+                <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">
+                  {(seasonStats?.minutes_played || 1869).toLocaleString()}&apos;
+                </span>
+
+                <span className="text-slate-400 font-medium text-left">Country</span>
+                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">
+                  <img 
+                    src={`https://flagcdn.com/w20/${countryCode}.png`} 
+                    crossOrigin="anonymous"
+                    alt="" 
+                    className="w-3.5 h-2.5 object-cover rounded-xs shrink-0" 
+                  />
+                  <span>{profile?.nationality || 'Peru'}</span>
+                </span>
+
+                <span className="text-slate-400 font-medium text-left">Shirt #</span>
+                <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">{profile?.shirt_number || '23'}</span>
+
+                <span className="text-slate-400 font-medium text-left">League</span>
+                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">Liga 1</span>
                 </div>
               </div>
             </div>
 
             {/* Card 2: Standalone Percentile Mini-Table (Bottom) */}
-            <div className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs h-fit">
+            <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-2xs h-fit">
               {/* Cohort Header */}
-              <div className="text-[9px] text-slate-400 font-mono tracking-tight mb-2">
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1 px-1">
                 vs {cohortCount} Full Backs
               </div>
 
-              {/* Metric Rows: compact vertical stack */}
-              <div className="space-y-1.5">
+              {/* Metric Rows: compact vertical stack with faint dividers */}
+              <div className="divide-y divide-slate-100/90">
                 {activeMetrics.map((metric) => {
                   let rawPct = seasonStats ? (seasonStats[metric.pctKey] as number | undefined | null) : null;
                   if ((rawPct === null || rawPct === undefined) && metric.key === 'expected_goals') {
@@ -2347,14 +2340,18 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     rawVal = seasonStats?.expected_goals ?? 0;
                   }
                   const minutes = seasonStats?.minutes_played || 1;
+                  const numVal = metric.isPercentage
+                    ? (rawVal ?? 0)
+                    : (((rawVal ?? 0) / minutes) * 90);
+                  const signPrefix = numVal > 0 ? '+' : '';
                   const valStr = metric.isPercentage
-                    ? `${(rawVal ?? 0).toFixed(1)}%`
-                    : (((rawVal ?? 0) / minutes) * 90).toFixed(2);
+                    ? `${signPrefix}${numVal.toFixed(1)}%`
+                    : `${signPrefix}${numVal.toFixed(2)}`;
 
                   const badgeBg = 
                     pct >= 90 ? 'bg-emerald-600 text-white' :
                     pct >= 70 ? 'bg-emerald-500 text-white' :
-                    pct >= 40 ? 'bg-amber-400 text-slate-900' :
+                    pct >= 40 ? 'bg-amber-400 text-white' :
                     'bg-rose-500 text-white';
 
                   const isHovered = hoveredMetric === metric.key;
@@ -2362,13 +2359,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   return (
                     <div 
                       key={metric.key} 
-                      className={`flex items-center justify-between py-0.5 px-1 rounded transition-colors cursor-pointer ${
+                      className={`py-1 px-1 text-[10.5px] flex items-center justify-between transition-colors cursor-pointer ${
                         isHovered ? 'bg-blue-50/80 ring-1 ring-blue-200/60' : 'hover:bg-slate-50'
                       }`}
                       onMouseEnter={() => setHoveredMetric(metric.key)}
                       onMouseLeave={() => setHoveredMetric(null)}
                     >
-                      <span className="text-[10px] text-slate-600 truncate max-w-[100px] font-sans" title={metric.label}>
+                      <span className="text-slate-700 font-medium truncate max-w-[100px] font-sans" title={metric.label}>
                         {metric.label}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -2380,7 +2377,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           )}
                           <span>{valStr}</span>
                         </div>
-                        <span className={`w-6 h-4 text-[9px] font-mono font-bold flex items-center justify-center rounded shrink-0 ${badgeBg}`}>
+                        <span className={`w-5.5 h-3.5 min-w-[22px] text-[9px] font-mono font-bold rounded flex items-center justify-center text-white shrink-0 ${badgeBg}`}>
                           {pct}
                         </span>
                       </div>
@@ -2392,21 +2389,40 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           </div>
 
           {/* FLOOR 1 CENTER: Pure SVG Polar Pizza Radar & Top 10 Leaders Overlay */}
-          <div className="relative flex-1 bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs min-h-[520px] flex items-center overflow-hidden">
+          <div className="relative flex-1 bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs min-h-[460px] flex items-center overflow-hidden">
             
             {/* Center Pizza Chart Canvas Wrapper */}
-            <div className="w-full h-[500px] flex items-center justify-start select-none">
+            <div className="w-full h-[445px] flex items-center justify-start select-none">
               <svg 
                 viewBox="0 0 740 480" 
                 className="w-full h-full object-contain overflow-visible"
               >
-                {/* Concentric Reference Rings: 50, 112.5 (median 50th), 155, 195 */}
-                <circle cx="225" cy="240" r={50} fill="none" stroke="#E2E8F0" strokeWidth="1" />
-                <circle cx="225" cy="240" r={112.5} fill="none" stroke="#CBD5E1" strokeWidth="1" strokeDasharray="3 3" />
-                <circle cx="225" cy="240" r={155} fill="none" stroke="#E2E8F0" strokeWidth="1" />
-                <circle cx="225" cy="240" r={195} fill="none" stroke="#E2E8F0" strokeWidth="1" />
+                {/* Layer 0: Circular Background Disc */}
+                <circle cx={225} cy={240} r={195} fill="#f1f5f9" stroke="none" />
 
-                {/* Radial Sector Rays projecting from r=30 to r=205 */}
+                {/* Layer 1 (Background): Filled blue pizza wedges */}
+                <g className="pizza-slices">
+                  {radarGeometry.map(({ metric, pathData }) => {
+                    const isHovered = hoveredMetric === metric.key;
+                    const fillOpacity = isHovered ? 0.75 : 0.95;
+
+                    return (
+                      <path
+                        key={metric.key}
+                        d={pathData}
+                        fill={clubThemeColor}
+                        fillOpacity={fillOpacity}
+                        stroke="#cbd5e1"
+                        strokeWidth="1"
+                        onMouseEnter={() => setHoveredMetric(metric.key)}
+                        onMouseLeave={() => setHoveredMetric(null)}
+                        className="cursor-pointer transition-all duration-150"
+                      />
+                    );
+                  })}
+                </g>
+
+                {/* Layer 2 (Radial Lines / Spokes): Continuous grayish dividers over wedges */}
                 <g pointerEvents="none">
                   {radarGeometry.map(({ metric, ray }) => (
                     <line
@@ -2415,35 +2431,18 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       y1={ray.y1}
                       x2={ray.x2}
                       y2={ray.y2}
-                      stroke="#E2E8F0"
+                      stroke="#94a3b8"
                       strokeWidth="1"
                     />
                   ))}
                 </g>
 
-                {/* Monochromatic Pizza Slices (Wedges) */}
-                <g className="pizza-slices">
-                  {radarGeometry.map(({ metric, pathData }) => {
-                    const isHovered = hoveredMetric === metric.key;
-                    const isAnyHovered = hoveredMetric !== null;
-                    const fillOpacity = isHovered ? 0.95 : isAnyHovered ? 0.35 : 0.85;
-                    const strokeColor = isHovered ? '#0F172A' : '#FFFFFF';
-                    const strokeWidth = isHovered ? 2 : 1;
-
-                    return (
-                      <path
-                        key={metric.key}
-                        d={pathData}
-                        fill={clubThemeColor}
-                        fillOpacity={fillOpacity}
-                        stroke={strokeColor}
-                        strokeWidth={strokeWidth}
-                        onMouseEnter={() => setHoveredMetric(metric.key)}
-                        onMouseLeave={() => setHoveredMetric(null)}
-                        className="cursor-pointer transition-all duration-150"
-                      />
-                    );
-                  })}
+                {/* Layer 3 (Concentric Percentile Rings Over the Wedges) */}
+                <g pointerEvents="none">
+                  <circle cx={225} cy={240} r={195 * 0.25} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
+                  <circle cx={225} cy={240} r={195 * 0.5} fill="none" stroke="#f59e0b" strokeWidth="1.3" strokeDasharray="4 4" />
+                  <circle cx={225} cy={240} r={195 * 0.75} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
+                  <circle cx={225} cy={240} r={195} fill="none" stroke="#64748b" strokeWidth="1.2" />
                 </g>
 
                 {/* Floating Numeric Value Badges at edge of each slice */}
@@ -2488,7 +2487,6 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 {/* Perimeter Metric Labels outside outer ring (r = 226) */}
                 <g pointerEvents="none">
                   {radarGeometry.map(({ metric, labelX, labelY, textAnchor }) => {
-                    const isHovered = hoveredMetric === metric.key;
                     const [line1, line2] = getSplitMetricLabel(metric.label);
 
                     return (
@@ -2498,7 +2496,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         y={labelY}
                         textAnchor={textAnchor}
                         dominantBaseline="central"
-                        className={`font-sans text-[11px] font-bold ${isHovered ? 'fill-blue-700' : 'fill-slate-800'} transition-colors duration-150 select-none`}
+                        className="text-[11px] font-bold fill-slate-800 select-none tracking-tight"
                       >
                         {line2 ? (
                           <>
@@ -2513,64 +2511,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   })}
                 </g>
 
-                {/* Inner Hub Center Circle at (225, 240) */}
-                <circle cx="225" cy="240" r={25} fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="1" />
-                {hoveredWedge ? (
-                  <g pointerEvents="none">
-                    <text 
-                      x="225" 
-                      y="235" 
-                      fontSize="12" 
-                      fontWeight="bold" 
-                      textAnchor="middle" 
-                      dominantBaseline="central" 
-                      fill="#1D4ED8"
-                    >
-                      {Math.round(hoveredWedge.pct)}
-                    </text>
-                    <text 
-                      x="225" 
-                      y="247" 
-                      fontSize="7" 
-                      textAnchor="middle" 
-                      dominantBaseline="central" 
-                      fill="#64748B"
-                      fontWeight="600"
-                    >
-                      PCT
-                    </text>
-                  </g>
-                ) : (
-                  <g pointerEvents="none">
-                    <text 
-                      x="225" 
-                      y="235" 
-                      fontSize="9.5" 
-                      fontWeight="bold" 
-                      textAnchor="middle" 
-                      dominantBaseline="central" 
-                      fill="#0F172A"
-                    >
-                      LIGA 1
-                    </text>
-                    <text 
-                      x="225" 
-                      y="247" 
-                      fontSize="6.5" 
-                      textAnchor="middle" 
-                      dominantBaseline="central" 
-                      fill="#94A3B8"
-                      fontWeight="600"
-                    >
-                      PERCENTILE
-                    </text>
-                  </g>
-                )}
               </svg>
             </div>
 
             {/* Top 10 Leaders Overlay Widget */}
-            <div className="absolute top-3 right-3 w-72 bg-white/95 backdrop-blur-xs rounded-xl border border-slate-200/80 p-3 shadow-2xs z-10 pointer-events-auto">
+            <div className="absolute top-2.5 right-2.5 w-64 bg-white/95 backdrop-blur-xs rounded-xl border border-slate-200/80 p-2.5 shadow-2xs z-10 pointer-events-auto">
               <div className="text-[11px] font-bold text-slate-800 pb-1.5 border-b border-slate-100 mb-2 whitespace-nowrap truncate">
                 {(() => {
                   const activeMetric = RADAR_METRICS.find(m => m.key === currentLeaderboardStat);
@@ -2580,8 +2525,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 })()}
               </div>
 
-              {/* Top 10 List Table */}
-              <div className="space-y-2">
+              {/* Top 10 List Table with Row Dividers */}
+              <div className="divide-y divide-slate-100">
                 {isTopPlayersLoading && (
                   <p className="text-[10px] text-slate-400 py-6 text-center">Loading rankings...</p>
                 )}
@@ -2599,7 +2544,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     return (
                       <div 
                         key={player.player_id}
-                        className={`flex items-center justify-between px-1.5 py-0.5 rounded transition-colors ${
+                        className={`flex items-center justify-between px-1.5 py-1 rounded transition-colors ${
                           isCurrentPlayer 
                             ? 'font-semibold' 
                             : 'hover:bg-slate-100/80 text-slate-700'
@@ -2613,19 +2558,19 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                             : undefined
                         }
                       >
-                        <div className="flex items-center gap-1.5 min-w-0 pr-1 truncate">
+                        <div className="flex-1 min-w-0 pr-2 leading-tight text-[10px] text-slate-700 break-words">
                           <span 
-                            className={`font-semibold text-[10px] shrink-0 ${isCurrentPlayer ? 'font-bold' : 'text-slate-800'}`}
+                            className={isCurrentPlayer ? 'font-bold' : 'font-semibold text-slate-800'}
                             style={isCurrentPlayer ? { color: clubThemeColor } : undefined}
                           >
                             {player.rank}. {player.name}
                           </span>
-                          <span className="text-slate-400 text-[9.5px] font-normal truncate">
-                            ({player.team_name})
+                          <span className="text-slate-500 font-normal">
+                            {' — '}{player.team_name}
                           </span>
                         </div>
 
-                        <span className="font-mono font-bold text-slate-800 text-[10.5px] shrink-0 ml-1.5">
+                        <span className="shrink-0 text-right font-semibold text-slate-900 text-[10.5px] font-mono ml-1.5">
                           {formattedValue}
                           {(RADAR_METRICS.find(m => m.key === currentLeaderboardStat)?.isPercentage || activeHoveredMetricDef?.isPercentage) ? '%' : ''}
                         </span>
@@ -2643,13 +2588,15 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           </div>
 
           {/* FLOOR 1 RIGHT: Time in Position */}
-          <TimeInPosition 
-            matchStats={matchStats} 
-            themeColor={clubThemeColor} 
-            orientation="vertical"
-            playerName={playerName}
-            className="w-full lg:w-[280px] shrink-0 flex flex-col gap-3 justify-start"
-          />
+          <div className="w-full lg:w-[285px] shrink-0 self-stretch flex flex-col">
+            <TimeInPosition 
+              matchStats={matchStats} 
+              themeColor={clubThemeColor} 
+              orientation="vertical"
+              playerName={playerName}
+              className="w-full h-full flex-1 flex flex-col justify-between gap-2.5 min-h-0"
+            />
+          </div>
 
         </div>
 

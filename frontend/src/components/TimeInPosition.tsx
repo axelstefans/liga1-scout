@@ -110,22 +110,6 @@ const POSITION_ALIASES: Record<string, string> = {
   'G': 'GK'
 };
 
-const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
-  const clean = hex.replace('#', '');
-  if (clean.length === 3) {
-    return {
-      r: parseInt(clean[0] + clean[0], 16) || 0,
-      g: parseInt(clean[1] + clean[1], 16) || 0,
-      b: parseInt(clean[2] + clean[2], 16) || 0,
-    };
-  }
-  return {
-    r: parseInt(clean.substring(0, 2), 16) || 0,
-    g: parseInt(clean.substring(2, 4), 16) || 0,
-    b: parseInt(clean.substring(4, 6), 16) || 0,
-  };
-};
-
 const TimeInPosition: React.FC<TimeInPositionProps> = ({ 
   matchStats, 
   themeColor,
@@ -198,23 +182,21 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
   const top3Stats = positionStats;
 
   // --------------------------------------------------------------------------
-  // VERTICAL ORIENTATION (Michael Olise Clean Editorial Style)
+  // VERTICAL ORIENTATION (Two-Card Editorial Structure)
   // --------------------------------------------------------------------------
   if (isVertical) {
     const positionCount = top3Stats.length;
-    const activeColor = themeColor || '#4A729D';
-    const { r, g, b } = hexToRgb(activeColor);
 
     return (
-      <div className={className || "w-full lg:w-[280px] shrink-0 flex flex-col gap-3 justify-start"}>
-        {/* Card Top (Pitch Card) */}
-        <div className="bg-white rounded-xl border border-slate-200/90 px-2 pt-2.5 pb-2 shadow-2xs flex flex-col">
+      <div className={className || "w-full h-full flex-1 flex flex-col justify-between gap-2.5 min-h-0"}>
+        {/* Top Card (Pitch) */}
+        <div className="flex-1 flex flex-col justify-between bg-white rounded-xl border border-slate-200/80 p-2.5 pt-2 pb-1 shadow-sm min-h-0">
           {/* Header */}
           <div className="px-1">
-            <div className="text-[12px] font-bold text-slate-800 text-center tracking-tight">
+            <div className="text-xs font-bold text-slate-900 text-center">
               {playerName ? `${playerName} — Time in Position` : title}
             </div>
-            <div className="text-[10px] text-slate-400 text-center mt-0.5">
+            <div className="text-[10px] text-slate-500 text-center mb-1">
               {totalMinutes.toLocaleString()} minutes across {positionCount} {positionCount === 1 ? 'position' : 'positions'}
             </div>
           </div>
@@ -225,118 +207,112 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
             </div>
           ) : (
             /* Pitch SVG (viewBox="0 0 200 310") */
-            <svg viewBox="0 0 200 310" className="w-full h-auto mt-1 select-none">
+            <svg viewBox="0 0 200 310" className="w-full h-full flex-1 min-h-0 object-contain select-none">
               {/* Outer boundary */}
-              <rect x="6" y="6" width="188" height="298" rx="3" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="1" />
+              <rect x="6" y="6" width="188" height="298" rx="3" fill="#FFFFFF" stroke="#1e293b" strokeWidth="1.1" />
 
               {/* Pitch Halfway Line, Center Circle & Center Spot */}
-              <line x1="6" y1="155" x2="194" y2="155" stroke="#CBD5E1" strokeWidth="1" />
-              <circle cx="100" cy="155" r="26" stroke="#CBD5E1" strokeWidth="1" fill="none" />
-              <circle cx="100" cy="155" r="1.5" fill="#CBD5E1" />
+              <line x1="6" y1="155" x2="194" y2="155" stroke="#1e293b" strokeWidth="1.1" />
+              <circle cx="100" cy="155" r="26" stroke="#1e293b" strokeWidth="1.1" fill="none" />
+              <circle cx="100" cy="155" r="1.5" fill="#1e293b" />
 
               {/* Attacking Penalty Area & Goal Area (Top: Y = 6 to 54) */}
-              <rect x="45" y="6" width="110" height="48" fill="none" stroke="#CBD5E1" strokeWidth="1" />
-              <rect x="73" y="6" width="54" height="18" fill="none" stroke="#CBD5E1" strokeWidth="1" />
-              <path d="M 82 54 A 20 20 0 0 0 118 54" stroke="#CBD5E1" strokeWidth="1" fill="none" />
+              <rect x="45" y="6" width="110" height="48" fill="none" stroke="#1e293b" strokeWidth="1.1" />
+              <rect x="73" y="6" width="54" height="18" fill="none" stroke="#1e293b" strokeWidth="1.1" />
+              <path d="M 82 54 A 20 20 0 0 0 118 54" stroke="#1e293b" strokeWidth="1.1" fill="none" />
 
               {/* Defending Penalty Area & Goal Area (Bottom: Y = 250 to 304, Upward Facing D-Arc) */}
-              <rect x="45" y="250" width="110" height="54" fill="none" stroke="#CBD5E1" strokeWidth="1" />
-              <rect x="73" y="286" width="54" height="18" fill="none" stroke="#CBD5E1" strokeWidth="1" />
-              <path d="M 82 250 A 20 20 0 0 1 118 250" stroke="#CBD5E1" strokeWidth="1" fill="none" />
+              <rect x="45" y="250" width="110" height="54" fill="none" stroke="#1e293b" strokeWidth="1.1" />
+              <rect x="73" y="286" width="54" height="18" fill="none" stroke="#1e293b" strokeWidth="1.1" />
+              <path d="M 82 250 A 20 20 0 0 1 118 250" stroke="#1e293b" strokeWidth="1.1" fill="none" />
 
               {/* Corner Arcs */}
-              <path d="M 6 11 A 5 5 0 0 0 11 6" stroke="#CBD5E1" strokeWidth="1" fill="none" />
-              <path d="M 189 6 A 5 5 0 0 0 194 11" stroke="#CBD5E1" strokeWidth="1" fill="none" />
-              <path d="M 6 299 A 5 5 0 0 1 11 304" stroke="#CBD5E1" strokeWidth="1" fill="none" />
-              <path d="M 189 304 A 5 5 0 0 1 194 299" stroke="#CBD5E1" strokeWidth="1" fill="none" />
+              <path d="M 6 11 A 5 5 0 0 0 11 6" stroke="#1e293b" strokeWidth="1.1" fill="none" />
+              <path d="M 189 6 A 5 5 0 0 0 194 11" stroke="#1e293b" strokeWidth="1.1" fill="none" />
+              <path d="M 6 299 A 5 5 0 0 1 11 304" stroke="#1e293b" strokeWidth="1.1" fill="none" />
+              <path d="M 189 304 A 5 5 0 0 1 194 299" stroke="#1e293b" strokeWidth="1.1" fill="none" />
 
-              {/* Pitch Position Nodes (Hugo Siquet Concentric Double-Ring Floating Style) */}
+              {/* Pitch Position Nodes (Transparent Double-Ring Markers) */}
               {[...top3Stats].reverse().map((stat) => {
                 const rank = top3Stats.findIndex(s => s.pos === stat.pos);
                 const coords = VERTICAL_POSITION_COORDS[stat.pos] || VERTICAL_POSITION_COORDS['CM'];
                 const isPrimary = rank === 0;
 
-                // Proportional dynamic radius based on role percentage
-                let radius = 14;
-                if (!isPrimary) {
-                  if (stat.pct < 20) {
-                    radius = 10;
-                  } else if (stat.pct < 35) {
-                    radius = 11;
-                  } else {
-                    radius = 12;
-                  }
-                }
-
-                const labelY = coords.y + radius + 13 > 302 
-                  ? coords.y - radius - 6 
-                  : coords.y + radius + 13;
+                // Dynamic radius based on role percentage
+                const radius = isPrimary ? 13 : Math.max(9.5, 9.5 + (stat.pct / 100) * 3);
 
                 return (
                   <g key={stat.pos}>
-                    {/* Layer 0: Solid white disc to cleanly mask any underlying pitch lines */}
+                    {/* Layer 1: Thin Outer Ring */}
                     <circle
                       cx={coords.x}
                       cy={coords.y}
-                      r={radius + 3}
-                      fill="#FFFFFF"
-                    />
-
-                    {/* Layer 1: Outermost contour circle (Floating Border) */}
-                    <circle
-                      cx={coords.x}
-                      cy={coords.y}
-                      r={radius + 3}
+                      r={radius + 2}
                       fill="none"
-                      stroke={activeColor}
-                      strokeWidth="1.2"
-                      opacity="0.8"
+                      stroke="#1e3a8a"
+                      strokeWidth="1.1"
                     />
 
-                    {/* Layer 2: White spacer ring / halo gap */}
-                    <circle
-                      cx={coords.x}
-                      cy={coords.y}
-                      r={radius + 1.5}
-                      fill="none"
-                      stroke="#FFFFFF"
-                      strokeWidth="2.5"
-                    />
+                    {/* Layer 2: Translucent Inner Circle (Dominant vs Secondary) */}
+                    {isPrimary ? (
+                      <>
+                        <circle
+                          cx={coords.x}
+                          cy={coords.y}
+                          r={radius}
+                          fill="#1e3a8a"
+                          fillOpacity="0.82"
+                          stroke="#1e3a8a"
+                          strokeWidth="0.8"
+                        />
+                        <text
+                          x={coords.x}
+                          y={coords.y}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="white"
+                          fontWeight="bold"
+                          fontSize="7.5"
+                          className="font-bold select-none pointer-events-none"
+                        >
+                          {Math.round(stat.pct)}%
+                        </text>
+                      </>
+                    ) : (
+                      <>
+                        <circle
+                          cx={coords.x}
+                          cy={coords.y}
+                          r={radius}
+                          fill="#475569"
+                          fillOpacity="0.32"
+                        />
+                        <text
+                          x={coords.x}
+                          y={coords.y}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="white"
+                          stroke="#0f172a"
+                          strokeWidth="0.8"
+                          paintOrder="stroke fill"
+                          fontSize="7"
+                          fontWeight="bold"
+                          className="font-bold select-none pointer-events-none"
+                        >
+                          {Math.round(stat.pct)}%
+                        </text>
+                      </>
+                    )}
 
-                    {/* Layer 3: Main inner core bubble */}
-                    <circle
-                      cx={coords.x}
-                      cy={coords.y}
-                      r={radius}
-                      fill={isPrimary ? activeColor : `rgba(${r}, ${g}, ${b}, ${stat.pct < 20 ? 0.12 : 0.16})`}
-                      stroke={isPrimary ? 'none' : activeColor}
-                      strokeWidth="1.2"
-                    />
-
-                    {/* Layer 4: INSIDE percentage number, single-line centered */}
+                    {/* Layer 3: Label Below the Marker */}
                     <text
                       x={coords.x}
-                      y={coords.y}
+                      y={coords.y + radius + 10}
                       textAnchor="middle"
-                      dominantBaseline="central"
-                      fill={isPrimary ? '#FFFFFF' : activeColor}
-                      fontSize={isPrimary ? "9" : radius <= 10 ? "8" : "8.5"}
+                      fill="#1e293b"
                       fontWeight="bold"
-                      fontFamily="sans-serif"
-                      className="select-none pointer-events-none"
-                    >
-                      {Math.round(stat.pct)}%
-                    </text>
-
-                    {/* Layer 5: OUTSIDE position label directly underneath outer ring */}
-                    <text
-                      x={coords.x}
-                      y={labelY}
-                      textAnchor="middle"
-                      fontSize="8.5"
-                      fontWeight={isPrimary ? "bold" : "semibold"}
-                      fill={isPrimary ? "#334155" : "#64748b"}
-                      fontFamily="sans-serif"
+                      fontSize="7.5"
                       className="select-none pointer-events-none"
                     >
                       {stat.pos}
@@ -348,30 +324,21 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
           )}
         </div>
 
-        {/* Card Bottom (Breakdown Card) */}
+        {/* Bottom Card (Minutes) */}
         {top3Stats.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs flex flex-col">
+          <div className="shrink-0 mt-auto bg-white rounded-xl border border-slate-200/80 p-3 flex flex-col justify-center shadow-sm">
             <div className="space-y-1.5">
-              {top3Stats.map((stat, idx) => (
-                <div key={stat.pos} className="flex items-center justify-between py-1.5 pr-3.5">
+              {top3Stats.map((stat) => (
+                <div key={stat.pos} className="flex items-center justify-between text-xs py-0.5">
                   <div className="w-12 flex justify-start">
-                    <span 
-                      className="w-7 h-5 rounded-full flex items-center justify-center text-[7.5px] font-bold font-sans"
-                      style={
-                        idx === 0
-                          ? { backgroundColor: activeColor, color: '#ffffff' }
-                          : idx === 1
-                          ? { backgroundColor: `rgba(${r}, ${g}, ${b}, 0.22)`, color: activeColor }
-                          : { backgroundColor: `rgba(${r}, ${g}, ${b}, 0.12)`, color: activeColor }
-                      }
-                    >
+                    <span className={`w-6 h-6 rounded-full bg-[#1e3a8a] text-white ${stat.pos.length > 2 ? 'text-[7.5px] tracking-tight' : 'text-[9.5px]'} font-bold flex items-center justify-center font-sans`}>
                       {stat.pos}
                     </span>
                   </div>
-                  <span className="text-center flex-1 text-[11px] font-medium text-slate-700 font-sans">
+                  <span className="text-center flex-1 text-xs font-semibold text-slate-800 font-sans">
                     {stat.mins.toLocaleString()}
                   </span>
-                  <span className="text-right w-12 text-[11px] font-bold text-slate-900 font-mono">
+                  <span className="text-right w-12 text-xs text-slate-500 font-mono">
                     {Math.round(stat.pct)}%
                   </span>
                 </div>
