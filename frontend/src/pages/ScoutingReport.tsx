@@ -257,12 +257,10 @@ const SimilarPlayerRow: React.FC<SimilarPlayerRowProps> = ({
   return (
     <div
       onClick={() => onSelect(player.player_id)}
-      className="grid grid-cols-[16px_22px_130px_1fr_46px] items-center gap-2 py-1 border-b border-slate-100/60 last:border-b-0 hover:bg-slate-50/70 px-1 rounded cursor-pointer group"
+      className="grid grid-cols-[16px_24px_115px_1fr_44px] items-center gap-2.5 px-2.5 hover:bg-slate-50/70 transition-colors cursor-pointer group flex-1 min-h-0"
     >
       {/* Col 1 (Rank) */}
-      <span className="text-[10px] font-medium text-slate-400 text-left">
-        {rank}
-      </span>
+      <span className="text-[11px] font-normal text-slate-400 text-center select-none">{rank}</span>
 
       {/* Col 2 (Avatar) */}
       {!imgError ? (
@@ -270,10 +268,10 @@ const SimilarPlayerRow: React.FC<SimilarPlayerRowProps> = ({
           src={`/players/${player.player_id}.png`}
           alt={player.name}
           onError={() => setImgError(true)}
-          className="w-5.5 h-5.5 rounded-full object-cover border border-slate-200 shrink-0"
+          className="w-6 h-6 max-w-[24px] max-h-[24px] rounded-full object-cover border border-slate-200/90 shrink-0"
         />
       ) : (
-        <div className="w-5.5 h-5.5 rounded-full bg-slate-100 border border-slate-200/80 flex items-center justify-center shrink-0">
+        <div className="w-6 h-6 max-w-[24px] max-h-[24px] rounded-full bg-slate-100 border border-slate-200/90 flex items-center justify-center shrink-0">
           <svg className="w-3.5 h-3.5 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
           </svg>
@@ -281,12 +279,10 @@ const SimilarPlayerRow: React.FC<SimilarPlayerRowProps> = ({
       )}
 
       {/* Col 3 (Player Name) */}
-      <span className="text-[11px] font-semibold text-slate-800 truncate group-hover:text-sky-700">
-        {player.name}
-      </span>
+      <span className="text-[11px] font-semibold text-slate-800 truncate group-hover:text-blue-700">{player.name}</span>
 
       {/* Col 4 (Club) */}
-      <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
         <img
           src={clubCrestUrl}
           alt={clubName}
@@ -296,15 +292,13 @@ const SimilarPlayerRow: React.FC<SimilarPlayerRowProps> = ({
               target.src = '/liga1-logo.png';
             }
           }}
-          className="w-5 h-5 object-contain shrink-0"
+          className="w-[18px] h-[18px] max-w-[18px] max-h-[18px] object-contain shrink-0"
         />
-        <span className="text-[10px] text-slate-500 truncate">{clubName}</span>
+        <span className="text-[10px] font-medium text-slate-500 truncate">{clubName}</span>
       </div>
 
-      {/* Col 5 (Score) */}
-      <span className="font-mono font-bold text-[11px] text-emerald-600 text-right">
-        {pct.toFixed(1)}%
-      </span>
+      {/* Col 5 (Similarity %) */}
+      <span className="font-mono font-bold text-[11px] text-emerald-500 text-right shrink-0">{pct.toFixed(1)}%</span>
     </div>
   );
 };
@@ -2603,36 +2597,36 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         {/* ----------------------------------------------------------------- */}
         {/* FLOOR 2: Similarity & Real Event Pitches Section                  */}
         {/* ----------------------------------------------------------------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch w-full">
           
           {/* FLOOR 2 LEFT: "Most similar to [Player]" Table (Cols 1-4) */}
-          <div className="lg:col-span-4 xl:col-span-4 w-full bg-white border border-slate-200 rounded-lg p-3.5 flex flex-col justify-between h-full">
-            <div className="pb-2 border-b border-slate-100">
-              <div className="text-[13px] font-bold text-slate-800 tracking-tight">
+          <div className="lg:col-span-4 xl:col-span-4 w-full bg-white border border-slate-200/80 rounded-xl p-3 flex flex-col justify-between h-full shadow-sm">
+            <div className="pb-2">
+              <h3 className="text-[13px] font-bold text-slate-900 tracking-tight">
                 Most similar to {playerName}
-              </div>
-              <div className="text-[10.5px] text-slate-400 mt-0.5 font-sans">
+              </h3>
+              <p className="text-[10.5px] text-slate-400 font-sans mt-0.5">
                 15 closest in {positionLabel} · 15 metrics
-              </div>
+              </p>
             </div>
 
-            {/* Similar Players List (Strictly 15 Rows) without scrollbar */}
-            <div className="flex-1 flex flex-col justify-between mt-2">
+            {/* Sub-Panel Interior Enmarcado (Inset Box) */}
+            <div className="flex-1 flex flex-col justify-between divide-y divide-slate-100 min-h-0 border border-slate-200/80 rounded-lg overflow-hidden bg-white shadow-2xs">
               {isSimilarLoading && (
-                <div className="flex-1 flex flex-col justify-between">
+                <>
                   {Array.from({ length: 15 }).map((_, i) => (
-                    <div key={i} className="grid grid-cols-[16px_22px_130px_1fr_46px] items-center gap-2 py-1 border-b border-slate-100/60 last:border-b-0 animate-pulse px-1">
-                      <span className="text-[10px] font-medium text-slate-300 text-left">{i + 1}</span>
-                      <div className="w-5.5 h-5.5 rounded-full bg-slate-100 border border-slate-200/80 shrink-0" />
+                    <div key={i} className="grid grid-cols-[16px_24px_115px_1fr_44px] items-center gap-2.5 px-2.5 flex-1 min-h-0 animate-pulse">
+                      <span className="text-[10px] font-medium text-slate-300 text-center">{i + 1}</span>
+                      <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200/80 shrink-0" />
                       <div className="w-24 h-2.5 bg-slate-100 rounded" />
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <div className="w-3.5 h-3.5 rounded bg-slate-100 shrink-0" />
+                        <div className="w-4.5 h-4.5 rounded bg-slate-100 shrink-0" />
                         <div className="w-16 h-2.5 bg-slate-100 rounded" />
                       </div>
                       <div className="w-9 h-2.5 bg-slate-100 rounded ml-auto" />
                     </div>
                   ))}
-                </div>
+                </>
               )}
 
               {!isSimilarLoading && similarPlayers && similarPlayers.length > 0 ? (
@@ -2661,56 +2655,53 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           </div>
 
           {/* FLOOR 2 RIGHT: 2x3 Spatial Event Pitches Grid with Real Data (Cols 5-12) */}
-          <div className="lg:col-span-8 xl:col-span-8 bg-white border border-slate-200 rounded-lg p-3 flex flex-col justify-between h-full">
-
-            {/* 2x3 Grid of 6 Mini Pitches with Real Data Visualizers */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 my-2">
+          <div className="lg:col-span-8 xl:col-span-8 grid grid-cols-1 sm:grid-cols-[1fr_1fr_285px] gap-4 h-full">
               
               {/* 1. Shots & Goals Visualizer (FIFA Standard Metric Attacking Half-Pitch) */}
-              <div className="flex flex-col">
+              <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
                   <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Shots</div>
-                  <p className="font-normal text-slate-500 text-[10px] font-mono">{shots.length} Shots · {goals} Goals · {total_xg.toFixed(2)} xG</p>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{shots.length} Shots · {goals} Goals · {total_xg.toFixed(2)} xG</p>
                   <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-600 font-medium">
                     <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 align-middle"></span>Goal</span>
                     <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 align-middle"></span>No goal</span>
                   </div>
                 </div>
 
-                <div className="relative w-full aspect-[68/52.5] bg-[#F8FAFC] border border-slate-200 rounded overflow-hidden shadow-2xs">
+                <div className="relative w-full aspect-[68/52.5] max-w-[225px] mx-auto overflow-hidden">
                   {/* FIFA Standard Attacking Half-Pitch (viewBox 0 0 68 52.5) */}
                   <svg 
                     viewBox="0 0 68 52.5" 
                     className="w-full h-full block pointer-events-auto"
                   >
                     {/* Pitch boundary */}
-                    <rect x="0" y="0" width="68" height="52.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="0" y="0" width="68" height="52.5" fill="#f5f7f4" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Penalty Box (16.5m deep x 40.32m wide, centered at X = 34) */}
-                    <rect x="13.84" y="0" width="40.32" height="16.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="13.84" y="0" width="40.32" height="16.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Six-Yard Box (5.5m deep x 18.32m wide, centered at X = 34) */}
-                    <rect x="24.84" y="0" width="18.32" height="5.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="24.84" y="0" width="18.32" height="5.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Penalty Spot (11m from goal) */}
-                    <circle cx="34" cy="11.0" r="0.45" fill="#94A3B8" />
+                    <circle cx="34" cy="11.0" r="0.45" fill="#363835" />
 
                     {/* Penalty Arc (radius 9.15m centered at 34, 11) */}
-                    <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Halfway line across bottom (Y = 52.5) */}
-                    <line x1="0" y1="52.5" x2="68" y2="52.5" stroke="#94A3B8" strokeWidth="0.45" />
+                    <line x1="0" y1="52.5" x2="68" y2="52.5" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Center circle arc (radius 9.15m centered at 34, 52.5) */}
-                    <path d="M 24.85 52.5 A 9.15 9.15 0 0 1 43.15 52.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
-                    <circle cx="34" cy="52.5" r="0.45" fill="#94A3B8" />
+                    <path d="M 24.85 52.5 A 9.15 9.15 0 0 1 43.15 52.5" fill="none" stroke="#363835" strokeWidth="0.28" />
+                    <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
 
                     {/* Attacking goal outline centered along Y = 0 */}
-                    <rect x="30.34" y="-1.8" width="7.32" height="1.8" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="30.34" y="-1.8" width="7.32" height="1.8" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Corner arcs */}
-                    <path d="M 0 2 A 2 2 0 0 1 2 0" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
-                    <path d="M 66 0 A 2 2 0 0 1 68 2" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <path d="M 0 2 A 2 2 0 0 1 2 0" fill="none" stroke="#363835" strokeWidth="0.28" />
+                    <path d="M 66 0 A 2 2 0 0 1 68 2" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Shot event markers: No goal circles first, then Goal circles on top */}
                     {[...shots]
@@ -2821,10 +2812,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               </div>
 
               {/* 2. Key Chances & Assists Visualizer (Vertical Full Pitch) */}
-              <div className="flex flex-col">
+              <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
                   <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Chances</div>
-                  <p className="text-[10px] text-slate-400 font-mono">{bigChancesCount} Big Chances · {chancesCount} Chances · {assistsCount} Assists</p>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{bigChancesCount} Big Chances · {chancesCount} Chances · {assistsCount} Assists</p>
                   <div className="flex items-center justify-center gap-3 mt-1 text-[9px] text-slate-600 font-medium">
                     <span><span className="inline-block w-2.5 h-0.5 bg-emerald-500 mr-1 align-middle"></span>Open Play</span>
                     <span><span className="inline-block w-2.5 h-0.5 border-t border-dashed border-cyan-500 mr-1 align-middle"></span>Cross</span>
@@ -2833,7 +2824,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   </div>
                 </div>
 
-                <div className="relative w-full aspect-[68/52.5] bg-[#F8FAFC] border border-slate-200 rounded overflow-hidden shadow-2xs">
+                <div className="relative w-full aspect-[68/52.5] max-w-[225px] mx-auto overflow-hidden">
                   {/* Standard Attacking Half-Pitch (viewBox 0 0 68 52.5) matching Mini-Pitch 1 */}
                   <svg 
                     viewBox="0 0 68 52.5" 
@@ -2887,33 +2878,33 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     </defs>
 
                     {/* Outer Boundary */}
-                    <rect x="0" y="0" width="68" height="52.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="0" y="0" width="68" height="52.5" fill="#f5f7f4" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Attacking Goal Outline centered at Y = 0 */}
-                    <rect x="30.34" y="-1.8" width="7.32" height="1.8" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="30.34" y="-1.8" width="7.32" height="1.8" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Six-Yard Area centered horizontally at Y = 0 (18.32m wide x 5.5m deep) */}
-                    <rect x="24.84" y="0" width="18.32" height="5.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="24.84" y="0" width="18.32" height="5.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Penalty Area centered horizontally at Y = 0 (40.32m wide x 16.5m deep) */}
-                    <rect x="13.84" y="0" width="40.32" height="16.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="13.84" y="0" width="40.32" height="16.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Penalty Spot at Y = 11.0 */}
-                    <circle cx="34" cy="11.0" r="0.45" fill="#94A3B8" />
+                    <circle cx="34" cy="11.0" r="0.45" fill="#363835" />
 
                     {/* Penalty D-Arc */}
-                    <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Midfield Line along bottom border (Y = 52.5) */}
-                    <line x1="0" y1="52.5" x2="68" y2="52.5" stroke="#94A3B8" strokeWidth="0.45" />
+                    <line x1="0" y1="52.5" x2="68" y2="52.5" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Center Circle Arc curving upward from bottom border */}
-                    <path d="M 24.85 52.5 A 9.15 9.15 0 0 1 43.15 52.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
-                    <circle cx="34" cy="52.5" r="0.45" fill="#94A3B8" />
+                    <path d="M 24.85 52.5 A 9.15 9.15 0 0 1 43.15 52.5" fill="none" stroke="#363835" strokeWidth="0.28" />
+                    <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
 
                     {/* Corner Arcs */}
-                    <path d="M 0 2 A 2 2 0 0 1 2 0" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
-                    <path d="M 66 0 A 2 2 0 0 1 68 2" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <path d="M 0 2 A 2 2 0 0 1 2 0" fill="none" stroke="#363835" strokeWidth="0.28" />
+                    <path d="M 66 0 A 2 2 0 0 1 68 2" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Chance Vectors: non-assists first, then assists on top */}
                     {[...chancesList]
@@ -3039,17 +3030,17 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               </div>
 
               {/* 3. Take-ons / Dribbles Visualizer (Standard Attacking Half-Pitch) */}
-              <div className="flex flex-col">
+              <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
                   <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Take-ons</div>
-                  <p className="text-[10px] text-slate-400 font-mono">{successfulCount}/{totalTakeOns} successful · {successPct}%</p>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{successfulCount}/{totalTakeOns} successful · {successPct}%</p>
                   <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-600 font-medium">
                     <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 align-middle"></span>Successful</span>
                     <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5 align-middle"></span>Unsuccessful</span>
                   </div>
                 </div>
 
-                <div className="relative w-full aspect-[68/52.5] bg-[#F8FAFC] border border-slate-200 rounded overflow-hidden shadow-2xs">
+                <div className="relative w-full aspect-[68/52.5] max-w-[225px] mx-auto overflow-hidden">
                   {/* Standard Attacking Half-Pitch (viewBox 0 0 68 52.5) matching Mini-Pitches 1 & 2 */}
                   <svg 
                     viewBox="0 0 68 52.5" 
@@ -3070,33 +3061,33 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     </defs>
 
                     {/* Outer Boundary */}
-                    <rect x="0" y="0" width="68" height="52.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="0" y="0" width="68" height="52.5" fill="#f5f7f4" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Attacking Goal Outline centered at Y = 0 */}
-                    <rect x="30.34" y="-1.8" width="7.32" height="1.8" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="30.34" y="-1.8" width="7.32" height="1.8" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Six-Yard Area centered horizontally at Y = 0 (18.32m wide x 5.5m deep) */}
-                    <rect x="24.84" y="0" width="18.32" height="5.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="24.84" y="0" width="18.32" height="5.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Penalty Area centered horizontally at Y = 0 (40.32m wide x 16.5m deep) */}
-                    <rect x="13.84" y="0" width="40.32" height="16.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <rect x="13.84" y="0" width="40.32" height="16.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Penalty Spot at Y = 11.0 */}
-                    <circle cx="34" cy="11.0" r="0.45" fill="#94A3B8" />
+                    <circle cx="34" cy="11.0" r="0.45" fill="#363835" />
 
                     {/* Penalty D-Arc */}
-                    <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Midfield Line along bottom edge (Y = 52.5) */}
-                    <line x1="0" y1="52.5" x2="68" y2="52.5" stroke="#94A3B8" strokeWidth="0.45" />
+                    <line x1="0" y1="52.5" x2="68" y2="52.5" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Center Circle Arc curving upward from bottom border */}
-                    <path d="M 24.85 52.5 A 9.15 9.15 0 0 1 43.15 52.5" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
-                    <circle cx="34" cy="52.5" r="0.45" fill="#94A3B8" />
+                    <path d="M 24.85 52.5 A 9.15 9.15 0 0 1 43.15 52.5" fill="none" stroke="#363835" strokeWidth="0.28" />
+                    <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
 
                     {/* Corner Arcs */}
-                    <path d="M 0 2 A 2 2 0 0 1 2 0" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
-                    <path d="M 66 0 A 2 2 0 0 1 68 2" fill="none" stroke="#94A3B8" strokeWidth="0.45" />
+                    <path d="M 0 2 A 2 2 0 0 1 2 0" fill="none" stroke="#363835" strokeWidth="0.28" />
+                    <path d="M 66 0 A 2 2 0 0 1 68 2" fill="none" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Take-on Vectors: Unsuccessful first in background, Successful on top */}
                     {[...takeOnsList]
@@ -3265,17 +3256,20 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               </div>
 
               {/* 4. Pass Starts Visualizer (Vertical Zonal Heatmap Matrix) */}
-              <div className="flex flex-col">
+              <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
                   <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Pass Starts</div>
-                  <p className="text-[10px] text-slate-400 font-mono">{totalOpenPlayPasses} Open Play Passes</p>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{totalOpenPlayPasses} Open Play Passes</p>
                 </div>
 
-                <div className="relative w-full aspect-[68/105] max-w-[240px] mx-auto bg-[#F8FAFC] border border-slate-200 rounded overflow-hidden shadow-2xs">
+                <div className="relative w-full aspect-[68/105] max-w-[215px] mx-auto overflow-hidden">
                   <svg 
                     viewBox="0 0 68 105" 
                     className="w-full h-full block pointer-events-auto"
                   >
+                    {/* Pitch boundary & technical background */}
+                    <rect x="0" y="0" width="68" height="105" fill="#f5f7f4" stroke="#363835" strokeWidth="0.28" />
+
                     {/* Layer 1 (Bottom): Zonal matrix grid rectangles */}
                     <g>
                       {passStartsGrid.map((row, r) =>
@@ -3299,25 +3293,23 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     </g>
 
                     {/* Layer 2 (Middle): Ultra-fine regulatory pitch vector lines */}
-                    <g stroke="#94A3B8" strokeWidth="0.45" fill="none" pointerEvents="none">
+                    <g stroke="#363835" strokeWidth="0.28" fill="none" pointerEvents="none">
                       {/* Boundary: 68m x 105m */}
                       <rect x="0" y="0" width="68" height="105" />
 
                       {/* Midfield center line (Y = 52.5) and center circle (r = 9.15m) */}
                       <line x1="0" y1="52.5" x2="68" y2="52.5" />
-                      <circle cx="34" cy="52.5" r="9.15" />
-                      <circle cx="34" cy="52.5" r="0.45" fill="#94A3B8" />
+                      <circle cx="34" cy="52.5" r="6.5" />
+                      <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
 
                       {/* Attacking Penalty Area & Six-Yard Box (Top, Y = 0) */}
                       <rect x="13.84" y="0" width="40.32" height="16.5" />
                       <rect x="24.84" y="0" width="18.32" height="5.5" />
-                      <circle cx="34" cy="11.0" r="0.45" fill="#94A3B8" />
                       <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" />
 
                       {/* Defending Penalty Area & Six-Yard Box (Bottom, Y = 105) */}
                       <rect x="13.84" y="88.5" width="40.32" height="16.5" />
                       <rect x="24.84" y="99.5" width="18.32" height="5.5" />
-                      <circle cx="34" cy="94.0" r="0.45" fill="#94A3B8" />
                       <path d="M 27.2 88.5 A 9.15 9.15 0 0 1 40.8 88.5" />
                     </g>
 
@@ -3329,27 +3321,12 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           const cellCenterX = c * passColWidth + passColWidth / 2;
                           const cellCenterY = r * passRowHeight + passRowHeight / 2;
 
-                          if (pct <= 0) {
-                            return (
-                              <text 
-                                key={`pass-zone-txt-${r}-${c}`}
-                                x={cellCenterX}
-                                y={cellCenterY}
-                                textAnchor="middle"
-                                dominantBaseline="central"
-                                fontSize="2.2"
-                                fill="#94A3B8"
-                                fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                                fontWeight="500"
-                                className="select-none pointer-events-none"
-                              >
-                                -
-                              </text>
-                            );
-                          }
-
                           const isDark = pct > 7;
-                          const textColor = isDark ? '#FFFFFF' : '#1E293B';
+                          const textFill = isDark ? '#FFFFFF' : '#111827';
+                          const textStroke = isDark ? '#111827' : '#FFFFFF';
+                          const strokeW = isDark ? 0.20 : 0.22;
+
+                          if (pct <= 0) return null;
 
                           return (
                             <text 
@@ -3358,10 +3335,15 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                               y={cellCenterY}
                               textAnchor="middle"
                               dominantBaseline="central"
-                              fontSize="2.6"
-                              fill={textColor}
-                              fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                              fontWeight="500"
+                              fontSize="2.7"
+                              fill={textFill}
+                              stroke={textStroke}
+                              strokeWidth={strokeW}
+                              paintOrder="stroke fill"
+                              strokeLinejoin="round"
+                              fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+                              fontWeight="700"
+                              letterSpacing="-0.02em"
                               className="select-none pointer-events-none"
                             >
                               {pct.toFixed(1)}%
@@ -3375,17 +3357,20 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               </div>
 
               {/* 5. Pass Endings Visualizer (Vertical Zonal Heatmap Matrix) */}
-              <div className="flex flex-col">
+              <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
                   <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Pass Endings</div>
-                  <p className="text-[10px] text-slate-400 font-mono">{totalPassEndsCount} Open Play Pass Endpoints</p>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{totalPassEndsCount} Open Play Pass Endpoints</p>
                 </div>
 
-                <div className="relative w-full aspect-[68/105] max-w-[240px] mx-auto bg-[#F8FAFC] border border-slate-200 rounded overflow-hidden shadow-2xs">
+                <div className="relative w-full aspect-[68/105] max-w-[215px] mx-auto overflow-hidden">
                   <svg 
                     viewBox="0 0 68 105" 
                     className="w-full h-full block pointer-events-auto"
                   >
+                    {/* Pitch boundary & technical background */}
+                    <rect x="0" y="0" width="68" height="105" fill="#f5f7f4" stroke="#363835" strokeWidth="0.28" />
+
                     {/* Layer 1 (Bottom): Zonal matrix grid rectangles */}
                     <g>
                       {passEndsGrid.map((row, r) =>
@@ -3409,25 +3394,23 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     </g>
 
                     {/* Layer 2 (Middle): Ultra-fine regulatory pitch vector lines */}
-                    <g stroke="#94A3B8" strokeWidth="0.45" fill="none" pointerEvents="none">
+                    <g stroke="#363835" strokeWidth="0.28" fill="none" pointerEvents="none">
                       {/* Boundary: 68m x 105m */}
                       <rect x="0" y="0" width="68" height="105" />
 
                       {/* Midfield center line (Y = 52.5) and center circle (r = 9.15m) */}
                       <line x1="0" y1="52.5" x2="68" y2="52.5" />
-                      <circle cx="34" cy="52.5" r="9.15" />
-                      <circle cx="34" cy="52.5" r="0.45" fill="#94A3B8" />
+                      <circle cx="34" cy="52.5" r="6.5" />
+                      <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
 
                       {/* Attacking Penalty Area & Six-Yard Box (Top, Y = 0) */}
                       <rect x="13.84" y="0" width="40.32" height="16.5" />
                       <rect x="24.84" y="0" width="18.32" height="5.5" />
-                      <circle cx="34" cy="11.0" r="0.45" fill="#94A3B8" />
                       <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" />
 
                       {/* Defending Penalty Area & Six-Yard Box (Bottom, Y = 105) */}
                       <rect x="13.84" y="88.5" width="40.32" height="16.5" />
                       <rect x="24.84" y="99.5" width="18.32" height="5.5" />
-                      <circle cx="34" cy="94.0" r="0.45" fill="#94A3B8" />
                       <path d="M 27.2 88.5 A 9.15 9.15 0 0 1 40.8 88.5" />
                     </g>
 
@@ -3439,27 +3422,12 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           const cellCenterX = c * passColWidth + passColWidth / 2;
                           const cellCenterY = r * passRowHeight + passRowHeight / 2;
 
-                          if (pct <= 0) {
-                            return (
-                              <text 
-                                key={`pass-end-txt-${r}-${c}`}
-                                x={cellCenterX}
-                                y={cellCenterY}
-                                textAnchor="middle"
-                                dominantBaseline="central"
-                                fontSize="2.2"
-                                fill="#94A3B8"
-                                fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                                fontWeight="500"
-                                className="select-none pointer-events-none"
-                              >
-                                -
-                              </text>
-                            );
-                          }
-
                           const isDark = pct > 7;
-                          const textColor = isDark ? '#FFFFFF' : '#1E293B';
+                          const textFill = isDark ? '#FFFFFF' : '#111827';
+                          const textStroke = isDark ? '#111827' : '#FFFFFF';
+                          const strokeW = isDark ? 0.20 : 0.22;
+
+                          if (pct <= 0) return null;
 
                           return (
                             <text 
@@ -3468,10 +3436,15 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                               y={cellCenterY}
                               textAnchor="middle"
                               dominantBaseline="central"
-                              fontSize="2.6"
-                              fill={textColor}
-                              fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                              fontWeight="500"
+                              fontSize="2.7"
+                              fill={textFill}
+                              stroke={textStroke}
+                              strokeWidth={strokeW}
+                              paintOrder="stroke fill"
+                              strokeLinejoin="round"
+                              fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+                              fontWeight="700"
+                              letterSpacing="-0.02em"
                               className="select-none pointer-events-none"
                             >
                               {pct.toFixed(1)}%
@@ -3485,13 +3458,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               </div>
 
               {/* 6. Season Activity Heatmap Visualizer (Vertical Monochromatic Density Cloud) */}
-              <div className="flex flex-col">
+              <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
                   <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Heatmap</div>
-                  <p className="text-[10px] text-slate-400 font-mono">{totalActionsCount} Open Play Actions</p>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{totalActionsCount} Open Play Actions</p>
                 </div>
 
-                <div className="relative w-full aspect-[68/105] max-w-[240px] mx-auto bg-[#F8FAFC] border border-slate-200 rounded overflow-hidden shadow-2xs">
+                <div className="relative w-full aspect-[68/105] max-w-[215px] mx-auto overflow-hidden">
                   <svg 
                     viewBox="0 0 68 105" 
                     className="w-full h-full block pointer-events-auto"
@@ -3501,6 +3474,9 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         <feGaussianBlur stdDeviation="3.5" />
                       </filter>
                     </defs>
+
+                    {/* Pitch boundary & technical background */}
+                    <rect x="0" y="0" width="68" height="105" fill="#f5f7f4" stroke="#363835" strokeWidth="0.28" />
 
                     {/* Layer 1 (Bottom): Monochromatic action density cloud */}
                     <g filter="url(#pitch-heatmap-blur)">
@@ -3524,32 +3500,29 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     </g>
 
                     {/* Layer 2 (Top): Ultra-fine regulatory pitch vector lines */}
-                    <g stroke="#94A3B8" strokeWidth="0.45" fill="none" pointerEvents="none">
+                    <g stroke="#363835" strokeWidth="0.28" fill="none" pointerEvents="none">
                       {/* Boundary: 68m x 105m */}
                       <rect x="0" y="0" width="68" height="105" />
 
                       {/* Midfield line at Y = 52.5 and center circle (r = 9.15m) */}
                       <line x1="0" y1="52.5" x2="68" y2="52.5" />
-                      <circle cx="34" cy="52.5" r="9.15" />
-                      <circle cx="34" cy="52.5" r="0.45" fill="#94A3B8" />
+                      <circle cx="34" cy="52.5" r="6.5" />
+                      <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
 
                       {/* Attacking Penalty Area & Six-Yard Box (Top, Y = 0) */}
                       <rect x="13.84" y="0" width="40.32" height="16.5" />
                       <rect x="24.84" y="0" width="18.32" height="5.5" />
-                      <circle cx="34" cy="11.0" r="0.45" fill="#94A3B8" />
                       <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" />
 
                       {/* Defending Penalty Area & Six-Yard Box (Bottom, Y = 105) */}
                       <rect x="13.84" y="88.5" width="40.32" height="16.5" />
                       <rect x="24.84" y="99.5" width="18.32" height="5.5" />
-                      <circle cx="34" cy="94.0" r="0.45" fill="#94A3B8" />
                       <path d="M 27.2 88.5 A 9.15 9.15 0 0 1 40.8 88.5" />
                     </g>
                   </svg>
                 </div>
               </div>
 
-            </div>
           </div>
 
         </div>
