@@ -53,11 +53,19 @@ export interface BeeswarmPoint {
   percentile?: number;
 }
 
+export interface BeeswarmTick {
+  val: number;
+  x: number;
+  label: string;
+}
+
 export interface BeeswarmStripData {
   key: string;
   label: string;
   minVal: number;
   maxVal: number;
+  domainMin?: number;
+  domainMax?: number;
   medianVal: number;
   p25Val: number;
   p75Val: number;
@@ -65,6 +73,8 @@ export interface BeeswarmStripData {
   percentile: number;
   points: BeeswarmPoint[];
   targetPoint: BeeswarmPoint | null;
+  ticks?: BeeswarmTick[];
+  calibrated?: boolean;
 }
 
 export interface BeeswarmHoverState {
@@ -310,12 +320,47 @@ const PEER_RING_CLASSES = [
   'ring-2 ring-rose-500',
 ];
 
+const PEER_RING_COLORS = [
+  '#10B981', // emerald-500
+  '#F59E0B', // amber-500
+  '#0EA5E9', // sky-500
+  '#F43F5E', // rose-500
+];
+
+function generateNiceTicks(start: number, stop: number, count = 9): number[] {
+  const span = stop - start;
+  if (span <= 0 || !isFinite(span)) return [start];
+  const step = span / Math.max(1, count);
+  const power = Math.floor(Math.log10(step));
+  const error = step / Math.pow(10, power);
+  let factor = 1;
+  if (error >= Math.sqrt(50)) factor = 10;
+  else if (error >= Math.sqrt(12.5)) factor = 5;
+  else if (error >= Math.sqrt(5)) factor = 2.5;
+  else if (error >= Math.sqrt(2)) factor = 2;
+  else factor = 1;
+  const niceStep = factor * Math.pow(10, power);
+  const firstTick = Math.ceil(start / niceStep) * niceStep;
+  const ticks: number[] = [];
+  const eps = niceStep / 1000;
+  for (let t = firstTick; t <= stop + eps; t += niceStep) {
+    const rounded = Number(t.toFixed(6));
+    if (rounded >= start - eps && rounded <= stop + eps) {
+      ticks.push(rounded);
+    }
+  }
+  return ticks;
+}
+
 interface PlayerNodeAvatarProps {
   playerId: number;
   name: string;
   isTarget?: boolean;
   ringClass?: string;
   targetRingColor?: string;
+  ringColor?: string;
+  sizeClass?: string;
+  style?: React.CSSProperties;
   isHovered?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -328,6 +373,9 @@ const PlayerNodeAvatar: React.FC<PlayerNodeAvatarProps> = ({
   isTarget = false,
   ringClass = 'ring-2 ring-sky-500',
   targetRingColor,
+  ringColor,
+  sizeClass: customSizeClass,
+  style: customStyle,
   isHovered = false,
   onMouseEnter,
   onMouseLeave,
@@ -335,25 +383,29 @@ const PlayerNodeAvatar: React.FC<PlayerNodeAvatarProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
 
-  const sizeClass = isTarget ? 'w-7 h-7' : 'w-5.5 h-5.5';
+  const sizeClass = customSizeClass || (isTarget ? 'w-7 h-7' : 'w-5.5 h-5.5');
   const defaultTargetRing = 'ring-2 ring-blue-700 ring-offset-1 ring-offset-white shadow-md';
   const effectiveRing = isTarget ? defaultTargetRing : ringClass;
 
-  const targetStyle: React.CSSProperties = isTarget && targetRingColor
-    ? {
-        boxShadow: `0 0 0 1px #fff, 0 0 0 3px ${targetRingColor}`,
-      }
-    : {};
+  const activeColor = isTarget ? targetRingColor : ringColor;
+  const avatarStyle: React.CSSProperties = {
+    ...(activeColor
+      ? {
+          boxShadow: `0 0 0 1px #FFFFFF, 0 0 0 2px ${activeColor}`,
+        }
+      : {}),
+    ...customStyle,
+  };
 
   return (
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onClick}
-      style={targetStyle}
+      style={avatarStyle}
       className={`relative ${sizeClass} rounded-full shrink-0 cursor-pointer select-none transition-transform duration-150 ${
         isHovered ? 'scale-125 z-25' : 'z-10'
-      } ${isTarget && targetRingColor ? '' : effectiveRing}`}
+      } ${activeColor ? '' : effectiveRing}`}
     >
       {!imgError ? (
         <img
@@ -1296,8 +1348,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
   // --------------------------------------------------------------------------
   const computeBeeswarmStrip = useCallback((
     metricKey: string,
-    rankings: PlayerRankingEntry[] | undefined
+    rankings: PlayerRankingEntry[] | undefined,
+    opts?: { calibrated?: boolean }
   ): BeeswarmStripData => {
+    const isCalibrated = opts?.calibrated ?? false;
     const metricLabels: Record<string, string> = {
       key_passes: 'Key Passes',
       accurate_final_third_passes: 'Final 3rd Passes',
@@ -1319,6 +1373,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         percentile: 50,
         points: [],
         targetPoint: null,
+        calibrated: isCalibrated,
       };
     }
 
@@ -1442,6 +1497,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         percentile: 50,
         points: [],
         targetPoint: null,
+        calibrated: isCalibrated,
       };
     }
 
@@ -1453,6 +1509,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       minVal = Math.max(0, minVal - 1);
       maxVal += 1;
     }
+
+    const rawRange = maxVal - minVal || 1;
+    const domainMin = isCalibrated ? minVal - 0.05 * rawRange : minVal;
+    const domainMax = isCalibrated ? maxVal + 0.05 * rawRange : maxVal;
+    const domainRange = domainMax - domainMin || 1;
 
     const getPctVal = (pct: number) => {
       const idx = Math.min(sortedVals.length - 1, Math.max(0, Math.floor(sortedVals.length * pct)));
@@ -1479,15 +1540,16 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       percentile = Math.round(Number(pctFromSeason));
     }
 
-    // Geometry on viewBox="0 0 320 48": Baseline is Y = 24, X in [18, 302] (width = 284)
-    // All nodes strictly sit on center line Y = 24 (beads-on-a-string style)
+    // Geometry: Range X is in [18, 302] (width = 284)
     const SWARM_LEFT = 18;
     const SWARM_WIDTH = 284;
 
     const points: BeeswarmPoint[] = rawPoints.map(p => {
-      const norm = (p.val - minVal) / (maxVal - minVal || 1);
+      const norm = isCalibrated
+        ? (p.val - domainMin) / domainRange
+        : (p.val - minVal) / (maxVal - minVal || 1);
       const svgX = SWARM_LEFT + Math.max(0, Math.min(1, norm)) * SWARM_WIDTH;
-      const svgY = 24;
+      const svgY = isCalibrated ? 39 : 18;
 
       const ptPercentile = p.isTarget ? percentile : getPercentile(p.val);
 
@@ -1501,11 +1563,27 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
     const targetPoint = points.find(p => p.isTarget) || null;
 
+    // Generate nice ticks if calibrated
+    let calibratedTicks: BeeswarmTick[] | undefined = undefined;
+    if (isCalibrated) {
+      const roundVals = generateNiceTicks(domainMin, domainMax, 9);
+      calibratedTicks = roundVals.map(val => {
+        const norm = (val - domainMin) / domainRange;
+        const x = SWARM_LEFT + Math.max(0, Math.min(1, norm)) * SWARM_WIDTH;
+        const absVal = Math.abs(val);
+        const numStr = absVal < 1e-9 ? '0.0' : absVal.toFixed(1);
+        const label = val < -1e-9 ? `\u2212${numStr}` : numStr;
+        return { val, x, label };
+      });
+    }
+
     return {
       key: metricKey,
       label,
       minVal,
       maxVal,
+      domainMin,
+      domainMax,
       medianVal,
       p25Val,
       p75Val,
@@ -1513,17 +1591,14 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       percentile,
       points,
       targetPoint,
+      ticks: calibratedTicks,
+      calibrated: isCalibrated,
     };
   }, [benchmarkMode, targetGroup, selectedPositionGroup, playerId, profile, seasonStats, similarPlayersMap, excludedTeamNames, minAge, maxAge]);
 
-  const beeswarm1Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric1, b1Rankings), [computeBeeswarmStrip, beeswarmMetric1, b1Rankings]);
-  const beeswarm2Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric2, b2Rankings), [computeBeeswarmStrip, beeswarmMetric2, b2Rankings]);
-  const beeswarm3Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric3, b3Rankings), [computeBeeswarmStrip, beeswarmMetric3, b3Rankings]);
-
-  const formatSwarmTick = useCallback((val: number, range: number) => {
-    if (range >= 20) return Math.round(val).toString();
-    return val.toFixed(1);
-  }, []);
+  const beeswarm1Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric1, b1Rankings, { calibrated: true }), [computeBeeswarmStrip, beeswarmMetric1, b1Rankings]);
+  const beeswarm2Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric2, b2Rankings, { calibrated: true }), [computeBeeswarmStrip, beeswarmMetric2, b2Rankings]);
+  const beeswarm3Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric3, b3Rankings, { calibrated: true }), [computeBeeswarmStrip, beeswarmMetric3, b3Rankings]);
 
   const getTopStripPeers = useCallback((strip: BeeswarmStripData): BeeswarmPoint[] => {
     const selected: BeeswarmPoint[] = [];
@@ -3533,89 +3608,89 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
           
           {/* FLOOR 3 LEFT: 3 Standalone Distribution Cards (Cols 1-4) */}
-          <div className="lg:col-span-4 h-full flex flex-col justify-between gap-3">
+          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between gap-2.5 h-full shadow-2xs">
             {[beeswarm1Data, beeswarm2Data, beeswarm3Data].map((strip) => {
               const similarPeers = getTopStripPeers(strip);
               const similarPeerIds = new Set(similarPeers.map(p => p.player_id));
               const neutralPoints = strip.points.filter(p => !p.isTarget && !similarPeerIds.has(p.player_id));
 
-              // Median Vertical Line: full strip height line at X = refX from Y = 4 to Y = 36
-              const refNorm = (strip.medianVal - strip.minVal) / (strip.maxVal - strip.minVal || 1);
+              // Calibrated 1D strip geometry (viewBox 0 0 320 88)
+              const canvasHeight = 88;
+              const pointsY = 39;
+              const avatarTopPct = (pointsY / canvasHeight) * 100;
+
+              // refX calculation using calibrated domain
+              const refNorm = strip.domainMin !== undefined && strip.domainMax !== undefined
+                ? (strip.medianVal - strip.domainMin) / (strip.domainMax - strip.domainMin || 1)
+                : (strip.medianVal - strip.minVal) / (strip.maxVal - strip.minVal || 1);
               const refX = 18 + Math.max(0, Math.min(1, refNorm)) * 284;
 
-              // 5 Micro numeric ticks below axis at Y = 42
-              const ticksCount = 5;
-              const ticks = Array.from({ length: ticksCount }, (_, i) => {
-                const fraction = i / (ticksCount - 1);
-                const val = strip.minVal + fraction * (strip.maxVal - strip.minVal);
-                const x = 18 + fraction * 284;
-                return { val, x, fraction };
-              });
-
               return (
-                <div 
-                  key={`strip-${strip.key}`} 
-                  className="bg-white rounded-xl border border-slate-200/90 p-3 flex-1 flex flex-col justify-between shadow-2xs"
+                <div
+                  key={`strip-${strip.key}`}
+                  className="border border-slate-200/90 rounded-lg p-2.5 flex-1 flex flex-col justify-between bg-[#FCFCFD]"
                 >
                   {/* Header inside each card (Top-Left) */}
-                  <div className="text-[11px] font-semibold text-slate-700 font-sans tracking-tight mb-1">
+                  <div className="text-[11px] font-bold text-slate-800 font-sans tracking-tight mb-0.5">
                     {strip.label}
                   </div>
 
-                    {/* 1D Distribution SVG Canvas per Strip (viewBox="0 0 320 48") */}
+                    {/* 1D Distribution SVG Canvas per Strip */}
                     <div className="relative w-full">
-                      <svg viewBox="0 0 320 48" className="w-full h-auto block select-none">
-                        {/* Group Median Vertical Reference Guide */}
-                        <line 
-                          x1={refX} 
-                          y1={4} 
-                          x2={refX} 
-                          y2={36} 
-                          stroke="#cbd5e1" 
-                          strokeWidth={1} 
-                          strokeDasharray="3 3" 
+                      <svg viewBox="0 0 320 88" className="w-full h-auto block select-none">
+                        {/* Group Median Vertical Reference Guide (llega a la baseline en 74) */}
+                        <line
+                          x1={refX}
+                          y1={4}
+                          x2={refX}
+                          y2={74}
+                          stroke="#94A3B8"
+                          strokeWidth={0.8}
+                          strokeDasharray="2.5 2.5"
                         />
 
-                        {/* Horizontal Baseline: ultra-fine line at Y = 24 spanning X in [18, 302] */}
-                        <line 
-                          x1="18" 
-                          y1="24" 
-                          x2="302" 
-                          y2="24" 
-                          stroke="#E2E8F0" 
-                          strokeWidth="1" 
+                        {/* Baseline: de domainMin (18) a domainMax (302) */}
+                        <line
+                          x1={18}
+                          y1={74}
+                          x2={302}
+                          y2={74}
+                          stroke="#A3A3A3"
+                          strokeWidth={0.8}
                         />
 
-                        {/* Micro numeric tick labels below the axis at Y = 42 */}
+                        {/* Marcas de extremo en domainMin y domainMax (y=74 a y=77) */}
+                        <line x1={18} y1={74} x2={18} y2={77} stroke="#A3A3A3" strokeWidth={0.8} />
+                        <line x1={302} y1={74} x2={302} y2={77} stroke="#A3A3A3" strokeWidth={0.8} />
+
+                        {/* Ticks redondos del dominio */}
                         <g pointerEvents="none">
-                          {ticks.map((tick, tIdx) => {
-                            const anchor = tIdx === 0 ? 'start' : tIdx === ticks.length - 1 ? 'end' : 'middle';
-                            return (
-                              <g key={`tick-${strip.key}-${tIdx}`}>
-                                <line 
-                                  x1={tick.x} 
-                                  y1="24" 
-                                  x2={tick.x} 
-                                  y2="27" 
-                                  stroke="#E2E8F0" 
-                                  strokeWidth="1" 
-                                />
-                                <text
-                                  x={tick.x}
-                                  y="42"
-                                  textAnchor={anchor}
-                                  fontSize="7.5"
-                                  fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                                  fill="#94A3B8"
-                                >
-                                  {formatSwarmTick(tick.val, strip.maxVal - strip.minVal)}
-                                </text>
-                              </g>
-                            );
-                          })}
+                          {(strip.ticks || []).map((tick, tIdx) => (
+                            <g key={`tick-${strip.key}-${tIdx}`}>
+                              <line
+                                x1={tick.x}
+                                y1={74}
+                                x2={tick.x}
+                                y2={77}
+                                stroke="#A3A3A3"
+                                strokeWidth={0.8}
+                              />
+                              <text
+                                x={tick.x}
+                                y="85"
+                                textAnchor="middle"
+                                fontSize="7"
+                                fontFamily="sans-serif"
+                                fontWeight="500"
+                                fill="#52525B"
+                              >
+                                {tick.label}
+                              </text>
+                            </g>
+                          ))}
                         </g>
 
-                        {/* Layer 1 (League Peers): small neutral circles strictly on Y = 24 */}
+                        {/* Layer 1 (League Peers): puntos de fondo en cy=39 */}
                         <g>
                           {neutralPoints.map((pt) => {
                             const isHovered = hoveredBeeswarmPoint?.player_id === pt.player_id && hoveredBeeswarmPoint?.metricKey === strip.key;
@@ -3623,10 +3698,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                               <circle
                                 key={`peer-${strip.key}-${pt.player_id}`}
                                 cx={pt.svgX}
-                                cy={24}
-                                r={isHovered ? "3.5" : "2.5"}
-                                fill={isHovered ? "#0F172A" : "#94A3B8"}
-                                fillOpacity={isHovered ? 1 : 0.45}
+                                cy={39}
+                                r="2.2"
+                                fill={isHovered ? "#0F172A" : "#7A7A7A"}
+                                fillOpacity={isHovered ? 1 : 0.6}
                                 className="transition-all duration-150 cursor-pointer"
                                 onMouseEnter={() => setHoveredBeeswarmPoint({
                                   player_id: pt.player_id,
@@ -3640,7 +3715,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                                   metricLabel: strip.label,
                                   metricKey: strip.key,
                                   svgX: pt.svgX,
-                                  svgY: 24,
+                                  svgY: 39,
                                   isTarget: false,
                                   percentile: pt.percentile,
                                 })}
@@ -3654,6 +3729,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       {/* Layer 2 (Top Similar Peers & Target Player Headshot Avatars) */}
                       <div className="absolute inset-0 pointer-events-none">
                         {similarPeers.map((pt, pIdx) => {
+                          const ringColor = PEER_RING_COLORS[pIdx % PEER_RING_COLORS.length];
                           const ringClass = PEER_RING_CLASSES[pIdx % PEER_RING_CLASSES.length];
                           const isHovered = hoveredBeeswarmPoint?.player_id === pt.player_id && hoveredBeeswarmPoint?.metricKey === strip.key;
                           const leftPct = (pt.svgX / 320) * 100;
@@ -3661,12 +3737,21 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                             <div
                               key={`similar-avatar-${strip.key}-${pt.player_id}`}
                               className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2"
-                              style={{ left: `${leftPct}%`, top: '50%' }}
+                              style={{
+                                left: `${leftPct}%`,
+                                top: `${avatarTopPct}%`,
+                                width: `${(11.5 / 320) * 100}%`,
+                                minWidth: '16px',
+                                aspectRatio: '1',
+                              }}
                             >
                               <PlayerNodeAvatar
                                 playerId={pt.player_id}
                                 name={pt.name}
+                                ringColor={ringColor}
                                 ringClass={ringClass}
+                                sizeClass="w-full h-full"
+                                style={{ width: '100%', height: '100%', aspectRatio: '1' }}
                                 isHovered={isHovered}
                                 onMouseEnter={() => setHoveredBeeswarmPoint({
                                   player_id: pt.player_id,
@@ -3680,7 +3765,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                                   metricLabel: strip.label,
                                   metricKey: strip.key,
                                   svgX: pt.svgX,
-                                  svgY: 24,
+                                  svgY: pointsY,
                                   isTarget: false,
                                   percentile: pt.percentile,
                                 })}
@@ -3699,13 +3784,21 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                             <div
                               key={`target-avatar-${strip.key}-${tp.player_id}`}
                               className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 z-15"
-                              style={{ left: `${leftPct}%`, top: '50%' }}
+                              style={{
+                                left: `${leftPct}%`,
+                                top: `${avatarTopPct}%`,
+                                width: `${(11.5 / 320) * 100}%`,
+                                minWidth: '16px',
+                                aspectRatio: '1',
+                              }}
                             >
                               <PlayerNodeAvatar
                                 playerId={tp.player_id}
                                 name={tp.name}
                                 isTarget={true}
                                 targetRingColor={clubThemeColor}
+                                sizeClass="w-full h-full"
+                                style={{ width: '100%', height: '100%', aspectRatio: '1' }}
                                 isHovered={isHovered}
                                 onMouseEnter={() => setHoveredBeeswarmPoint({
                                   player_id: tp.player_id,
@@ -3719,7 +3812,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                                   metricLabel: strip.label,
                                   metricKey: strip.key,
                                   svgX: tp.svgX,
-                                  svgY: 24,
+                                  svgY: pointsY,
                                   isTarget: true,
                                   percentile: strip.percentile,
                                 })}
@@ -3736,7 +3829,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         className="export-ignore absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2.5 bg-[#18181b] text-white p-2.5 rounded-lg shadow-xl border border-zinc-700/50 text-left min-w-[170px]"
                         style={{
                           left: `${Math.max(16, Math.min(84, (hoveredBeeswarmPoint.svgX / 320) * 100))}%`,
-                          top: `${(hoveredBeeswarmPoint.svgY / 48) * 100}%`,
+                          top: `${(hoveredBeeswarmPoint.svgY / canvasHeight) * 100}%`,
                         }}
                       >
                         <div className="text-[12.5px] font-bold text-white tracking-tight leading-tight">
