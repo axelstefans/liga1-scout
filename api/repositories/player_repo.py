@@ -4,6 +4,7 @@ from datetime import datetime, date
 import numpy as np
 import pandas as pd
 import joblib
+from ..core.roles import get_cohort_role_group
 
 # Cargar el modelo xG globalmente al iniciar el repositorio
 try:
@@ -19,9 +20,11 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
         SELECT
             p.player_id, p.name, p.date_of_birth, p.nationality,
             p.position, p.position_group, p.shirt_number, p.height, p.preferred_foot,
+            prg.role_group,
             t.team_id, t.name as team_name, t.short_name as team_short_name, t.logo_url as team_logo_url, t.primary_color as team_primary_color,
             pmv.market_value_eur, pmv.market_value_str
         FROM players p
+        LEFT JOIN player_role_groups prg ON p.player_id = prg.player_id
         LEFT JOIN teams t ON p.team_id = t.team_id
         LEFT JOIN player_market_values pmv ON p.player_id = pmv.player_id
         WHERE p.player_id = ?
@@ -32,6 +35,9 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
 
     data = dict(row)
 
+    role_group = data.get("role_group")
+    cohort_role_group = get_cohort_role_group(db, role_group)
+
     # Restructure into nested team object
     profile = {
         "player_id": data["player_id"],
@@ -40,6 +46,8 @@ def get_player_profile(db: sqlite3.Connection, player_id: int) -> Optional[Dict[
         "nationality": data["nationality"],
         "position": data["position"],
         "position_group": data["position_group"],
+        "role_group": role_group,
+        "cohort_role_group": cohort_role_group,
         "shirt_number": data["shirt_number"],
         "height": data["height"],
         "preferred_foot": data["preferred_foot"],
@@ -78,23 +86,104 @@ def search_players(db: sqlite3.Connection, query: str) -> List[Dict[str, Any]]:
     rows = db.execute(sql, (f"%{query}%",)).fetchall()
     return [dict(row) for row in rows]
 
-def get_player_season_stats(db: sqlite3.Connection, player_id: int) -> Optional[Dict[str, Any]]:
-    """Fetch aggregate season stats for a player."""
-    query = """
-        SELECT 
-            pss.*,
-            psp.goals_pct, psp.assists_pct, psp.key_passes_pct, psp.successful_dribbles_pct,
-            psp.tackles_pct, psp.interceptions_pct, psp.rating_pct, psp.minutes_played_pct,
-            psp.accurate_passes_percentage_pct, psp.ground_duels_won_percentage_pct,
-            psp.saves_pct, psp.clean_sheets_pct,
-            psp.expected_goals_pct, psp.accurate_final_third_passes_pct, psp.clearances_pct,
-            psp.shots_on_target_pct, psp.aerial_duels_won_pct
-        FROM player_season_stats pss
-        LEFT JOIN player_season_percentiles psp ON pss.player_id = psp.player_id
-        WHERE pss.player_id = ?
+def get_player_season_stats(
+    db: sqlite3.Connection,
+    player_id: int,
+    percentile_basis: str = "group"
+) -> Optional[Dict[str, Any]]:
     """
+    Fetch aggregate season stats for a player with percentile rankings.
+    - percentile_basis="group": percentiles evaluated against position_group (from player_season_percentiles).
+    - percentile_basis="role": percentiles evaluated against tactical role_group (from player_season_role_percentiles).
+    """
+    profile = get_player_profile(db, player_id)
+    if not profile:
+        return None
+
+    pos_group = profile.get("position_group")
+    cohort_role = profile.get("cohort_role_group")
+
+    if percentile_basis == "role":
+        query = """
+            SELECT 
+                pss.*,
+                psrp.role_group as psrp_role_group,
+                psrp.cohort_size as psrp_cohort_size,
+                COALESCE(psrp.goals_pct, psp.goals_pct) as goals_pct,
+                COALESCE(psrp.assists_pct, psp.assists_pct) as assists_pct,
+                COALESCE(psrp.key_passes_pct, psp.key_passes_pct) as key_passes_pct,
+                COALESCE(psrp.successful_dribbles_pct, psp.successful_dribbles_pct) as successful_dribbles_pct,
+                COALESCE(psrp.tackles_pct, psp.tackles_pct) as tackles_pct,
+                COALESCE(psrp.interceptions_pct, psp.interceptions_pct) as interceptions_pct,
+                COALESCE(psrp.rating_pct, psp.rating_pct) as rating_pct,
+                COALESCE(psrp.minutes_played_pct, psp.minutes_played_pct) as minutes_played_pct,
+                COALESCE(psrp.accurate_passes_percentage_pct, psp.accurate_passes_percentage_pct) as accurate_passes_percentage_pct,
+                COALESCE(psrp.ground_duels_won_percentage_pct, psp.ground_duels_won_percentage_pct) as ground_duels_won_percentage_pct,
+                COALESCE(psrp.saves_pct, psp.saves_pct) as saves_pct,
+                COALESCE(psrp.clean_sheets_pct, psp.clean_sheets_pct) as clean_sheets_pct,
+                COALESCE(psrp.expected_goals_pct, psp.expected_goals_pct) as expected_goals_pct,
+                COALESCE(psrp.accurate_final_third_passes_pct, psp.accurate_final_third_passes_pct) as accurate_final_third_passes_pct,
+                COALESCE(psrp.clearances_pct, psp.clearances_pct) as clearances_pct,
+                COALESCE(psrp.shots_on_target_pct, psp.shots_on_target_pct) as shots_on_target_pct,
+                COALESCE(psrp.aerial_duels_won_pct, psp.aerial_duels_won_pct) as aerial_duels_won_pct
+            FROM player_season_stats pss
+            LEFT JOIN player_season_role_percentiles psrp ON pss.player_id = psrp.player_id
+            LEFT JOIN player_season_percentiles psp ON pss.player_id = psp.player_id
+            WHERE pss.player_id = ?
+        """
+    else:
+        query = """
+            SELECT 
+                pss.*,
+                psp.goals_pct, psp.assists_pct, psp.key_passes_pct, psp.successful_dribbles_pct,
+                psp.tackles_pct, psp.interceptions_pct, psp.rating_pct, psp.minutes_played_pct,
+                psp.accurate_passes_percentage_pct, psp.ground_duels_won_percentage_pct,
+                psp.saves_pct, psp.clean_sheets_pct,
+                psp.expected_goals_pct, psp.accurate_final_third_passes_pct, psp.clearances_pct,
+                psp.shots_on_target_pct, psp.aerial_duels_won_pct
+            FROM player_season_stats pss
+            LEFT JOIN player_season_percentiles psp ON pss.player_id = psp.player_id
+            WHERE pss.player_id = ?
+        """
     row = db.execute(query, (player_id,)).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    res = dict(row)
+
+    # Determine cohort metadata
+    if percentile_basis == "role":
+        if cohort_role and res.get("psrp_role_group"):
+            used_cohort = cohort_role
+            cohort_size = res.get("psrp_cohort_size")
+        else:
+            used_cohort = pos_group
+            cohort_size = res.get("psrp_cohort_size")
+    else:
+        used_cohort = pos_group
+        count_q = db.execute(
+            "SELECT COUNT(*) FROM player_season_stats pss JOIN players p ON pss.player_id = p.player_id WHERE p.position_group = ? AND pss.minutes_played >= 450",
+            (pos_group,)
+        ).fetchone()
+        cohort_size = count_q[0] if count_q else None
+
+    # Fetch low confidence metrics for the cohort used
+    low_conf_metrics = []
+    if used_cohort:
+        q_rows = db.execute(
+            "SELECT metric FROM role_metric_quality WHERE role_group = ? AND low_confidence = 1 ORDER BY metric",
+            (used_cohort,)
+        ).fetchall()
+        low_conf_metrics = [r[0] for r in q_rows]
+
+    res["cohort_role_group"] = cohort_role
+    res["cohort_size"] = cohort_size
+    res["low_confidence_metrics"] = low_conf_metrics
+
+    # Remove temporary helper columns
+    res.pop("psrp_role_group", None)
+    res.pop("psrp_cohort_size", None)
+
+    return res
 
 def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[str, Any]]:
     """Fetch match-by-match stats for a player, including match details, opponent and W/D/L result."""
@@ -384,20 +473,40 @@ def get_similar_players(
     db: sqlite3.Connection,
     player_id: int,
     limit: int = 10,
-    min_minutes: int = 450
+    min_minutes: int = 450,
+    same_role: bool = False,
+    percentile_basis: str = "group",
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Find players with the most similar percentile performance profiles using Cosine Similarity.
+    Supports same_role filtering when target player qualifies for a tactical cohort_role_group.
+    Supports percentile_basis='group' (default) or 'role'.
     """
-    cols = ', '.join([f'psp.{m}' for m in SIMILARITY_METRICS])
-    target_query = f"""
-        SELECT 
-            p.player_id, p.name, p.position, p.position_group,
-            {cols}
-        FROM players p
-        LEFT JOIN player_season_percentiles psp ON p.player_id = psp.player_id
-        WHERE p.player_id = ?
-    """
+    if percentile_basis == "role":
+        cols = ', '.join([f'COALESCE(psrp.{m}, psp.{m}) as {m}' for m in SIMILARITY_METRICS])
+        target_query = f"""
+            SELECT 
+                p.player_id, p.name, p.position, p.position_group,
+                prg.role_group,
+                {cols}
+            FROM players p
+            LEFT JOIN player_season_role_percentiles psrp ON p.player_id = psrp.player_id
+            LEFT JOIN player_season_percentiles psp ON p.player_id = psp.player_id
+            LEFT JOIN player_role_groups prg ON p.player_id = prg.player_id
+            WHERE p.player_id = ?
+        """
+    else:
+        cols = ', '.join([f'psp.{m}' for m in SIMILARITY_METRICS])
+        target_query = f"""
+            SELECT 
+                p.player_id, p.name, p.position, p.position_group,
+                prg.role_group,
+                {cols}
+            FROM players p
+            LEFT JOIN player_season_percentiles psp ON p.player_id = psp.player_id
+            LEFT JOIN player_role_groups prg ON p.player_id = prg.player_id
+            WHERE p.player_id = ?
+        """
     target_row = db.execute(target_query, (player_id,)).fetchone()
     if not target_row:
         return None
@@ -412,21 +521,49 @@ def get_similar_players(
     if norm_u == 0:
         return []
 
-    cand_query = f"""
-        SELECT 
-            p.player_id, p.name, p.position, p.shirt_number, p.date_of_birth,
-            t.team_id, t.name as team_name,
-            pss.minutes_played,
-            {cols}
-        FROM player_season_percentiles psp
-        JOIN players p ON psp.player_id = p.player_id
-        JOIN player_season_stats pss ON psp.player_id = pss.player_id
-        LEFT JOIN teams t ON p.team_id = t.team_id
-        WHERE p.position_group = ?
-          AND pss.minutes_played >= ?
-          AND p.player_id != ?
-    """
-    candidates = db.execute(cand_query, (pos_group, min_minutes, player_id)).fetchall()
+    target_cohort_role = get_cohort_role_group(db, target.get('role_group'))
+
+    cand_where = ["p.position_group = ?", "pss.minutes_played >= ?", "p.player_id != ?"]
+    cand_params = [pos_group, min_minutes, player_id]
+
+    if same_role and target_cohort_role:
+        cand_where.append("prg.role_group = ?")
+        cand_params.append(target_cohort_role)
+
+    if percentile_basis == "role":
+        cand_cols = ', '.join([f'COALESCE(psrp.{m}, psp.{m}) as {m}' for m in SIMILARITY_METRICS])
+        cand_query = f"""
+            SELECT 
+                p.player_id, p.name, p.position, p.shirt_number, p.date_of_birth,
+                t.team_id, t.name as team_name,
+                pss.minutes_played,
+                prg.role_group,
+                {cand_cols}
+            FROM players p
+            JOIN player_season_stats pss ON p.player_id = pss.player_id
+            LEFT JOIN player_season_role_percentiles psrp ON p.player_id = psrp.player_id
+            LEFT JOIN player_season_percentiles psp ON p.player_id = psp.player_id
+            LEFT JOIN player_role_groups prg ON p.player_id = prg.player_id
+            LEFT JOIN teams t ON p.team_id = t.team_id
+            WHERE {' AND '.join(cand_where)}
+        """
+    else:
+        cand_cols = ', '.join([f'psp.{m}' for m in SIMILARITY_METRICS])
+        cand_query = f"""
+            SELECT 
+                p.player_id, p.name, p.position, p.shirt_number, p.date_of_birth,
+                t.team_id, t.name as team_name,
+                pss.minutes_played,
+                prg.role_group,
+                {cand_cols}
+            FROM player_season_percentiles psp
+            JOIN players p ON psp.player_id = p.player_id
+            JOIN player_season_stats pss ON psp.player_id = pss.player_id
+            LEFT JOIN player_role_groups prg ON p.player_id = prg.player_id
+            LEFT JOIN teams t ON p.team_id = t.team_id
+            WHERE {' AND '.join(cand_where)}
+        """
+    candidates = db.execute(cand_query, tuple(cand_params)).fetchall()
 
     today = date.today()
     results = []
@@ -451,6 +588,7 @@ def get_similar_players(
             "team_name": c["team_name"],
             "team_id": c["team_id"],
             "position": c["position"],
+            "role_group": c.get("role_group"),
             "similarity_pct": round(sim * 100, 1),
             "minutes_played": c["minutes_played"],
             "shirt_number": c["shirt_number"],

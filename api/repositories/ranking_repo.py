@@ -93,7 +93,8 @@ def get_player_rankings(
     stat: str,
     limit: int = 10,
     position_group: Optional[str] = None,
-    min_minutes: int = 450
+    min_minutes: int = 450,
+    role_group: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Fetch top players for a specific stat.
@@ -127,6 +128,11 @@ def get_player_rankings(
         else:
             where_clauses.append("p.position_group = ?")
             params.append(position_group)
+
+    # 2b. Role group filter (optional tactical role)
+    if role_group:
+        where_clauses.append("prg.role_group = ?")
+        params.append(role_group)
 
     # 3. Determine value expression, sort expression, and extra sample filters
     if stat in VOLUME_STATS:
@@ -162,11 +168,13 @@ def get_player_rankings(
             t.logo_url as team_logo_url,
             p.position_group,
             p.position,
+            prg.role_group,
             pss.minutes_played,
             ROUND(pss.accurate_passes_percentage, 2) as accurate_passes_percentage,
             {val_expr} as value
         FROM player_season_stats pss
         JOIN players p ON pss.player_id = p.player_id
+        LEFT JOIN player_role_groups prg ON p.player_id = prg.player_id
         LEFT JOIN teams t ON p.team_id = t.team_id
         WHERE {where_sql}
         ORDER BY {order_expr} DESC

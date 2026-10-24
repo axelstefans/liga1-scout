@@ -24,9 +24,15 @@ def get_player(player_id: int, db: sqlite3.Connection = Depends(get_db)):
     return profile
 
 @router.get("/{player_id}/season-stats", response_model=PlayerSeasonStats)
-def get_player_season_stats(player_id: int, db: sqlite3.Connection = Depends(get_db)):
+def get_player_season_stats(
+    player_id: int,
+    percentile_basis: str = Query("group", description="Percentile basis: 'group' (default) or 'role'"),
+    db: sqlite3.Connection = Depends(get_db)
+):
     """Get player's season aggregate statistics."""
-    stats = player_repo.get_player_season_stats(db, player_id)
+    if percentile_basis not in ("group", "role"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="percentile_basis must be 'group' or 'role'")
+    stats = player_repo.get_player_season_stats(db, player_id, percentile_basis=percentile_basis)
     if not stats:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Season stats not found for player")
     return stats
@@ -88,10 +94,16 @@ def get_similar_players(
     player_id: int,
     limit: int = Query(10, ge=1, le=50, description="Maximum number of similar players to return"),
     min_minutes: int = Query(300, ge=0, description="Minimum minutes played for candidates"),
+    same_role: bool = Query(False, description="Filter candidates by the same tactical role group if qualified"),
+    percentile_basis: str = Query("group", description="Percentile basis: 'group' (default) or 'role'"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Find players with the most similar percentile performance profiles."""
-    similar = player_repo.get_similar_players(db, player_id, limit=limit, min_minutes=min_minutes)
+    if percentile_basis not in ("group", "role"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="percentile_basis must be 'group' or 'role'")
+    similar = player_repo.get_similar_players(
+        db, player_id, limit=limit, min_minutes=min_minutes, same_role=same_role, percentile_basis=percentile_basis
+    )
     if similar is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
     return similar

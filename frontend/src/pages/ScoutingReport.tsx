@@ -352,6 +352,21 @@ function generateNiceTicks(start: number, stop: number, count = 9): number[] {
   return ticks;
 }
 
+function formatScatterTickLabel(val: number, step: number): string {
+  const precision = Math.abs(step - Math.round(step)) < 1e-6
+    ? 0
+    : Math.abs(step * 10 - Math.round(step * 10)) < 1e-6
+      ? 1
+      : 2;
+  const zeroStr = precision === 0 ? '0' : (0).toFixed(precision);
+  if (Math.abs(val) < 1e-9) return zeroStr;
+  const isNeg = val < -1e-9;
+  const absVal = Math.abs(val);
+  const formatted = precision === 0 ? Math.round(absVal).toString() : absVal.toFixed(precision);
+  if (parseFloat(formatted) === 0) return zeroStr;
+  return isNeg ? `\u2212${formatted}` : formatted;
+}
+
 interface PlayerNodeAvatarProps {
   playerId: number;
   name: string;
@@ -485,9 +500,9 @@ const ScoutingReport: React.FC = () => {
     return getTeamThemeColor(profile?.team?.name, profile?.team?.primary_color);
   }, [profile?.team?.name, profile?.team?.primary_color]);
   const clubThemeRgb = useMemo(() => hexToRgb(clubThemeColor), [clubThemeColor]);
-  const { data: seasonStats } = usePlayerSeasonStats(playerId);
+  const { data: seasonStats } = usePlayerSeasonStats(playerId, 'role');
   const { data: matchStats } = usePlayerMatchStats(playerId);
-  const { data: similarPlayers, isLoading: isSimilarLoading } = useSimilarPlayers(playerId, 15);
+  const { data: similarPlayers, isLoading: isSimilarLoading } = useSimilarPlayers(playerId, 15, true, 'role');
   const { data: searchResults, isLoading: isSearchLoading } = usePlayerSearch(playerSearchQuery);
 
   // Live Event Queries for Floor 2 Mini Pitches
@@ -570,16 +585,17 @@ const ScoutingReport: React.FC = () => {
   // 2D League Scatterplot Queries for Floor 3
   const scatterMetricX = xAxisMetric;
   const scatterMetricY = yAxisMetric;
+  const targetRoleGroup = profile?.cohort_role_group || undefined;
 
   const { data: xRankings } = useQuery<PlayerRankingEntry[]>({
-    queryKey: ['scatter-rankings-x', scatterMetricX],
-    queryFn: () => rankingsApi.getTopPlayers(scatterMetricX, 500),
+    queryKey: ['scatter-rankings-x', scatterMetricX, targetRoleGroup],
+    queryFn: () => rankingsApi.getTopPlayers(scatterMetricX, 500, undefined, undefined, targetRoleGroup),
     staleTime: 1000 * 60 * 10,
   });
 
   const { data: yRankings } = useQuery<PlayerRankingEntry[]>({
-    queryKey: ['scatter-rankings-y', scatterMetricY],
-    queryFn: () => rankingsApi.getTopPlayers(scatterMetricY, 500),
+    queryKey: ['scatter-rankings-y', scatterMetricY, targetRoleGroup],
+    queryFn: () => rankingsApi.getTopPlayers(scatterMetricY, 500, undefined, undefined, targetRoleGroup),
     staleTime: 1000 * 60 * 10,
   });
 
@@ -589,20 +605,20 @@ const ScoutingReport: React.FC = () => {
   const beeswarmMetric3 = beeswarm3;
 
   const { data: b1Rankings } = useQuery<PlayerRankingEntry[]>({
-    queryKey: ['beeswarm-rankings-1', beeswarmMetric1],
-    queryFn: () => rankingsApi.getTopPlayers(beeswarmMetric1, 500),
+    queryKey: ['beeswarm-rankings-1', beeswarmMetric1, targetRoleGroup],
+    queryFn: () => rankingsApi.getTopPlayers(beeswarmMetric1, 500, undefined, undefined, targetRoleGroup),
     staleTime: 1000 * 60 * 10,
   });
 
   const { data: b2Rankings } = useQuery<PlayerRankingEntry[]>({
-    queryKey: ['beeswarm-rankings-2', beeswarmMetric2],
-    queryFn: () => rankingsApi.getTopPlayers(beeswarmMetric2, 500),
+    queryKey: ['beeswarm-rankings-2', beeswarmMetric2, targetRoleGroup],
+    queryFn: () => rankingsApi.getTopPlayers(beeswarmMetric2, 500, undefined, undefined, targetRoleGroup),
     staleTime: 1000 * 60 * 10,
   });
 
   const { data: b3Rankings } = useQuery<PlayerRankingEntry[]>({
-    queryKey: ['beeswarm-rankings-3', beeswarmMetric3],
-    queryFn: () => rankingsApi.getTopPlayers(beeswarmMetric3, 500),
+    queryKey: ['beeswarm-rankings-3', beeswarmMetric3, targetRoleGroup],
+    queryFn: () => rankingsApi.getTopPlayers(beeswarmMetric3, 500, undefined, undefined, targetRoleGroup),
     staleTime: 1000 * 60 * 10,
   });
 
@@ -1326,22 +1342,16 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
   const xTicks = useMemo(() => {
     const { minX, maxX } = scatterPlotData;
-    const count = 5;
-    const step = (maxX - minX) / (count - 1 || 1);
-    return Array.from({ length: count }, (_, i) => minX + i * step);
+    return generateNiceTicks(minX, maxX, 5).filter(t => t >= minX - 1e-6 && t <= maxX + 1e-6);
   }, [scatterPlotData.minX, scatterPlotData.maxX]);
 
   const yTicks = useMemo(() => {
     const { minY, maxY } = scatterPlotData;
-    const count = 5;
-    const step = (maxY - minY) / (count - 1 || 1);
-    return Array.from({ length: count }, (_, i) => minY + i * step);
+    return generateNiceTicks(minY, maxY, 5).filter(t => t >= minY - 1e-6 && t <= maxY + 1e-6);
   }, [scatterPlotData.minY, scatterPlotData.maxY]);
 
-  const formatScatterTick = useCallback((val: number, range: number) => {
-    if (range >= 20) return Math.round(val).toString();
-    return val.toFixed(1);
-  }, []);
+  const xStep = useMemo(() => (xTicks.length >= 2 ? Math.abs(xTicks[1] - xTicks[0]) : 1), [xTicks]);
+  const yStep = useMemo(() => (yTicks.length >= 2 ? Math.abs(yTicks[1] - yTicks[0]) : 1), [yTicks]);
 
   // --------------------------------------------------------------------------
   // 9. 1D Stacked Beeswarm Distributions Calculations (Floor 3 Left)
@@ -1566,13 +1576,12 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     // Generate nice ticks if calibrated
     let calibratedTicks: BeeswarmTick[] | undefined = undefined;
     if (isCalibrated) {
-      const roundVals = generateNiceTicks(domainMin, domainMax, 9);
+      const roundVals = generateNiceTicks(domainMin, domainMax, 6);
+      const tickStep = roundVals.length >= 2 ? Math.abs(roundVals[1] - roundVals[0]) : 1;
       calibratedTicks = roundVals.map(val => {
         const norm = (val - domainMin) / domainRange;
         const x = SWARM_LEFT + Math.max(0, Math.min(1, norm)) * SWARM_WIDTH;
-        const absVal = Math.abs(val);
-        const numStr = absVal < 1e-9 ? '0.0' : absVal.toFixed(1);
-        const label = val < -1e-9 ? `\u2212${numStr}` : numStr;
+        const label = formatScatterTickLabel(val, tickStep);
         return { val, x, label };
       });
     }
@@ -1633,23 +1642,88 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
   const playerAge = calculateAge(profile?.date_of_birth);
   const countryCode = getCountryCode(profile?.nationality);
   const playerName = profile?.name || 'Marco Huamán';
-  const positionLabel = (profile?.position === 'D' ? 'Full Back' : profile?.position) || selectedPositionGroup || 'Full Back';
+  const positionLabel = (() => {
+    const role = seasonStats?.cohort_role_group || profile?.cohort_role_group;
+    if (role) {
+      switch (role) {
+        case 'Full Back': return 'Full Back';
+        case 'Centre Back': return 'Centre Back';
+        case 'Defensive Mid': return 'Defensive Midfielder';
+        case 'Central Mid': return 'Central Midfielder';
+        case 'Attacking Mid': return 'Attacking Midfielder';
+        default: return role;
+      }
+    }
+    return (profile?.position === 'D' ? 'Full Back' : profile?.position) || selectedPositionGroup || 'Full Back';
+  })();
+
+  const cohortName = (() => {
+    const role = seasonStats?.cohort_role_group || profile?.cohort_role_group;
+    if (role) {
+      switch (role) {
+        case 'Full Back': return 'Full Backs';
+        case 'Centre Back': return 'Centre Backs';
+        case 'Defensive Mid': return 'Defensive Midfielders';
+        case 'Central Mid': return 'Central Midfielders';
+        case 'Attacking Mid': return 'Attacking Midfielders';
+        default: return `${role}s`;
+      }
+    }
+    return (playerPositionGroup === 'Defender' || playerPositionGroup === 'Full Back') ? 'Full Backs' : `${playerPositionGroup}s`;
+  })();
+
+  const formatCohortAbbr = (role: string | null | undefined): string | null => {
+    switch (role) {
+      case 'Full Back': return 'FBs';
+      case 'Centre Back': return 'CBs';
+      case 'Defensive Mid': return 'DMs';
+      case 'Central Mid': return 'CMs';
+      case 'Attacking Mid': return 'AMs';
+      default: return role ? `${role}s` : null;
+    }
+  };
+
+  const getPositionGroupPlural = (posGroup: string | null | undefined): string => {
+    switch (posGroup) {
+      case 'Defender':
+      case 'D':
+        return 'Defenders';
+      case 'Midfielder':
+      case 'M':
+        return 'Midfielders';
+      case 'Forward':
+      case 'F':
+        return 'Forwards';
+      case 'Goalkeeper':
+      case 'G':
+        return 'Goalkeepers';
+      default:
+        return posGroup ? `${posGroup}s` : 'Players';
+    }
+  };
 
   const cohortCount = useMemo(() => {
     if (rawScatterPoints && rawScatterPoints.length > 0) {
       return rawScatterPoints.length;
     }
-    if (selectedPositionGroup === 'Defender' || !selectedPositionGroup) {
-      return 34; // Qualified Liga 1 Full Backs (LB/RB/LWB/RWB with >= 450 min)
-    }
     if (xRankings && xRankings.length > 0) {
-      const filtered = xRankings.filter(p => p.position_group === selectedPositionGroup);
-      if (filtered.length > 0) return filtered.length;
+      return xRankings.length;
     }
     return 34;
-  }, [rawScatterPoints, xRankings, selectedPositionGroup]);
+  }, [rawScatterPoints, xRankings]);
 
   // --------------------------------------------------------------------------
+  const cohortHeaderLabel = useMemo(() => {
+    const size = seasonStats?.cohort_size ?? cohortCount;
+    const role = seasonStats?.cohort_role_group;
+    if (role) {
+      const abbr = formatCohortAbbr(role);
+      return `vs ${size} ${abbr}`;
+    }
+    const posPlural = getPositionGroupPlural(profile?.position_group || playerPositionGroup);
+    return `vs ${size} ${posPlural}`;
+  }, [seasonStats?.cohort_role_group, seasonStats?.cohort_size, cohortCount, profile?.position_group, playerPositionGroup]);
+
   // Export Handlers & Dimension Constants (2832 x 3562 px standard)
   // --------------------------------------------------------------------------
   const EXPORT_WIDTH = 1416;
@@ -2359,7 +2433,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 {/* Bottom Technical Spec List: Compact 2-Column Left-Aligned Grid */}
                 <div className="grid grid-cols-[62px_1fr] gap-x-2 gap-y-1 pt-1.5 border-t border-slate-100 text-[11px]">
                 <span className="text-slate-400 font-medium text-left">Position</span>
-                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">Full Back</span>
+                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">{positionLabel}</span>
 
                 <span className="text-slate-400 font-medium text-left">Age</span>
                 <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">{playerAge || 24}</span>
@@ -2393,7 +2467,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-2xs h-fit">
               {/* Cohort Header */}
               <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1 px-1">
-                vs {cohortCount} Full Backs
+                {cohortHeaderLabel}
               </div>
 
               {/* Metric Rows: compact vertical stack with faint dividers */}
@@ -2424,6 +2498,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     'bg-rose-500 text-white';
 
                   const isHovered = hoveredMetric === metric.key;
+                  const isLowConfidence = seasonStats?.low_confidence_metrics?.includes(metric.key) ?? false;
 
                   return (
                     <div 
@@ -2446,9 +2521,21 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           )}
                           <span>{valStr}</span>
                         </div>
-                        <span className={`w-5.5 h-3.5 min-w-[22px] text-[9px] font-mono font-bold rounded flex items-center justify-center text-white shrink-0 ${badgeBg}`}>
-                          {pct}
-                        </span>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <span className={`w-5.5 h-3.5 min-w-[22px] text-[9px] font-mono font-bold rounded flex items-center justify-center text-white shrink-0 ${badgeBg}`}>
+                            {pct}
+                          </span>
+                          {isLowConfidence ? (
+                            <span
+                              className="text-amber-500 font-bold text-[10px] leading-none cursor-help select-none"
+                              title="Cohorte pequeño o muchos ceros: percentil poco estable"
+                            >
+                              *
+                            </span>
+                          ) : (
+                            <span className="w-1.5" />
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -2589,7 +2676,6 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 {(() => {
                   const activeMetric = RADAR_METRICS.find(m => m.key === currentLeaderboardStat);
                   const label = activeMetric ? activeMetric.label : (activeHoveredMetricDef ? activeHoveredMetricDef.label : 'Pass Accuracy');
-                  const cohortName = (playerPositionGroup === 'Defender' || playerPositionGroup === 'Full Back') ? 'Full Backs' : `${playerPositionGroup}s`;
                   return `${label} — Top 10 ${cohortName}`;
                 })()}
               </div>
@@ -3605,7 +3691,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         {/* ----------------------------------------------------------------- */}
         {/* FLOOR 3: Distributions & Defending Section                         */}
         {/* ----------------------------------------------------------------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch w-full">
           
           {/* FLOOR 3 LEFT: 3 Standalone Distribution Cards (Cols 1-4) */}
           <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between gap-2.5 h-full shadow-2xs">
@@ -3856,8 +3942,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             })}
           </div>
 
-          {/* FLOOR 3 CENTER: Large 2D Scatterplot (Cols 5-9) */}
-          <div className="lg:col-span-5 bg-white border border-slate-200 rounded-lg p-3 flex flex-col justify-center items-center">
+          {/* FLOOR 3 RIGHT CONTAINER: 3B Scatter + 3C Defending (Cols 5-12) */}
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-[1fr_285px] gap-4 h-full">
+
+            {/* FLOOR 3 CENTER: Large 2D Scatterplot */}
+            <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm h-full p-3 flex flex-col justify-center items-center">
             {/* 2D Scatter Canvas with Pure SVG Vector Visualizer */}
             <div className="w-full h-full flex flex-col justify-center items-center py-2 px-1">
               <div className="relative w-full">
@@ -3867,41 +3956,41 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 >
                   {/* Minimalist Continuous Crosshair Axes */}
                 {/* L-Axis borders */}
-                <line 
-                  x1={SCATTER_PLOT_LEFT} 
-                  y1={SCATTER_PLOT_TOP} 
-                  x2={SCATTER_PLOT_LEFT} 
-                  y2={SCATTER_PLOT_BOTTOM} 
-                  stroke="#E2E8F0" 
-                  strokeWidth="1" 
+                <line
+                  x1={SCATTER_PLOT_LEFT}
+                  y1={SCATTER_PLOT_TOP}
+                  x2={SCATTER_PLOT_LEFT}
+                  y2={SCATTER_PLOT_BOTTOM}
+                  stroke="#A3A3A3"
+                  strokeWidth="0.8"
                 />
-                <line 
-                  x1={SCATTER_PLOT_LEFT} 
-                  y1={SCATTER_PLOT_BOTTOM} 
-                  x2={SCATTER_PLOT_RIGHT} 
-                  y2={SCATTER_PLOT_BOTTOM} 
-                  stroke="#E2E8F0" 
-                  strokeWidth="1" 
+                <line
+                  x1={SCATTER_PLOT_LEFT}
+                  y1={SCATTER_PLOT_BOTTOM}
+                  x2={SCATTER_PLOT_RIGHT}
+                  y2={SCATTER_PLOT_BOTTOM}
+                  stroke="#A3A3A3"
+                  strokeWidth="0.8"
                 />
 
                 {/* Continuous median vertical & horizontal lines intersecting the entire plot */}
-                <line 
-                  x1={scatterPlotData.medSvgX} 
-                  y1={SCATTER_PLOT_TOP} 
-                  x2={scatterPlotData.medSvgX} 
-                  y2={SCATTER_PLOT_BOTTOM} 
-                  stroke="#cbd5e1" 
-                  strokeWidth={1} 
-                  strokeDasharray="3 3" 
+                <line
+                  x1={scatterPlotData.medSvgX}
+                  y1={SCATTER_PLOT_TOP}
+                  x2={scatterPlotData.medSvgX}
+                  y2={SCATTER_PLOT_BOTTOM}
+                  stroke="#CBD5E1"
+                  strokeWidth={0.7}
+                  strokeDasharray="2.5 2.5"
                 />
-                <line 
-                  x1={SCATTER_PLOT_LEFT} 
-                  y1={scatterPlotData.medSvgY} 
-                  x2={SCATTER_PLOT_RIGHT} 
-                  y2={scatterPlotData.medSvgY} 
-                  stroke="#cbd5e1" 
-                  strokeWidth={1} 
-                  strokeDasharray="3 3" 
+                <line
+                  x1={SCATTER_PLOT_LEFT}
+                  y1={scatterPlotData.medSvgY}
+                  x2={SCATTER_PLOT_RIGHT}
+                  y2={scatterPlotData.medSvgY}
+                  stroke="#CBD5E1"
+                  strokeWidth={0.7}
+                  strokeDasharray="2.5 2.5"
                 />
 
                 {/* Axis Ticks & Micro Numeric Values */}
@@ -3909,7 +3998,6 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 <g pointerEvents="none">
                   {xTicks.map((tick, idx) => {
                     const svgX = scatterPlotData.mapSvgX(tick);
-                    const anchor = idx === 0 ? 'start' : idx === xTicks.length - 1 ? 'end' : 'middle';
                     return (
                       <g key={`xtick-${idx}`}>
                         <line
@@ -3917,18 +4005,19 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           y1={SCATTER_PLOT_BOTTOM}
                           x2={svgX}
                           y2={SCATTER_PLOT_BOTTOM + 3}
-                          stroke="#E2E8F0"
-                          strokeWidth="1"
+                          stroke="#A3A3A3"
+                          strokeWidth="0.8"
                         />
                         <text
                           x={svgX}
-                          y={SCATTER_PLOT_BOTTOM + 12}
-                          textAnchor={anchor}
-                          fontSize="8.5"
-                          fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                          fill="#94A3B8"
+                          y={SCATTER_PLOT_BOTTOM + 11}
+                          textAnchor="middle"
+                          fontSize="5.8"
+                          fontFamily="ui-sans-serif, system-ui, sans-serif"
+                          fontWeight="500"
+                          fill="#52525B"
                         >
-                          {formatScatterTick(tick, scatterPlotData.maxX - scatterPlotData.minX)}
+                          {formatScatterTickLabel(tick, xStep)}
                         </text>
                       </g>
                     );
@@ -3946,19 +4035,20 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           y1={svgY}
                           x2={SCATTER_PLOT_LEFT}
                           y2={svgY}
-                          stroke="#E2E8F0"
-                          strokeWidth="1"
+                          stroke="#A3A3A3"
+                          strokeWidth="0.8"
                         />
                         <text
                           x={SCATTER_PLOT_LEFT - 5}
                           y={svgY}
                           textAnchor="end"
                           dominantBaseline="central"
-                          fontSize="8.5"
-                          fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                          fill="#94A3B8"
+                          fontSize="5.8"
+                          fontFamily="ui-sans-serif, system-ui, sans-serif"
+                          fontWeight="500"
+                          fill="#52525B"
                         >
-                          {formatScatterTick(tick, scatterPlotData.maxY - scatterPlotData.minY)}
+                          {formatScatterTickLabel(tick, yStep)}
                         </text>
                       </g>
                     );
@@ -3966,27 +4056,27 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 </g>
 
                 {/* Axis Titles */}
-                <text 
-                  x={SCATTER_PLOT_LEFT + SCATTER_PLOT_WIDTH / 2} 
-                  y={262} 
-                  textAnchor="middle" 
-                  fontSize="10" 
-                  fill="#475569" 
-                  fontWeight="500" 
-                  fontFamily="ui-sans-serif, system-ui, sans-serif" 
+                <text
+                  x={SCATTER_PLOT_LEFT + SCATTER_PLOT_WIDTH / 2}
+                  y={SCATTER_PLOT_BOTTOM + 25}
+                  textAnchor="middle"
+                  fontSize="6.8"
+                  fill="#1F2937"
+                  fontWeight="600"
+                  fontFamily="ui-sans-serif, system-ui, sans-serif"
                   className="select-none pointer-events-none"
                 >
                   {metricXLabel}
                 </text>
-                <text 
-                  x="10" 
-                  y={125} 
-                  textAnchor="middle" 
-                  transform="rotate(-90 10 125)" 
-                  fontSize="10" 
-                  fill="#475569" 
-                  fontWeight="500" 
-                  fontFamily="ui-sans-serif, system-ui, sans-serif" 
+                <text
+                  x="12"
+                  y={SCATTER_PLOT_TOP + SCATTER_PLOT_HEIGHT / 2}
+                  textAnchor="middle"
+                  transform={`rotate(-90 12 ${SCATTER_PLOT_TOP + SCATTER_PLOT_HEIGHT / 2})`}
+                  fontSize="6.8"
+                  fill="#1F2937"
+                  fontWeight="600"
+                  fontFamily="ui-sans-serif, system-ui, sans-serif"
                   className="select-none pointer-events-none"
                 >
                   {metricYLabel}
@@ -4002,8 +4092,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         cx={pt.svgX}
                         cy={pt.svgY}
                         r={isHovered ? "4.5" : "2.5"}
-                        fill={isHovered ? "#0F172A" : "#94A3B8"}
-                        fillOpacity={isHovered ? 1 : 0.4}
+                        fill={isHovered ? "#0F172A" : "#7A7A7A"}
+                        fillOpacity={isHovered ? 1 : 0.6}
                         className="transition-all duration-150 cursor-pointer"
                         onMouseEnter={() => setHoveredScatterPoint(pt)}
                         onMouseLeave={() => setHoveredScatterPoint(null)}
@@ -4016,6 +4106,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* Layer 3: Highlighted Peer & Target Player Avatars Overlay */}
               <div className="absolute inset-0 pointer-events-none">
                 {highlightedPeerPoints.map((pt, pIdx) => {
+                  const ringColor = PEER_RING_COLORS[pIdx % PEER_RING_COLORS.length];
                   const ringClass = PEER_RING_CLASSES[pIdx % PEER_RING_CLASSES.length];
                   const isHovered = hoveredScatterPoint?.player_id === pt.player_id;
                   const leftPct = (pt.svgX / 360) * 100;
@@ -4029,6 +4120,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       <PlayerNodeAvatar
                         playerId={pt.player_id}
                         name={pt.name}
+                        ringColor={ringColor}
                         ringClass={ringClass}
                         isHovered={isHovered}
                         onMouseEnter={() => setHoveredScatterPoint(pt)}
@@ -4105,20 +4197,20 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             </div>
           </div>
 
-          {/* FLOOR 3 RIGHT: Dedicated Vertical Defending Zonal Grid Pitch (Cols 10-12) */}
-          <div className="lg:col-span-3 bg-white border border-slate-200 rounded-lg p-3 flex flex-col items-center justify-center h-full">
-            <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-              <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">
-                {playerName} — Defending
+          {/* FLOOR 3 RIGHT: Dedicated Vertical Defending Zonal Grid Pitch */}
+            <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm h-full p-3 flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
+                <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">
+                  {playerName} — Defending
+                </div>
+                <p className="text-[10px] text-slate-500 font-sans">
+                  {totalDefendingActions} total · {tacklesCount} Tackles · {recoveriesCount} Recoveries · {aerialCount} Aerial
+                </p>
               </div>
-              <p className="text-[10px] text-slate-400 font-mono">
-                {totalDefendingActions} total · {tacklesCount} Tackles · {recoveriesCount} Recoveries · {aerialCount} Aerial
-              </p>
-            </div>
 
-            {/* Vertical Pitch Visual with 30-Zone grid overlay & aspect-[68/105] */}
-            <div className="relative w-full aspect-[68/105] max-w-[210px] mx-auto bg-[#F8FAFC] border border-slate-200 rounded overflow-hidden shadow-2xs">
-              <svg 
+              {/* Vertical Pitch Visual with 30-Zone grid overlay & aspect-[68/105] */}
+              <div className="relative w-full aspect-[68/105] max-w-[245px] mx-auto bg-[#F8FAFC] overflow-hidden">
+                <svg 
                 viewBox="0 0 68 105" 
                 className="w-full h-full block pointer-events-auto"
               >
@@ -4143,25 +4235,23 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 </g>
 
                 {/* Layer 2 (Middle): Ultra-fine regulatory pitch vector lines */}
-                <g stroke="#94A3B8" strokeWidth="0.45" fill="none" pointerEvents="none">
+                <g stroke="#363835" strokeWidth="0.28" fill="none" pointerEvents="none">
                   {/* Boundary: 68m x 105m */}
                   <rect x="0" y="0" width="68" height="105" />
 
-                  {/* Midfield center line (Y = 52.5) and center circle (r = 9.15m) */}
+                  {/* Midfield center line (Y = 52.5) and center circle (r = 6.5m) */}
                   <line x1="0" y1="52.5" x2="68" y2="52.5" />
-                  <circle cx="34" cy="52.5" r="9.15" />
-                  <circle cx="34" cy="52.5" r="0.45" fill="#94A3B8" />
+                  <circle cx="34" cy="52.5" r="6.5" />
+                  <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
 
                   {/* Attacking Penalty Area & Six-Yard Box (Top, Y = 0) */}
                   <rect x="13.84" y="0" width="40.32" height="16.5" />
                   <rect x="24.84" y="0" width="18.32" height="5.5" />
-                  <circle cx="34" cy="11.0" r="0.45" fill="#94A3B8" />
                   <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" />
 
                   {/* Defending Penalty Area & Six-Yard Box (Bottom, Y = 105) */}
                   <rect x="13.84" y="88.5" width="40.32" height="16.5" />
                   <rect x="24.84" y="99.5" width="18.32" height="5.5" />
-                  <circle cx="34" cy="94.0" r="0.45" fill="#94A3B8" />
                   <path d="M 27.2 88.5 A 9.15 9.15 0 0 1 40.8 88.5" />
                 </g>
 
@@ -4196,6 +4286,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 </g>
               </svg>
             </div>
+          </div>
+
           </div>
 
         </div>

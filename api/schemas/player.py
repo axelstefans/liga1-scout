@@ -15,6 +15,8 @@ class PlayerProfile(BaseModel):
     nationality: Optional[str] = None
     position: Optional[str] = None
     position_group: Optional[str] = None
+    role_group: Optional[str] = None
+    cohort_role_group: Optional[str] = None
     shirt_number: Optional[int] = None
     height: Optional[int] = None
     preferred_foot: Optional[str] = None
@@ -87,6 +89,11 @@ class PlayerSeasonStats(BaseModel):
     expected_goals_pct: Optional[float] = None
     accurate_final_third_passes_pct: Optional[float] = None
     clearances_pct: Optional[float] = None
+    
+    # --- COHORT & QUALITY METADATA ---
+    cohort_role_group: Optional[str] = None
+    cohort_size: Optional[int] = None
+    low_confidence_metrics: List[str] = []
 
 class PlayerMatchStats(BaseModel):
     match_id: int
@@ -124,6 +131,7 @@ class SimilarPlayer(BaseModel):
     team_name: Optional[str] = None
     team_id: Optional[int] = None
     position: Optional[str] = None
+    role_group: Optional[str] = None
     similarity_pct: float
     minutes_played: Optional[int] = None
     shirt_number: Optional[int] = None

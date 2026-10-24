@@ -46,6 +46,8 @@ export interface PlayerProfile {
   team: TeamBase | null;
   market_value_eur: number | null;
   market_value_str: string | null;
+  role_group?: string | null;
+  cohort_role_group?: string | null;
 }
 
 export interface PlayerSeasonStats {
@@ -91,6 +93,9 @@ export interface PlayerSeasonStats {
   total_shots?: number | null;
   accurate_passes?: number | null;
   big_chances_created?: number | null;
+  cohort_role_group?: string | null;
+  cohort_size?: number | null;
+  low_confidence_metrics?: string[];
 }
 
 export interface PlayerMatchStats {
@@ -122,6 +127,7 @@ export interface PlayerRankingEntry {
   team_logo_url: string | null;
   position_group: string | null;
   position: string | null;
+  role_group?: string | null;
   minutes_played: number | null;
   value: number | string;
   accurate_passes_percentage?: number | null;
@@ -210,6 +216,7 @@ export interface SimilarPlayer {
   team_name: string | null;
   team_id: number | null;
   position: string | null;
+  role_group?: string | null;
   similarity_pct: number;
   minutes_played: number | null;
   shirt_number: number | null;
@@ -226,8 +233,9 @@ export const playersApi = {
     const response = await apiClient.get(`/players/${id}`);
     return response.data;
   },
-  getSeasonStats: async (id: number): Promise<PlayerSeasonStats> => {
-    const response = await apiClient.get(`/players/${id}/season-stats`);
+  getSeasonStats: async (id: number, percentileBasis?: 'group' | 'role'): Promise<PlayerSeasonStats> => {
+    const params = percentileBasis ? `?percentile_basis=${percentileBasis}` : '';
+    const response = await apiClient.get(`/players/${id}/season-stats${params}`);
     return response.data;
   },
   getMatchStats: async (id: number): Promise<PlayerMatchStats[]> => {
@@ -251,17 +259,25 @@ export const playersApi = {
     const response = await apiClient.get(`/players/${id}/defending`);
     return response.data;
   },
-  getSimilarPlayers: async (id: number, limit: number = 10): Promise<SimilarPlayer[]> => {
-    const response = await apiClient.get(`/players/${id}/similar?limit=${limit}`);
+  getSimilarPlayers: async (id: number, limit: number = 10, sameRole?: boolean, percentileBasis?: 'group' | 'role'): Promise<SimilarPlayer[]> => {
+    let url = `/players/${id}/similar?limit=${limit}`;
+    if (sameRole !== undefined) {
+      url += `&same_role=${sameRole}`;
+    }
+    if (percentileBasis) {
+      url += `&percentile_basis=${percentileBasis}`;
+    }
+    const response = await apiClient.get(url);
     return response.data;
   },
 };
 
 export const rankingsApi = {
-  getTopPlayers: async (stat: string, limit: number = 100, positionGroup?: string, minMinutes?: number): Promise<PlayerRankingEntry[]> => {
+  getTopPlayers: async (stat: string, limit: number = 100, positionGroup?: string, minMinutes?: number, roleGroup?: string): Promise<PlayerRankingEntry[]> => {
     let url = `/rankings/players?stat=${stat}&limit=${limit}`;
     if (positionGroup) url += `&position_group=${encodeURIComponent(positionGroup)}`;
     if (minMinutes !== undefined) url += `&min_minutes=${minMinutes}`;
+    if (roleGroup) url += `&role_group=${encodeURIComponent(roleGroup)}`;
     const response = await apiClient.get(url);
     return response.data;
   }

@@ -18,10 +18,10 @@ export const usePlayerProfile = (id: number) => {
   });
 };
 
-export const usePlayerSeasonStats = (id: number) => {
+export const usePlayerSeasonStats = (id: number, percentileBasis?: 'group' | 'role') => {
   return useQuery({
-    queryKey: ['players', id, 'seasonStats'],
-    queryFn: () => playersApi.getSeasonStats(id),
+    queryKey: ['players', id, 'seasonStats', percentileBasis],
+    queryFn: () => playersApi.getSeasonStats(id, percentileBasis),
     enabled: !!id,
   });
 };
@@ -75,10 +75,10 @@ export const usePlayerDefending = (playerId: number) => {
 export const usePlayerDefensiveActions = usePlayerDefending;
 
 // Use this to fetch the top players for a stat to calculate distributions
-export const useLeagueRankings = (stat: string, limit: number = 100) => {
+export const useLeagueRankings = (stat: string, limit: number = 100, positionGroup?: string, minMinutes?: number, roleGroup?: string) => {
   return useQuery({
-    queryKey: ['rankings', stat, limit],
-    queryFn: () => rankingsApi.getTopPlayers(stat, limit),
+    queryKey: ['rankings', stat, limit, positionGroup, minMinutes, roleGroup],
+    queryFn: () => rankingsApi.getTopPlayers(stat, limit, positionGroup, minMinutes, roleGroup),
     enabled: !!stat,
     staleTime: 1000 * 60 * 30, // 30 minutes since rankings don't change often
   });
@@ -93,10 +93,10 @@ export const useTeamNextMatch = (teamId: number | undefined) => {
   });
 };
 
-export const useSimilarPlayers = (playerId: number, limit: number = 10) => {
+export const useSimilarPlayers = (playerId: number, limit: number = 10, sameRole?: boolean, percentileBasis?: 'group' | 'role') => {
   return useQuery({
-    queryKey: ['players', playerId, 'similar', limit],
-    queryFn: () => playersApi.getSimilarPlayers(playerId, limit),
+    queryKey: ['players', playerId, 'similar', limit, sameRole, percentileBasis],
+    queryFn: () => playersApi.getSimilarPlayers(playerId, limit, sameRole, percentileBasis),
     enabled: !!playerId,
     staleTime: 1000 * 60 * 30, // 30 minutes
   });

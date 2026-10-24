@@ -14,6 +14,7 @@ def get_player_rankings(
     limit: int = Query(10, ge=1, le=500, description="Number of players to return"),
     position_group: Optional[str] = Query(None, description="Filter by position group (e.g. Defender, Midfielder, Forward, Goalkeeper)"),
     min_minutes: int = Query(450, ge=0, description="Minimum minutes played threshold"),
+    role_group: Optional[str] = Query(None, description="Filter by tactical role group (e.g. 'Full Back', 'Centre Back', 'Defensive Mid', 'Central Mid', 'Attacking Mid')"),
     db: sqlite3.Connection = Depends(get_db)
 ):
     """Get league-wide player rankings for a specific statistic with qualification threshold and per-90 normalization."""
@@ -23,7 +24,8 @@ def get_player_rankings(
             stat=stat,
             limit=limit,
             position_group=position_group,
-            min_minutes=min_minutes
+            min_minutes=min_minutes,
+            role_group=role_group,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

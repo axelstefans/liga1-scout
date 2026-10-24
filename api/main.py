@@ -1,14 +1,28 @@
+import sqlite3
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
+from .core.roles import init_roles_schema
 from .routers import players, teams, rankings, matches, referees
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="Data API for Liga 1 Scout Dashboard"
 )
+
+@app.on_event("startup")
+def on_startup():
+    try:
+        conn = sqlite3.connect(settings.DB_PATH)
+        init_roles_schema(conn)
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Could not initialize roles schema on startup: {e}")
 
 # Configure CORS
 app.add_middleware(
