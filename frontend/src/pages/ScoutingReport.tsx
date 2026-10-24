@@ -126,6 +126,64 @@ const RADAR_METRICS: RadarMetricDef[] = [
   { key: 'clearances', pctKey: 'clearances_pct', label: 'Clearances', shortLabel: 'Clearances', category: 'Defending', color: '#0F766E', hoverColor: '#0D9488' },
 ];
 
+export const ROLE_RADAR_KEYS: Record<string, string[]> = {
+  'Full Back': [
+    'key_passes',
+    'assists',
+    'accurate_final_third_passes',
+    'successful_dribbles',
+    'accurate_passes_percentage',
+    'tackles',
+    'interceptions',
+    'ground_duels_won_percentage',
+    'aerial_duels_won',
+    'clearances',
+  ],
+  'Centre Back': [
+    'accurate_passes_percentage',
+    'accurate_final_third_passes',
+    'key_passes',
+    'tackles',
+    'interceptions',
+    'clearances',
+    'aerial_duels_won',
+    'ground_duels_won_percentage',
+  ],
+  'Defensive Mid': [
+    'accurate_passes_percentage',
+    'accurate_final_third_passes',
+    'key_passes',
+    'successful_dribbles',
+    'tackles',
+    'interceptions',
+    'ground_duels_won_percentage',
+    'aerial_duels_won',
+    'clearances',
+  ],
+  'Central Mid': [
+    'accurate_passes_percentage',
+    'accurate_final_third_passes',
+    'key_passes',
+    'assists',
+    'successful_dribbles',
+    'tackles',
+    'interceptions',
+    'ground_duels_won_percentage',
+    'goals',
+    'expected_goals',
+  ],
+  'Attacking Mid': [
+    'goals',
+    'expected_goals',
+    'shots_on_target',
+    'assists',
+    'key_passes',
+    'successful_dribbles',
+    'accurate_final_third_passes',
+    'accurate_passes_percentage',
+  ],
+};
+
 const RADAR_SLICE_OPTIONS = RADAR_METRICS.map(m => m.label);
 
 const AVAILABLE_METRICS = [
@@ -670,12 +728,31 @@ const ScoutingReport: React.FC = () => {
   };
 
   // --------------------------------------------------------------------------
-  // Pure SVG Polar Pizza Radar Computation
+  // Role Metrics and Pure SVG Polar Pizza Radar Computation
   // --------------------------------------------------------------------------
+  const roleMetrics = useMemo(() => {
+    const role = seasonStats?.cohort_role_group;
+    if (role && ROLE_RADAR_KEYS[role]) {
+      const allowedKeys = new Set(ROLE_RADAR_KEYS[role]);
+      return RADAR_METRICS.filter(m => allowedKeys.has(m.key));
+    }
+    return RADAR_METRICS;
+  }, [seasonStats?.cohort_role_group]);
+
+  const radarSliceOptions = useMemo(() => {
+    return roleMetrics.map(m => m.label);
+  }, [roleMetrics]);
+
+  useEffect(() => {
+    setActiveRadarSlices(roleMetrics.map(m => m.label));
+  }, [seasonStats?.cohort_role_group, playerId, roleMetrics]);
+
   const activeMetrics = useMemo(() => {
-    const filtered = RADAR_METRICS.filter(m => activeRadarSlices.includes(m.label));
-    return filtered.length > 0 ? filtered : RADAR_METRICS;
-  }, [activeRadarSlices]);
+    const allowedLabels = new Set(radarSliceOptions);
+    const validActive = activeRadarSlices.filter(label => allowedLabels.has(label));
+    const filtered = roleMetrics.filter(m => validActive.includes(m.label));
+    return filtered.length > 0 ? filtered : roleMetrics;
+  }, [roleMetrics, radarSliceOptions, activeRadarSlices]);
 
 const getSplitMetricLabel = (label: string): [string, string | null] => {
   const customSplits: Record<string, [string, string]> = {
@@ -2296,17 +2373,17 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             </div>
           </div>
 
-          {/* Radar slices (13/13) multi-select dropdown */}
+          {/* Radar slices multi-select dropdown */}
           <div className="relative" ref={radarDropdownRef}>
             <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Radar slices ({activeRadarSlices.length}/{RADAR_SLICE_OPTIONS.length})
+              Radar slices ({activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length}/{radarSliceOptions.length})
             </label>
             <button
               type="button"
               onClick={() => setIsRadarDropdownOpen(!isRadarDropdownOpen)}
               className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left cursor-pointer"
             >
-              <span>{activeRadarSlices.length} slices selected</span>
+              <span>{activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length} slices selected</span>
               <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-1" />
             </button>
 
@@ -2317,7 +2394,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   <div className="flex items-center space-x-2">
                     <button 
                       type="button"
-                      onClick={() => setActiveRadarSlices(RADAR_SLICE_OPTIONS)} 
+                      onClick={() => setActiveRadarSlices(radarSliceOptions)} 
                       className="text-xs font-semibold text-slate-700 hover:underline cursor-pointer"
                     >
                       All
@@ -2332,7 +2409,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   </div>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                  {RADAR_SLICE_OPTIONS.map(slice => (
+                  {radarSliceOptions.map(slice => (
                     <label 
                       key={slice} 
                       className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs"
