@@ -101,7 +101,7 @@ export const TeamTacticalRadar: React.FC<TeamTacticalRadarProps> = ({
 
   // Active club styling
   const teamColor = useMemo(
-    () => activeTeam ? getTeamThemeColor(activeTeam.name, activeTeam.primary_color) : '#0284c7',
+    () => activeTeam ? getTeamThemeColor(activeTeam.name, activeTeam.primary_color, activeTeam.team_id) : '#0284c7',
     [activeTeam]
   );
 

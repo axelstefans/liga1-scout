@@ -285,7 +285,7 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
 
   // Active club theme color
   const teamColor = useMemo(
-    () => activeTeam ? getTeamThemeColor(activeTeam.name, activeTeam.primary_color) : '#0284c7',
+    () => activeTeam ? getTeamThemeColor(activeTeam.name, activeTeam.primary_color, activeTeam.team_id) : '#0284c7',
     [activeTeam]
   );
 

@@ -340,7 +340,7 @@ export const TeamBarRanking: React.FC<TeamBarRankingProps> = ({
               barWidth = Math.max(valSvgX - plotLeft, 2);
             }
 
-            const themeColor = getTeamThemeColor(team.name, team.primary_color);
+            const themeColor = getTeamThemeColor(team.name, team.primary_color, team.team_id);
             const crestUrl = getTeamCrestUrl(team.team_id, team.logo_url);
             const tricode = getTeamTricode(team.team_id, team.name);
             const rankNumber = index + 1;

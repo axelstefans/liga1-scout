@@ -70,7 +70,7 @@ export const TeamShotZones: React.FC<TeamShotZonesProps> = ({
   );
 
   const teamColor = selectedTeam
-    ? getTeamThemeColor(selectedTeam.name, selectedTeam.primary_color)
+    ? getTeamThemeColor(selectedTeam.name, selectedTeam.primary_color, selectedTeam.team_id)
     : '#0f172a';
   const teamCrest = selectedTeam
     ? getTeamCrestUrl(selectedTeam.team_id, selectedTeam.logo_url)

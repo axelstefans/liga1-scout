@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { PlayerMatchStats } from '../services/api';
+import { getBadgeTextColor } from '../utils/teams';
 
 interface TimeInPositionProps {
   matchStats: PlayerMatchStats[] | undefined;
@@ -101,7 +102,7 @@ const VERTICAL_POSITION_COORDS: Record<string, { x: number, y: number }> = {
   'RW': { x: 164, y: 60 },
 };
 
-const POSITION_ALIASES: Record<string, string> = {
+const HORIZONTAL_POSITION_ALIASES: Record<string, string> = {
   'F': 'ST',
   'CF': 'ST',
   'D': 'CB',
@@ -109,6 +110,13 @@ const POSITION_ALIASES: Record<string, string> = {
   'M': 'CM',
   'G': 'GK'
 };
+
+const POSITION_ALIASES: Record<string, string> = {
+  'CD': 'CB',
+  'CF': 'ST',
+};
+
+const GENERIC_POSITIONS = new Set(['D', 'M', 'F', 'G']);
 
 const TimeInPosition: React.FC<TimeInPositionProps> = ({ 
   matchStats, 
@@ -126,23 +134,30 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
     if (!matchStats || matchStats.length === 0) {
       // Graceful fallback for Marco Huamán / demo mode
       return {
-        positionStats: [
-          { pos: 'LB', mins: 689, pct: 36.86 },
-          { pos: 'CB', mins: 640, pct: 34.24 },
-          { pos: 'LWB', mins: 360, pct: 19.26 },
-        ],
-        totalMinutes: 1869,
+        positionStats: isVertical
+          ? [
+              { pos: 'LB', mins: 869, pct: 40.63 },
+              { pos: 'D', mins: 730, pct: 34.13 },
+              { pos: 'LWB', mins: 360, pct: 16.83 },
+            ]
+          : [
+              { pos: 'LB', mins: 689, pct: 36.86 },
+              { pos: 'CB', mins: 640, pct: 34.24 },
+              { pos: 'LWB', mins: 360, pct: 19.26 },
+            ],
+        totalMinutes: isVertical ? 2139 : 1869,
       };
     }
     
     let totalSeasonMins = 0;
     const minsByPos: Record<string, number> = {};
+    const aliases = isVertical ? POSITION_ALIASES : HORIZONTAL_POSITION_ALIASES;
     
     matchStats.forEach(m => {
       if (m.position && m.minutes_played) {
-        let pos = m.position.toUpperCase();
-        if (POSITION_ALIASES[pos]) {
-          pos = POSITION_ALIASES[pos];
+        let pos = m.position.toUpperCase().trim();
+        if (aliases[pos]) {
+          pos = aliases[pos];
         }
         minsByPos[pos] = (minsByPos[pos] || 0) + m.minutes_played;
         totalSeasonMins += m.minutes_played;
@@ -185,7 +200,13 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
   // VERTICAL ORIENTATION (Two-Card Editorial Structure)
   // --------------------------------------------------------------------------
   if (isVertical) {
-    const positionCount = top3Stats.length;
+    const primaryColor = themeColor || '#1e3a8a';
+    const badgeTextColor = getBadgeTextColor(primaryColor);
+
+    // Los minutos con código genérico (D, M, F, G) NO se dibujan como círculo en el campo
+    const pitchStats = top3Stats.filter(stat => !GENERIC_POSITIONS.has(stat.pos));
+    // El encabezado cuenta solo posiciones tácticas específicas (excluye D, M, F, G)
+    const tacticalPositionCount = pitchStats.length;
 
     return (
       <div className={className || "w-full h-full flex-1 flex flex-col justify-between gap-2.5 min-h-0"}>
@@ -197,11 +218,11 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
               {playerName ? `${playerName} — Time in Position` : title}
             </div>
             <div className="text-[10px] text-slate-500 text-center mb-1">
-              {totalMinutes.toLocaleString()} minutes across {positionCount} {positionCount === 1 ? 'position' : 'positions'}
+              {totalMinutes.toLocaleString()} minutes across {tacticalPositionCount} {tacticalPositionCount === 1 ? 'position' : 'positions'}
             </div>
           </div>
 
-          {top3Stats.length === 0 ? (
+          {pitchStats.length === 0 ? (
             <div className="h-48 flex items-center justify-center">
               <p className="text-xs text-slate-400">No positional data available.</p>
             </div>
@@ -233,10 +254,9 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
               <path d="M 189 304 A 5 5 0 0 1 194 299" stroke="#1e293b" strokeWidth="1.1" fill="none" />
 
               {/* Pitch Position Nodes (Transparent Double-Ring Markers) */}
-              {[...top3Stats].reverse().map((stat) => {
-                const rank = top3Stats.findIndex(s => s.pos === stat.pos);
+              {[...pitchStats].reverse().map((stat) => {
+                const isPrimary = stat.pos === pitchStats[0]?.pos;
                 const coords = VERTICAL_POSITION_COORDS[stat.pos] || VERTICAL_POSITION_COORDS['CM'];
-                const isPrimary = rank === 0;
 
                 // Dynamic radius based on role percentage
                 const radius = isPrimary ? 13 : Math.max(9.5, 9.5 + (stat.pct / 100) * 3);
@@ -249,20 +269,21 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                       cy={coords.y}
                       r={radius + 2}
                       fill="none"
-                      stroke="#1e3a8a"
+                      stroke={primaryColor}
                       strokeWidth="1.1"
+                      strokeOpacity={isPrimary ? 1.0 : 0.45}
                     />
 
-                    {/* Layer 2: Translucent Inner Circle (Dominant vs Secondary) */}
+                    {/* Layer 2: Inner Circle (Dominant vs Secondary) */}
                     {isPrimary ? (
                       <>
                         <circle
                           cx={coords.x}
                           cy={coords.y}
                           r={radius}
-                          fill="#1e3a8a"
-                          fillOpacity="0.82"
-                          stroke="#1e3a8a"
+                          fill={primaryColor}
+                          fillOpacity="0.85"
+                          stroke={primaryColor}
                           strokeWidth="0.8"
                         />
                         <text
@@ -270,7 +291,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                           y={coords.y}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          fill="white"
+                          fill={badgeTextColor}
                           fontWeight="bold"
                           fontSize="7.5"
                           className="font-bold select-none pointer-events-none"
@@ -284,19 +305,19 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                           cx={coords.x}
                           cy={coords.y}
                           r={radius}
-                          fill="#475569"
-                          fillOpacity="0.32"
+                          fill={primaryColor}
+                          fillOpacity="0.25"
+                          stroke={primaryColor}
+                          strokeWidth="0.8"
+                          strokeOpacity="0.5"
                         />
                         <text
                           x={coords.x}
                           y={coords.y}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          fill="white"
-                          stroke="#0f172a"
-                          strokeWidth="0.8"
-                          paintOrder="stroke fill"
-                          fontSize="7"
+                          fill="#0F172A"
+                          fontSize="7.5"
                           fontWeight="bold"
                           className="font-bold select-none pointer-events-none"
                         >
@@ -331,7 +352,10 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
               {top3Stats.map((stat) => (
                 <div key={stat.pos} className="flex items-center justify-between text-xs py-0.5">
                   <div className="w-12 flex justify-start">
-                    <span className={`w-6 h-6 rounded-full bg-[#1e3a8a] text-white ${stat.pos.length > 2 ? 'text-[7.5px] tracking-tight' : 'text-[9.5px]'} font-bold flex items-center justify-center font-sans`}>
+                    <span 
+                      className={`w-6 h-6 rounded-full ${stat.pos.length > 2 ? 'text-[7.5px] tracking-tight' : 'text-[9.5px]'} font-bold flex items-center justify-center font-sans`}
+                      style={{ backgroundColor: primaryColor, color: badgeTextColor }}
+                    >
                       {stat.pos}
                     </span>
                   </div>

@@ -27,7 +27,7 @@ const PlayerDashboard: React.FC = () => {
   const { data: profile, isLoading: isProfileLoading } = usePlayerProfile(playerId);
   const teamId = profile?.team?.team_id;
   const teamName = profile?.team?.name || "";
-  const themeColor = getTeamThemeColor(teamName, profile?.team?.primary_color);
+  const themeColor = getTeamThemeColor(teamName, profile?.team?.primary_color, teamId);
   
   const { data: nextMatch, isLoading: isNextMatchLoading } = useTeamNextMatch(teamId);
 

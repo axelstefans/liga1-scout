@@ -19,7 +19,7 @@ import {
 } from '../hooks/usePlayer';
 import { teamsApi, rankingsApi, TeamBase, SimilarPlayer, PlayerRankingEntry, PlayerSeasonStats, PlayerShot, PlayerDribble, HeatmapPoint } from '../services/api';
 import TimeInPosition from '../components/TimeInPosition';
-import { getTeamCrestUrl, getTeamThemeColor } from '../utils/teams';
+import { getTeamCrestUrl, getTeamThemeColor, getTeamTextColor, getBadgeTextColor } from '../utils/teams';
 
 const DEFAULT_PLAYER_ID = 1090720; // Marco Huamán
 
@@ -555,9 +555,14 @@ const ScoutingReport: React.FC = () => {
   // --------------------------------------------------------------------------
   const { data: profile, isLoading: isProfileLoading } = usePlayerProfile(playerId);
   const clubThemeColor = useMemo(() => {
-    return getTeamThemeColor(profile?.team?.name, profile?.team?.primary_color);
-  }, [profile?.team?.name, profile?.team?.primary_color]);
-  const clubThemeRgb = useMemo(() => hexToRgb(clubThemeColor), [clubThemeColor]);
+    return getTeamThemeColor(profile?.team?.name, profile?.team?.primary_color, profile?.team?.team_id);
+  }, [profile?.team?.name, profile?.team?.primary_color, profile?.team?.team_id]);
+  const clubTextColor = useMemo(() => {
+    return getTeamTextColor(profile?.team?.name, profile?.team?.primary_color, profile?.team?.team_id);
+  }, [profile?.team?.name, profile?.team?.primary_color, profile?.team?.team_id]);
+  const clubTextRgb = useMemo(() => hexToRgb(clubTextColor), [clubTextColor]);
+
+  const radarBadgeTextColor = useMemo(() => getBadgeTextColor(clubThemeColor), [clubThemeColor]);
   const { data: seasonStats } = usePlayerSeasonStats(playerId, 'role');
   const { data: matchStats } = usePlayerMatchStats(playerId);
   const { data: similarPlayers, isLoading: isSimilarLoading } = useSimilarPlayers(playerId, 15, true, 'role');
@@ -2705,7 +2710,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           y={badgeY}
                           fontSize="8.5"
                           fontWeight="bold"
-                          fill="#FFFFFF"
+                          fill={isHovered ? '#FFFFFF' : radarBadgeTextColor}
                           textAnchor="middle"
                           dominantBaseline="central"
                           fontFamily="ui-monospace, monospace"
@@ -2784,8 +2789,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         style={
                           isCurrentPlayer
                             ? {
-                                backgroundColor: `rgba(${clubThemeRgb.r}, ${clubThemeRgb.g}, ${clubThemeRgb.b}, 0.12)`,
-                                border: `1px solid rgba(${clubThemeRgb.r}, ${clubThemeRgb.g}, ${clubThemeRgb.b}, 0.35)`,
+                                backgroundColor: `rgba(${clubTextRgb.r}, ${clubTextRgb.g}, ${clubTextRgb.b}, 0.12)`,
+                                border: `1px solid rgba(${clubTextRgb.r}, ${clubTextRgb.g}, ${clubTextRgb.b}, 0.35)`,
                               }
                             : undefined
                         }
@@ -2793,7 +2798,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         <div className="flex-1 min-w-0 pr-2 leading-tight text-[10px] text-slate-700 break-words">
                           <span 
                             className={isCurrentPlayer ? 'font-bold' : 'font-semibold text-slate-800'}
-                            style={isCurrentPlayer ? { color: clubThemeColor } : undefined}
+                            style={isCurrentPlayer ? { color: clubTextColor } : undefined}
                           >
                             {player.rank}. {player.name}
                           </span>
@@ -3959,7 +3964,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                                 playerId={tp.player_id}
                                 name={tp.name}
                                 isTarget={true}
-                                targetRingColor={clubThemeColor}
+                                targetRingColor={clubTextColor}
                                 sizeClass="w-full h-full"
                                 style={{ width: '100%', height: '100%', aspectRatio: '1' }}
                                 isHovered={isHovered}
@@ -4223,7 +4228,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         playerId={tp.player_id}
                         name={tp.name}
                         isTarget={true}
-                        targetRingColor={clubThemeColor}
+                        targetRingColor={clubTextColor}
                         isHovered={isHovered}
                         onMouseEnter={() => setHoveredScatterPoint(tp)}
                         onMouseLeave={() => setHoveredScatterPoint(null)}

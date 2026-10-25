@@ -125,7 +125,7 @@ export const TeamScatterPlot: React.FC<TeamScatterPlotProps> = ({
       const rawY = (team[yAxisMetric] as number | null) ?? 0;
       const svgX = mapSvgX(rawX);
       const svgY = mapSvgY(rawY);
-      const themeColor = getTeamThemeColor(team.name, team.primary_color);
+      const themeColor = getTeamThemeColor(team.name, team.primary_color, team.team_id);
       const crestUrl = getTeamCrestUrl(team.team_id, team.logo_url);
       const tricode = getTeamTricode(team.team_id, team.name);
 
