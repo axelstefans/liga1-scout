@@ -130,22 +130,22 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
 }) => {
   const isVertical = orientation === 'vertical';
 
-  const { positionStats, totalMinutes } = useMemo(() => {
+  const { positionStats, pitchStats, totalMinutes } = useMemo(() => {
     if (!matchStats || matchStats.length === 0) {
       // Graceful fallback for Marco Huamán / demo mode
+      const demoPitch = [
+        { pos: 'LB', mins: 1499, pct: 70.08 },
+        { pos: 'LWB', mins: 360, pct: 16.83 },
+        { pos: 'RB', mins: 270, pct: 12.62 },
+      ];
       return {
-        positionStats: isVertical
-          ? [
-              { pos: 'LB', mins: 869, pct: 40.63 },
-              { pos: 'D', mins: 730, pct: 34.13 },
-              { pos: 'LWB', mins: 360, pct: 16.83 },
-            ]
-          : [
-              { pos: 'LB', mins: 689, pct: 36.86 },
-              { pos: 'CB', mins: 640, pct: 34.24 },
-              { pos: 'LWB', mins: 360, pct: 19.26 },
-            ],
-        totalMinutes: isVertical ? 2139 : 1869,
+        positionStats: [
+          { pos: 'LB', mins: 1499, pct: 70 },
+          { pos: 'LWB', mins: 360, pct: 17 },
+          { pos: 'RB', mins: 270, pct: 13 },
+        ],
+        pitchStats: demoPitch,
+        totalMinutes: isVertical ? 2139 : 2129,
       };
     }
     
@@ -167,6 +167,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
     if (totalSeasonMins === 0) {
       return {
         positionStats: [],
+        pitchStats: [],
         totalMinutes: 0,
       };
     }
@@ -180,19 +181,63 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
       }))
       .sort((a, b) => b.mins - a.mins);
 
-    // 2. Global Threshold Filter:
-    // Filter out incidental roles where stat.percentage < 10%
-    const qualifiedRaw = rawStats.filter(stat => stat.pct >= minPctThreshold);
+    // 2. Cancha SVG: todas las posiciones con coordenadas reconocibles (sin filtro de umbral)
+    const validPitchStats = rawStats.filter(stat => {
+      if (GENERIC_POSITIONS.has(stat.pos)) return false;
+      const coords = isVertical ? VERTICAL_POSITION_COORDS[stat.pos] : POSITION_COORDS[stat.pos];
+      return coords !== undefined && coords !== null;
+    });
 
-    // Fallback: Ensure every player always renders at least their #1 primary position
-    // Display a maximum of the top 2 or 3 qualified positions
-    const qualifiedRoles = (qualifiedRaw.length > 0 ? qualifiedRaw : rawStats.slice(0, 1)).slice(0, 3);
+    // 3. Tabla inferior: posiciones tácticas con pctSeason >= minPctThreshold (fallback #1, max 3)
+    const tacticalRoles = rawStats.filter(stat => !GENERIC_POSITIONS.has(stat.pos));
+    const qualifiedRaw = tacticalRoles.filter(stat => stat.pct >= minPctThreshold);
+    const selectedRoles = (qualifiedRaw.length > 0 ? qualifiedRaw : tacticalRoles.slice(0, 1)).slice(0, 3);
+
+    // 4. Normalización Hare-Niemeyer (Largest Remainder Method) sobre sumQualifiedMins
+    const sumQualifiedMins = selectedRoles.reduce((sum, r) => sum + r.mins, 0);
+    let tableStats: Array<{ pos: string; mins: number; pct: number }> = [];
+
+    if (sumQualifiedMins > 0) {
+      if (selectedRoles.length === 1) {
+        tableStats = [{ pos: selectedRoles[0].pos, mins: selectedRoles[0].mins, pct: 100 }];
+      } else {
+        const rawShares = selectedRoles.map(r => (r.mins / sumQualifiedMins) * 100);
+        const floors = rawShares.map(Math.floor);
+        const remainder = 100 - floors.reduce((a, b) => a + b, 0);
+
+        // Desempate determinista: mayor resto; si empata, mayor minutaje
+        const remaindersWithMeta = rawShares
+          .map((share, idx) => ({
+            rem: share - floors[idx],
+            mins: selectedRoles[idx].mins,
+            idx,
+          }))
+          .sort((a, b) => {
+            if (Math.abs(b.rem - a.rem) > 1e-6) {
+              return b.rem - a.rem;
+            }
+            return b.mins - a.mins;
+          });
+
+        const adjustedPcts = [...floors];
+        for (let i = 0; i < remainder; i++) {
+          adjustedPcts[remaindersWithMeta[i].idx] += 1;
+        }
+
+        tableStats = selectedRoles.map((r, idx) => ({
+          pos: r.pos,
+          mins: r.mins,
+          pct: adjustedPcts[idx],
+        }));
+      }
+    }
 
     return {
-      positionStats: qualifiedRoles,
+      positionStats: tableStats,
+      pitchStats: validPitchStats,
       totalMinutes: totalSeasonMins,
     };
-  }, [matchStats, minPctThreshold]);
+  }, [matchStats, minPctThreshold, isVertical]);
 
   const top3Stats = positionStats;
 
@@ -202,11 +247,6 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
   if (isVertical) {
     const primaryColor = themeColor || '#1e3a8a';
     const badgeTextColor = getBadgeTextColor(primaryColor);
-
-    // Los minutos con código genérico (D, M, F, G) NO se dibujan como círculo en el campo
-    const pitchStats = top3Stats.filter(stat => !GENERIC_POSITIONS.has(stat.pos));
-    // El encabezado cuenta solo posiciones tácticas específicas (excluye D, M, F, G)
-    const tacticalPositionCount = pitchStats.length;
 
     return (
       <div className={className || "w-full h-full flex-1 flex flex-col justify-between gap-2.5 min-h-0"}>
@@ -218,7 +258,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
               {playerName ? `${playerName} — Time in Position` : title}
             </div>
             <div className="text-[10px] text-slate-500 text-center mb-1">
-              {totalMinutes.toLocaleString()} minutes across {tacticalPositionCount} {tacticalPositionCount === 1 ? 'position' : 'positions'}
+              {totalMinutes.toLocaleString()} minutes across {pitchStats.length} {pitchStats.length === 1 ? 'position' : 'positions'}
             </div>
           </div>
 
@@ -256,10 +296,12 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
               {/* Pitch Position Nodes (Transparent Double-Ring Markers) */}
               {[...pitchStats].reverse().map((stat) => {
                 const isPrimary = stat.pos === pitchStats[0]?.pos;
-                const coords = VERTICAL_POSITION_COORDS[stat.pos] || VERTICAL_POSITION_COORDS['CM'];
+                const coords = VERTICAL_POSITION_COORDS[stat.pos];
+                if (!coords) return null;
 
-                // Dynamic radius based on role percentage
+                // Dynamic radius based on season percentage
                 const radius = isPrimary ? 13 : Math.max(9.5, 9.5 + (stat.pct / 100) * 3);
+                const secondaryOpacity = Math.max(0.20, Math.min(0.70, 0.20 + (stat.pct / 100) * 0.50));
 
                 return (
                   <g key={stat.pos}>
@@ -271,7 +313,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                       fill="none"
                       stroke={primaryColor}
                       strokeWidth="1.1"
-                      strokeOpacity={isPrimary ? 1.0 : 0.45}
+                      strokeOpacity={isPrimary ? 1.0 : Math.min(0.8, secondaryOpacity + 0.2)}
                     />
 
                     {/* Layer 2: Inner Circle (Dominant vs Secondary) */}
@@ -306,10 +348,10 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                           cy={coords.y}
                           r={radius}
                           fill={primaryColor}
-                          fillOpacity="0.25"
+                          fillOpacity={secondaryOpacity}
                           stroke={primaryColor}
                           strokeWidth="0.8"
-                          strokeOpacity="0.5"
+                          strokeOpacity={secondaryOpacity + 0.25}
                         />
                         <text
                           x={coords.x}

@@ -104,3 +104,12 @@ frontend/dist/
 debug_*.py
 test_frontend.py
 tools/*.json
+
+# Backups y bases de datos temporales
+/backups/
+liga1_backup_*.db*
+liga1_rollback_*.db*
+*_test.db*
+*.db-shm
+*.db-wal
+*.db-journal

@@ -635,7 +635,6 @@ def get_team_pass_network(
             ORDER BY 
                 CASE 
                     WHEN pms.was_substitute = 0 THEN 0
-                    WHEN pms.was_substitute IS NULL AND pms.position IS NOT NULL AND pms.position NOT IN ('G', 'D', 'M', 'F') THEN 0
                     WHEN pms.was_substitute = 1 THEN 2
                     ELSE 1
                 END ASC,
@@ -3196,7 +3195,6 @@ def get_team_most_used_xi(
                     ORDER BY 
                         CASE 
                             WHEN pms.was_substitute = 0 THEN 0
-                            WHEN pms.was_substitute IS NULL AND pms.position NOT IN ('G', 'D', 'M', 'F') AND pms.position IS NOT NULL THEN 0
                             WHEN pms.was_substitute = 1 THEN 2
                             ELSE 1
                         END ASC,

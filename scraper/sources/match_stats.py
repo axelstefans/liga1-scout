@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from ..db import is_cached, log_scrape
 from .. import config
-from .formation_parser import get_tactical_position
+from .formation_parser import get_tactical_position, build_substitutions_position_map
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,10 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                 # NUEVO: Extraer Formaciones y Posiciones primero
                 # ==========================================
                 tactical_positions = {}
+                sub_inferred_positions = {}
+                sub_replaced_players = {}
+                sub_sources = {}
+
                 lineups_data = sofascore_lanus.sofascore_request(f'api/v1/event/{str(match_id)}/lineups')
                 
                 if lineups_data:
@@ -58,12 +62,21 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                             for idx, p_entry in enumerate(players_list):
                                 p_id = p_entry.get('player', {}).get('id')
                                 if p_id:
+                                    is_sub = bool(p_entry.get('substitute', False))
                                     tactical_positions[p_id] = get_tactical_position(
                                         player_index=idx,
                                         formation=formation,
-                                        is_substitute=p_entry.get('substitute', False),
+                                        is_substitute=is_sub,
                                         default_position=p_entry.get('position', 'Unknown')
                                     )
+
+                    # Inferencia de suplentes mediante incidentes
+                    incidents_data = sofascore_lanus.sofascore_request(f'api/v1/event/{str(match_id)}/incidents')
+                    incidents_list = incidents_data.get("incidents", []) if isinstance(incidents_data, dict) else []
+                    sub_inferred_positions, sub_replaced_players, sub_sources = build_substitutions_position_map(
+                        incidents_list, tactical_positions
+                    )
+
                 time.sleep(1) # Pequeño delay de cortesía después de la llamada extra
                 # ==========================================
                 
@@ -97,16 +110,32 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                             clean_k = k.replace('statistics.', '')
                             flat_dict[clean_k] = v
                             
-                        # NUEVO: Obtenemos la posición táctica que inferimos arriba
-                        final_position = tactical_positions.get(player_id, flat_dict.get('position', None))
-                            
+                        # Indicador determinista de suplente (0 o 1)
+                        sub_flag = row_dict.get('substitute')
+                        if sub_flag is None:
+                            sub_flag = flat_dict.get('substitute')
+                        was_substitute_val = 1 if bool(sub_flag) else 0
+                        
+                        # Posición y trazabilidad de linaje
+                        if was_substitute_val == 0:
+                            final_position = tactical_positions.get(player_id, flat_dict.get('position', None))
+                            pos_source = 'starting_xi' if final_position not in ('G', 'D', 'M', 'F', None) else 'fallback'
+                            replaced_id = None
+                        else:
+                            final_position = sub_inferred_positions.get(player_id, flat_dict.get('position', None))
+                            pos_source = sub_sources.get(player_id, 'fallback')
+                            replaced_id = sub_replaced_players.get(player_id)
+
                         # Prepare insert dictionary
                         stat_data = {
                             'player_id': player_id,
                             'match_id': match_id,
                             'team_id': team_id,
                             'scraped_at': now,
-                            'position': final_position, # NUEVO: Guardamos la posición en la DB
+                            'was_substitute': was_substitute_val,
+                            'position_source': pos_source,
+                            'replaced_player_id': replaced_id,
+                            'position': final_position,
                             'sofascore_rating': flat_dict.get('rating'),
                             'goals': flat_dict.get('goals'),
                             'assists': flat_dict.get('goalAssist'),
