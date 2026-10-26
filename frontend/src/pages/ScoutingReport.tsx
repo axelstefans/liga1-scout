@@ -193,6 +193,7 @@ const AVAILABLE_METRICS = [
   { key: 'big_chances_missed', label: 'Big Chances Missed', category: 'Attacking' },
   { key: 'key_passes', label: 'Key Passes', category: 'Passing' },
   { key: 'big_chances_created', label: 'Big Chances Created', category: 'Passing' },
+  { key: 'assists', label: 'Assists', category: 'Passing' },
   { key: 'accurate_passes_percentage', label: 'Pass Accuracy %', category: 'Passing' },
   { key: 'accurate_final_third_passes', label: 'Final 3rd Passes', category: 'Passing' },
   { key: 'accurate_crosses', label: 'Accurate Crosses', category: 'Passing' },
@@ -204,6 +205,67 @@ const AVAILABLE_METRICS = [
   { key: 'interceptions', label: 'Interceptions', category: 'Defending' },
   { key: 'clearances', label: 'Clearances', category: 'Defending' },
 ];
+
+export interface RoleMetricPreset {
+  xAxis: string;
+  yAxis: string;
+  beeswarm1: string;
+  beeswarm2: string;
+  beeswarm3: string;
+}
+
+export const ROLE_METRIC_PRESETS: Record<string, RoleMetricPreset> = {
+  'Striker': {
+    xAxis: 'expected_goals',
+    yAxis: 'goals',
+    beeswarm1: 'shots_on_target',
+    beeswarm2: 'big_chances_missed',
+    beeswarm3: 'aerial_duels_won',
+  },
+  'Wide/AM': {
+    xAxis: 'key_passes',
+    yAxis: 'assists',
+    beeswarm1: 'successful_dribbles',
+    beeswarm2: 'accurate_final_third_passes',
+    beeswarm3: 'expected_goals',
+  },
+  'Central Mid': {
+    xAxis: 'accurate_passes_percentage',
+    yAxis: 'accurate_final_third_passes',
+    beeswarm1: 'key_passes',
+    beeswarm2: 'ground_duels_won_percentage',
+    beeswarm3: 'tackles',
+  },
+  'Defensive Mid': {
+    xAxis: 'tackles',
+    yAxis: 'interceptions',
+    beeswarm1: 'ground_duels_won_percentage',
+    beeswarm2: 'accurate_passes_percentage',
+    beeswarm3: 'aerial_duels_won',
+  },
+  'Full Back': {
+    xAxis: 'tackles',
+    yAxis: 'accurate_final_third_passes',
+    beeswarm1: 'interceptions',
+    beeswarm2: 'accurate_crosses',
+    beeswarm3: 'ground_duels_won_percentage',
+  },
+  'Centre Back': {
+    xAxis: 'clearances',
+    yAxis: 'interceptions',
+    beeswarm1: 'aerial_duels_won',
+    beeswarm2: 'tackles',
+    beeswarm3: 'accurate_passes_percentage',
+  },
+};
+
+export const DEFAULT_METRIC_PRESET: RoleMetricPreset = {
+  xAxis: 'accurate_passes_percentage',
+  yAxis: 'key_passes',
+  beeswarm1: 'key_passes',
+  beeswarm2: 'accurate_final_third_passes',
+  beeswarm3: 'successful_dribbles',
+};
 
 const VOLUME_STAT_KEYS = new Set([
   'goals', 'assists', 'expected_goals', 'shots_on_target', 'total_shots',
@@ -565,6 +627,35 @@ const ScoutingReport: React.FC = () => {
   const radarBadgeTextColor = useMemo(() => getBadgeTextColor(clubThemeColor), [clubThemeColor]);
   const { data: seasonStats } = usePlayerSeasonStats(playerId, 'role');
   const { data: matchStats } = usePlayerMatchStats(playerId);
+
+  const currentRole = seasonStats?.cohort_role_group || profile?.cohort_role_group;
+  const prevRoleRef = useRef<string | null | undefined>(undefined);
+
+  const applyPreset = useCallback((role?: string | null) => {
+    const preset = (role && ROLE_METRIC_PRESETS[role]) || DEFAULT_METRIC_PRESET;
+    setXAxisMetric(preset.xAxis);
+    setYAxisMetric(preset.yAxis);
+    setBeeswarm1(preset.beeswarm1);
+    setBeeswarm2(preset.beeswarm2);
+    setBeeswarm3(preset.beeswarm3);
+  }, []);
+
+  useEffect(() => {
+    if (isProfileLoading || !profile) return;
+
+    const resolvedRole = currentRole ?? null;
+
+    if (prevRoleRef.current === undefined) {
+      prevRoleRef.current = resolvedRole;
+      applyPreset(resolvedRole);
+      return;
+    }
+
+    if (resolvedRole !== prevRoleRef.current) {
+      prevRoleRef.current = resolvedRole;
+      applyPreset(resolvedRole);
+    }
+  }, [currentRole, isProfileLoading, profile, applyPreset]);
   const { data: similarPlayers, isLoading: isSimilarLoading } = useSimilarPlayers(playerId, 15, true, 'role');
   const { data: searchResults, isLoading: isSearchLoading } = usePlayerSearch(playerSearchQuery);
 
@@ -2223,9 +2314,19 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
         {/* 3. METRICS FOR SCATTERPLOT & BEESWARM DISTRIBUTIONS */}
         <div className="space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
-            Metrics for Scatterplot & Beeswarm Distributions
-          </h2>
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Metrics for Scatterplot & Beeswarm Distributions
+            </h2>
+            <button
+              type="button"
+              onClick={() => applyPreset(currentRole)}
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+              title={currentRole ? `Restablecer métricas sugeridas para ${currentRole}` : 'Restablecer métricas por defecto'}
+            >
+              Restablecer preset{currentRole ? ` (${currentRole})` : ''}
+            </button>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
