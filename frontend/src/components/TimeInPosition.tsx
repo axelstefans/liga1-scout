@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { PlayerMatchStats } from '../services/api';
-import { getBadgeTextColor } from '../utils/teams';
 
 interface TimeInPositionProps {
   matchStats: PlayerMatchStats[] | undefined;
@@ -246,7 +245,6 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
   // --------------------------------------------------------------------------
   if (isVertical) {
     const primaryColor = themeColor || '#1e3a8a';
-    const badgeTextColor = getBadgeTextColor(primaryColor);
 
     return (
       <div className={className || "w-full h-full flex-1 flex flex-col justify-between gap-2.5 min-h-0"}>
@@ -333,7 +331,11 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                           y={coords.y}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          fill={badgeTextColor}
+                          fill="#FFFFFF"
+                          stroke="#0F172A"
+                          strokeWidth={1.2}
+                          strokeLinejoin="round"
+                          style={{ paintOrder: 'stroke fill' }}
                           fontWeight="bold"
                           fontSize="7.5"
                           className="font-bold select-none pointer-events-none"
@@ -358,7 +360,11 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                           y={coords.y}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          fill="#0F172A"
+                          fill="#FFFFFF"
+                          stroke="#0F172A"
+                          strokeWidth={1.2}
+                          strokeLinejoin="round"
+                          style={{ paintOrder: 'stroke fill' }}
                           fontSize="7.5"
                           fontWeight="bold"
                           className="font-bold select-none pointer-events-none"
@@ -396,7 +402,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                   <div className="w-12 flex justify-start">
                     <span 
                       className={`w-6 h-6 rounded-full ${stat.pos.length > 2 ? 'text-[7.5px] tracking-tight' : 'text-[9.5px]'} font-bold flex items-center justify-center font-sans`}
-                      style={{ backgroundColor: primaryColor, color: badgeTextColor }}
+                      style={{ backgroundColor: primaryColor, color: '#FFFFFF' }}
                     >
                       {stat.pos}
                     </span>

@@ -33,21 +33,21 @@ export interface TeamColorDefinition {
  * - fill: color de relleno para gráficos (gajos, barras, polígonos, burbujas)
  */
 export const TEAM_COLORS: Record<number, TeamColorDefinition> = {
-  511206: { name: 'ACD Juan Pablo II', color: '#f5b121', accent: '#9E6B05', fill: '#f5b121' },
+  511206: { name: 'ACD Juan Pablo II', color: '#fdb813', accent: '#111622', fill: '#c87a00' },
   2307: { name: 'Alianza Atlético de Sullana', color: '#1556e3', accent: '#1556e3', fill: '#1556e3' },
   2311: { name: 'Alianza Lima', color: '#011b57', accent: '#011b57', fill: '#011b57' },
-  335557: { name: 'Asociación Deportiva Tarma', color: '#0183dc', accent: '#005b9a', fill: '#0183dc' },
+  335557: { name: 'Asociación Deportiva Tarma', color: '#0090e3', accent: '#06254b', fill: '#007cc2' },
   492848: { name: 'CD Moquegua', color: '#040404', accent: '#040404', fill: '#040404' },
   2301: { name: 'Cienciano', color: '#be292f', accent: '#be292f', fill: '#be292f' },
   282538: { name: 'Club Atlético Grau', color: '#eef0fa', accent: '#b50007', fill: '#e1010a' },
-  2302: { name: 'Club Sporting Cristal', color: '#07b4ee', accent: '#0072ce', fill: '#07b4ee' },
+  2302: { name: 'Club Sporting Cristal', color: '#07b4ee', accent: '#004b87', fill: '#38a9e6' },
   213609: { name: 'Comerciantes Unidos', color: '#59229e', accent: '#59229e', fill: '#59229e' },
-  63760: { name: 'Cusco FC', color: '#cdab7d', accent: '#07090b', fill: '#D4AF37' },
-  458584: { name: 'Deportivo Garcilaso', color: '#01a6ff', accent: '#006cb3', fill: '#01a6ff' },
-  1082002: { name: 'FC Cajamarca', color: '#fdc65f', accent: '#082cad', fill: '#fdc65f' },
-  252254: { name: 'Los Chankas CYC', color: '#6a2941', accent: '#6a2941', fill: '#6a2941' },
+  63760: { name: 'Cusco FC', color: '#cbb28d', accent: '#111315', fill: '#c59b4c' },
+  458584: { name: 'Deportivo Garcilaso', color: '#38b6ff', accent: '#d32f2f', fill: '#2298e6' },
+  1082002: { name: 'FC Cajamarca', color: '#ffdd00', accent: '#ffdd00', fill: '#0c3fa8' },
+  252254: { name: 'Los Chankas CYC', color: '#5c1124', accent: '#f07822', fill: '#5c1124' },
   2308: { name: 'Melgar', color: '#8e1420', accent: '#8e1420', fill: '#8e1420' },
-  2312: { name: 'Sport Boys', color: '#e695cd', accent: '#a12c75', fill: '#e695cd' },
+  2312: { name: 'Sport Boys', color: '#f49bc4', accent: '#0f172a', fill: '#df4b88' },
   33895: { name: 'Sport Huancayo', color: '#d32429', accent: '#d32429', fill: '#d32429' },
   2305: { name: 'Universitario de Deportes', color: '#e9e0c5', accent: '#8f132b', fill: '#8f132b' },
   87854: { name: 'Univ. Técnica de Cajamarca', color: '#e1d0c1', accent: '#933c3f', fill: '#933c3f' },
@@ -178,12 +178,10 @@ export const getRelativeLuminance = (hexColor: string): number => {
 };
 
 /**
- * Retorna '#FFFFFF' si el contraste del blanco >= 4.5:1 sobre `bgColor`, y si no '#0F172A'.
+ * Retorna '#FFFFFF' para texto de pastillas/badges de datos sobre fondo de club.
  */
-export const getBadgeTextColor = (bgColor: string): '#FFFFFF' | '#0F172A' => {
-  const L = getRelativeLuminance(bgColor);
-  const crWhite = (1 + 0.05) / (L + 0.05);
-  return crWhite >= 4.5 ? '#FFFFFF' : '#0F172A';
+export const getBadgeTextColor = (_bgColor?: string): '#FFFFFF' => {
+  return '#FFFFFF';
 };
 
 export const TEAM_TRICODES: Record<number, string> = {
