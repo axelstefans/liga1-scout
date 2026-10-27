@@ -38,7 +38,7 @@ def is_challenge_response(data: dict) -> bool:
 def _get_headed_driver_builder(sofascore_instance):
     """Returns a driver builder for LanusStats.SofaScore that runs in visible/headed mode."""
     import undetected_chromedriver as uc
-    from faker import Faker
+    """from faker import Faker"""
     from LanusStats.sofascore import _get_chrome_major_version, _get_system_chromedriver_path
 
     def _headed_build_driver():
@@ -46,7 +46,11 @@ def _get_headed_driver_builder(sofascore_instance):
         # Explicitly NO headless mode: runs in visible single window
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument(f'user-agent={Faker().chrome()}')
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.page_load_strategy = "eager"
+        """chrome_options.add_argument(f'user-agent={Faker().chrome()}')"""
         return uc.Chrome(
             options=chrome_options,
             version_main=_get_chrome_major_version(),
@@ -54,6 +58,19 @@ def _get_headed_driver_builder(sofascore_instance):
         )
     return _headed_build_driver
 
+def _reset_driver(sofascore_inst):
+    old = getattr(sofascore_inst, "_driver", None)
+    if old is not None:
+        try:
+            old.quit()
+        except Exception:
+            pass
+    sofascore_inst._driver = None
+    sofascore_inst._build_driver = _get_headed_driver_builder(sofascore_inst)
+    driver = sofascore_inst._ensure_driver()
+    driver.get("https://www.sofascore.com/")
+    time.sleep(20)
+    return driver
 
 def scrape_and_store_match_period_stats(conn, api_client, matches=None, test_mode=False) -> int:
     """Fetch period-level team stats (1ST, 2ND, ALL) and goal incidents for played matches with 1-by-1 commits."""
@@ -137,8 +154,8 @@ def scrape_and_store_match_period_stats(conn, api_client, matches=None, test_mod
         try:
             driver = api_client.sofascore._ensure_driver()
             # Reuse the exact same tab for every match: navigate directly
-            driver.get(match_url)
-            time.sleep(random.uniform(2.5, 4.0))
+            #driver.get(match_url)
+            #time.sleep(random.uniform(2.5, 4.0))
 
             # Fetch statistics via in-page JavaScript execution
             stats_data = driver.execute_script("""
@@ -321,6 +338,12 @@ def scrape_and_store_match_period_stats(conn, api_client, matches=None, test_mod
             logger.error(f"Error scraping match {match_id}: {e}")
             log_scrape(conn, resource_type, resource_key, "failed", error_message=str(e))
             conn.commit()
+            logger.warning("Recreating browser after error...")
+            try:
+                _reset_driver(api_client.sofascore)
+            except Exception as re:
+                logger.error(f"Could not recreate browser: {re}. Aborting.")
+                break
 
     logger.info(f"Finished scraping match period stats. Total matches committed: {total_processed}")
     return total_processed

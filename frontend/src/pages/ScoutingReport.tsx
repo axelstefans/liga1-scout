@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   Search, ChevronDown, Check, Download, Loader2 
 } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import { toPng, toBlob } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { 
   usePlayerProfile, 
@@ -559,6 +559,11 @@ const PlayerNodeAvatar: React.FC<PlayerNodeAvatarProps> = ({
     </div>
   );
 };
+
+// ----------------------------------------------------------------------------
+// Export Constants
+// ----------------------------------------------------------------------------
+const EXPORT_PIXEL_RATIO = 2;
 
 const ScoutingReport: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
@@ -1897,11 +1902,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     return `vs ${size} ${posPlural}`;
   }, [seasonStats?.cohort_role_group, seasonStats?.cohort_size, cohortCount, profile?.position_group, playerPositionGroup]);
 
-  // Export Handlers & Dimension Constants (2832 x 3562 px standard)
+  // Export Handlers
   // --------------------------------------------------------------------------
-  const EXPORT_WIDTH = 1416;
-  const EXPORT_PIXEL_RATIO = 2;
-
   const handleDownloadPNG = async () => {
     if (isExportingPng || isExportingPdf) return;
     const targetElement = dossierRef.current || document.getElementById('scouting-dossier-canvas');
@@ -1920,19 +1922,42 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       await document.fonts.ready;
       await new Promise((resolve) => setTimeout(resolve, 60));
 
-      const dataUrl = await toPng(targetElement, {
-        pixelRatio: EXPORT_PIXEL_RATIO,
+      const captureWidth = Math.ceil(Math.max(targetElement.scrollWidth, targetElement.offsetWidth));
+      const captureHeight = Math.ceil(Math.max(targetElement.scrollHeight, targetElement.offsetHeight));
+
+      // Guard: Ensure dimensions stay within browser canvas limits (16k max side, 100MP max area)
+      let pixelRatio = EXPORT_PIXEL_RATIO;
+      const MAX_SIDE = 16384;
+      const MAX_AREA = 100_000_000;
+
+      if (
+        captureWidth * pixelRatio > MAX_SIDE ||
+        captureHeight * pixelRatio > MAX_SIDE ||
+        captureWidth * pixelRatio * captureHeight * pixelRatio > MAX_AREA
+      ) {
+        const maxRatioSide = Math.min(MAX_SIDE / captureWidth, MAX_SIDE / captureHeight);
+        const maxRatioArea = Math.sqrt(MAX_AREA / (captureWidth * captureHeight));
+        pixelRatio = Math.max(1, Math.min(pixelRatio, maxRatioSide, maxRatioArea));
+      }
+
+      const blob = await toBlob(targetElement, {
+        pixelRatio,
         cacheBust: true,
         backgroundColor: '#f8fafc',
-        width: EXPORT_WIDTH,
-        canvasWidth: EXPORT_WIDTH * EXPORT_PIXEL_RATIO,
+        width: captureWidth,
+        height: captureHeight,
         style: {
           cursor: 'none',
-          width: `${EXPORT_WIDTH}px`,
-          minWidth: `${EXPORT_WIDTH}px`,
-          maxWidth: `${EXPORT_WIDTH}px`,
+          width: `${captureWidth}px`,
+          minWidth: `${captureWidth}px`,
+          maxWidth: `${captureWidth}px`,
+          height: `${captureHeight}px`,
+          minHeight: `${captureHeight}px`,
+          maxHeight: `${captureHeight}px`,
+          margin: '0',
+          transform: 'none',
         },
-        filter: (node) => {
+        filter: (node: Node) => {
           if (node instanceof HTMLElement && node.classList.contains('export-ignore')) {
             return false;
           }
@@ -1940,14 +1965,37 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         },
       });
 
+      if (!blob) {
+        throw new Error('Failed to generate image blob');
+      }
+
+      // Verification: decode image bitmap and confirm dimensions match expectations
+      try {
+        if (typeof createImageBitmap === 'function') {
+          const bitmap = await createImageBitmap(blob);
+          const expectedWidth = Math.round(captureWidth * pixelRatio);
+          const expectedHeight = Math.round(captureHeight * pixelRatio);
+          if (bitmap.width !== expectedWidth || bitmap.height !== expectedHeight) {
+            console.warn(
+              `[Export PNG] Bitmap dimension mismatch: captured ${bitmap.width}x${bitmap.height}, expected ${expectedWidth}x${expectedHeight}`
+            );
+          }
+          bitmap.close();
+        }
+      } catch {
+        // createImageBitmap verification is non-blocking
+      }
+
       const cleanPlayer = playerName.trim().replace(/\s+/g, '_');
       const cleanTeam = (profile?.team?.name || 'Liga1').trim().replace(/\s+/g, '_');
       const filename = `Scouting_Report_${cleanPlayer}_${cleanTeam}.png`;
 
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = filename;
-      link.href = dataUrl;
+      link.href = url;
       link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error('Failed to export PNG:', err);
       alert('Could not generate PNG export. Please try again.');
