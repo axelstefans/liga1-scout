@@ -433,11 +433,14 @@ const SimilarPlayerRow: React.FC<SimilarPlayerRowProps> = ({
   );
 };
 
+const PHOTO_PEERS_COUNT = 5;
+
 const PEER_RING_CLASSES = [
   'ring-2 ring-emerald-500',
   'ring-2 ring-amber-500',
   'ring-2 ring-sky-500',
   'ring-2 ring-rose-500',
+  'ring-2 ring-purple-500',
 ];
 
 const PEER_RING_COLORS = [
@@ -445,6 +448,7 @@ const PEER_RING_COLORS = [
   '#F59E0B', // amber-500
   '#0EA5E9', // sky-500
   '#F43F5E', // rose-500
+  '#8B5CF6', // purple-500
 ];
 
 function generateNiceTicks(start: number, stop: number, count = 9): number[] {
@@ -524,7 +528,11 @@ const PlayerNodeAvatar: React.FC<PlayerNodeAvatarProps> = ({
 
   const activeColor = isTarget ? targetRingColor : ringColor;
   const avatarStyle: React.CSSProperties = {
-    ...(activeColor
+    ...(isTarget
+      ? {
+          boxShadow: `0 0 0 2px #FFFFFF, 0 0 0 4px ${activeColor || '#1D4ED8'}, 0 2px 8px rgba(0,0,0,0.3)`,
+        }
+      : activeColor
       ? {
           boxShadow: `0 0 0 1px #FFFFFF, 0 0 0 2px ${activeColor}`,
         }
@@ -539,21 +547,26 @@ const PlayerNodeAvatar: React.FC<PlayerNodeAvatarProps> = ({
       onClick={onClick}
       style={avatarStyle}
       className={`relative ${sizeClass} rounded-full shrink-0 cursor-pointer select-none transition-transform duration-150 ${
-        isHovered ? 'scale-125 z-25' : 'z-10'
+        isHovered ? 'scale-125 z-25' : isTarget ? 'z-20' : 'z-10'
       } ${activeColor ? '' : effectiveRing}`}
     >
       {!imgError ? (
         <img
           src={`/players/${playerId}.png`}
           alt={name}
-          onError={() => setImgError(true)}
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            setImgError(true);
+          }}
           className="w-full h-full rounded-full object-cover"
         />
       ) : (
-        <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center">
-          <svg className={isTarget ? "w-4 h-4 text-slate-400" : "w-3.5 h-3.5 text-slate-400"} fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
+        <div 
+          className="w-full h-full rounded-full flex items-center justify-center font-bold text-white text-[8px] select-none"
+          style={{ backgroundColor: activeColor || '#64748B' }}
+          title={name}
+        >
+          {name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
         </div>
       )}
     </div>
@@ -878,11 +891,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
   const radarGeometry = useMemo(() => {
     const numSlices = activeMetrics.length;
     const angleStep = (2 * Math.PI) / numSlices;
-    const cx = 225;
-    const cy = 240;
+    const cx = 284;
+    const cy = 235;
     const rMin = 0;
-    const rMax = 195;
-    const rLabel = 218;
+    const rMax = 205;
+    const rLabel = 228;
 
     const minutes = seasonStats?.minutes_played || 1;
 
@@ -924,16 +937,16 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       const badgeX = cx + rBadge * Math.cos(thetaMid);
       const badgeY = cy + rBadge * Math.sin(thetaMid);
 
-      // Peripheral label position strictly outside at rLabel = 242
+      // Peripheral label position strictly outside at rLabel = 228
       const labelX = cx + rLabel * Math.cos(thetaMid);
       const labelY = cy + rLabel * Math.sin(thetaMid);
 
-      // Determine textAnchor based on horizontal position relative to cx=270:
+      // Determine textAnchor based on horizontal position relative to cx=284:
       const dx = labelX - cx;
       const textAnchor: 'start' | 'end' | 'middle' = 
         Math.abs(dx) < 25 ? 'middle' : dx > 0 ? 'start' : 'end';
 
-      // Radial divider ray projecting from rMin to rMax (210)
+      // Radial divider ray projecting from rMin to rMax (205)
       const rayX1 = cx + rMin * Math.cos(thetaStart);
       const rayY1 = cy + rMin * Math.sin(thetaStart);
       const rayX2 = cx + rMax * Math.cos(thetaStart);
@@ -1491,7 +1504,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
     if (similarPlayers && similarPlayers.length > 0) {
       for (const sp of similarPlayers) {
-        if (selected.length >= 4) break;
+        if (selected.length >= PHOTO_PEERS_COUNT) break;
         const found = scatterPlotData.peerPoints.find(p => p.player_id === sp.player_id);
         if (found && !usedIds.has(found.player_id)) {
           usedIds.add(found.player_id);
@@ -1500,9 +1513,9 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       }
     }
 
-    if (selected.length < 3) {
+    if (selected.length < PHOTO_PEERS_COUNT) {
       for (const out of scatterPlotData.topOutliers) {
-        if (selected.length >= 4) break;
+        if (selected.length >= PHOTO_PEERS_COUNT) break;
         if (!usedIds.has(out.player_id)) {
           usedIds.add(out.player_id);
           selected.push(out);
@@ -1793,7 +1806,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
     if (similarPlayers && similarPlayers.length > 0) {
       for (const sp of similarPlayers) {
-        if (selected.length >= 3) break;
+        if (selected.length >= PHOTO_PEERS_COUNT) break;
         const found = strip.points.find(p => p.player_id === sp.player_id && !p.isTarget);
         if (found && !usedIds.has(found.player_id)) {
           usedIds.add(found.player_id);
@@ -1802,11 +1815,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       }
     }
 
-    // Fallback if fewer than 2 similar peers: pick top performers in this metric
-    if (selected.length < 2) {
+    // Fallback if fewer than PHOTO_PEERS_COUNT similar peers: pick top performers in this metric
+    if (selected.length < PHOTO_PEERS_COUNT) {
       const sortedPeers = [...strip.points.filter(p => !p.isTarget)].sort((a, b) => b.val - a.val);
       for (const p of sortedPeers) {
-        if (selected.length >= 3) break;
+        if (selected.length >= PHOTO_PEERS_COUNT) break;
         if (!usedIds.has(p.player_id)) {
           usedIds.add(p.player_id);
           selected.push(p);
@@ -2647,16 +2660,15 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 </div>
 
                 {/* Centered Circular Headshot Container */}
-                <div className="w-16 h-16 rounded-full mx-auto my-2 border border-slate-200/80 shadow-sm overflow-hidden bg-slate-50 flex items-center justify-center relative">
+                <div className="w-24 h-24 rounded-full mx-auto my-2 border-2 border-slate-200/90 shadow-md overflow-hidden bg-slate-50 flex items-center justify-center relative shrink-0">
                   <img
                     src={`/players/${playerId}.png`}
                     alt={playerName}
                     className="w-full h-full object-cover object-top"
                     onError={(e) => {
                       const target = e.currentTarget;
-                      if (target.src !== '/liga1-logo.png') {
-                        target.src = '/liga1-logo.png';
-                      }
+                      target.onerror = null;
+                      target.src = '/liga1-logo.png';
                     }}
                   />
                 </div>
@@ -2776,16 +2788,17 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           </div>
 
           {/* FLOOR 1 CENTER: Pure SVG Polar Pizza Radar & Top 10 Leaders Overlay */}
-          <div className="relative flex-1 bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs min-h-[460px] flex items-center overflow-hidden">
+          <div className="relative flex-1 min-w-0 bg-white rounded-xl border border-slate-200/90 p-3 shadow-sm min-h-[460px] flex items-center overflow-hidden">
             
             {/* Center Pizza Chart Canvas Wrapper */}
             <div className="w-full h-[445px] flex items-center justify-start select-none">
               <svg 
-                viewBox="0 0 740 480" 
-                className="w-full h-full object-contain overflow-visible"
+                viewBox="0 0 880 480" 
+                preserveAspectRatio="xMinYMid meet"
+                className="w-full h-full block overflow-visible"
               >
                 {/* Layer 0: Circular Background Disc */}
-                <circle cx={225} cy={240} r={195} fill="#f1f5f9" stroke="none" />
+                <circle cx={284} cy={235} r={205} fill="#f1f5f9" stroke="none" />
 
                 {/* Layer 1 (Background): Filled blue pizza wedges */}
                 <g className="pizza-slices">
@@ -2826,10 +2839,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
                 {/* Layer 3 (Concentric Percentile Rings Over the Wedges) */}
                 <g pointerEvents="none">
-                  <circle cx={225} cy={240} r={195 * 0.25} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
-                  <circle cx={225} cy={240} r={195 * 0.5} fill="none" stroke="#f59e0b" strokeWidth="1.3" strokeDasharray="4 4" />
-                  <circle cx={225} cy={240} r={195 * 0.75} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
-                  <circle cx={225} cy={240} r={195} fill="none" stroke="#64748b" strokeWidth="1.2" />
+                  <circle cx={284} cy={235} r={205 * 0.25} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
+                  <circle cx={284} cy={235} r={205 * 0.5} fill="none" stroke="#f59e0b" strokeWidth="1.3" strokeDasharray="4 4" />
+                  <circle cx={284} cy={235} r={205 * 0.75} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
+                  <circle cx={284} cy={235} r={205} fill="none" stroke="#64748b" strokeWidth="1.2" />
                 </g>
 
                 {/* Floating Numeric Value Badges at edge of each slice */}
@@ -2871,7 +2884,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   })}
                 </g>
 
-                {/* Perimeter Metric Labels outside outer ring (r = 226) */}
+                {/* Perimeter Metric Labels outside outer ring */}
                 <g pointerEvents="none">
                   {radarGeometry.map(({ metric, labelX, labelY, textAnchor }) => {
                     const [line1, line2] = getSplitMetricLabel(metric.label);
@@ -2902,7 +2915,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             </div>
 
             {/* Top 10 Leaders Overlay Widget */}
-            <div className="absolute top-2.5 right-2.5 w-64 bg-white/95 backdrop-blur-xs rounded-xl border border-slate-200/80 p-2.5 shadow-2xs z-10 pointer-events-auto">
+            <div className="absolute top-2.5 right-2.5 w-64 bg-white/95 backdrop-blur-sm rounded-xl border border-slate-200/80 p-2.5 shadow-sm z-10 pointer-events-auto">
               <div className="text-[11px] font-bold text-slate-800 pb-1.5 border-b border-slate-100 mb-2 whitespace-nowrap truncate">
                 {(() => {
                   const activeMetric = RADAR_METRICS.find(m => m.key === currentLeaderboardStat);
@@ -2970,7 +2983,6 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 )}
               </div>
             </div>
-
           </div>
 
           {/* FLOOR 1 RIGHT: Time in Position */}
@@ -3060,11 +3072,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   </div>
                 </div>
 
-                <div className="relative w-full aspect-[68/52.5] max-w-[225px] mx-auto overflow-hidden">
-                  {/* FIFA Standard Attacking Half-Pitch (viewBox 0 0 68 52.5) */}
+                <div className="relative w-full aspect-[70/56] max-w-[225px] mx-auto overflow-visible">
+                  {/* FIFA Standard Attacking Half-Pitch (viewBox -1 -2.5 70 56) */}
                   <svg 
-                    viewBox="0 0 68 52.5" 
-                    className="w-full h-full block pointer-events-auto"
+                    viewBox="-1 -2.5 70 56" 
+                    className="w-full h-full block pointer-events-auto overflow-visible"
                   >
                     {/* Pitch boundary */}
                     <rect x="0" y="0" width="68" height="52.5" fill="#f5f7f4" stroke="#363835" strokeWidth="0.28" />
@@ -3216,11 +3228,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   </div>
                 </div>
 
-                <div className="relative w-full aspect-[68/52.5] max-w-[225px] mx-auto overflow-hidden">
-                  {/* Standard Attacking Half-Pitch (viewBox 0 0 68 52.5) matching Mini-Pitch 1 */}
+                <div className="relative w-full aspect-[70/56] max-w-[225px] mx-auto overflow-visible">
+                  {/* Standard Attacking Half-Pitch (viewBox -1 -2.5 70 56) matching Mini-Pitch 1 */}
                   <svg 
-                    viewBox="0 0 68 52.5" 
-                    className="w-full h-full block pointer-events-auto"
+                    viewBox="-1 -2.5 70 56" 
+                    className="w-full h-full block pointer-events-auto overflow-visible"
                   >
                     <defs>
                       <marker
@@ -3432,11 +3444,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   </div>
                 </div>
 
-                <div className="relative w-full aspect-[68/52.5] max-w-[225px] mx-auto overflow-hidden">
-                  {/* Standard Attacking Half-Pitch (viewBox 0 0 68 52.5) matching Mini-Pitches 1 & 2 */}
+                <div className="relative w-full aspect-[70/56] max-w-[225px] mx-auto overflow-visible">
+                  {/* Standard Attacking Half-Pitch (viewBox -1 -2.5 70 56) matching Mini-Pitches 1 & 2 */}
                   <svg 
-                    viewBox="0 0 68 52.5" 
-                    className="w-full h-full block pointer-events-auto"
+                    viewBox="-1 -2.5 70 56" 
+                    className="w-full h-full block pointer-events-auto overflow-visible"
                   >
                     <defs>
                       <marker
