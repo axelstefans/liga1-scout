@@ -36,6 +36,8 @@ class RefereeSummary(BaseModel):
     fouls_avg: float
     over_4_5_cards_pct: float  # percentage of matches with > 4.5 total cards
     home_cards_pct: float  # cards shown to home team vs total
+    sample_label: str = "Suficiente"  # "Suficiente" (>= 3 PJ) o "Muestra en construcción" (< 3 PJ)
+    is_sample_sufficient: bool = True  # True si matches_count >= 3
 
 
 class RefereeMatchItem(BaseModel):

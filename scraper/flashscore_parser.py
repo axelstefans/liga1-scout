@@ -374,19 +374,26 @@ def parse_flashscore_team_stats(
 def insert_flashscore_team_stats(
     db_conn: sqlite3.Connection,
     rows: List[Dict[str, Any]],
+    enforce_six_blocks: bool = False,
 ) -> int:
     """
-    Inserts or replaces rows into flashscore_match_team_stats table.
+    Inserts or replaces rows into flashscore_match_team_stats table atomically.
 
     Args:
         db_conn: SQLite database connection.
         rows: List of dictionaries matching the flashscore_match_team_stats schema.
+        enforce_six_blocks: If True, requires len(rows) == 6 or raises ValueError.
 
     Returns:
         Number of rows inserted.
     """
     if not rows:
         return 0
+
+    if enforce_six_blocks and len(rows) != 6:
+        raise ValueError(
+            f"Atomic constraint violation: expected exactly 6 blocks (2 teams x 3 periods), got {len(rows)}"
+        )
 
     cols = [
         "match_id",
@@ -402,10 +409,19 @@ def insert_flashscore_team_stats(
 
     records = [[r.get(c) for c in cols] for r in rows]
     cursor = db_conn.cursor()
-    cursor.executemany(sql, records)
-    db_conn.commit()
-    logger.info(f"Successfully inserted/updated {len(records)} rows in flashscore_match_team_stats.")
-    return len(records)
+    try:
+        db_conn.execute("BEGIN TRANSACTION")
+        cursor.executemany(sql, records)
+        db_conn.execute("COMMIT")
+        logger.info(f"Successfully inserted/updated {len(records)} rows in flashscore_match_team_stats.")
+        return len(records)
+    except Exception as e:
+        try:
+            db_conn.execute("ROLLBACK")
+        except Exception:
+            pass
+        logger.error(f"Transaction failed and was rolled back: {e}")
+        raise
 
 
 def process_and_save_flashscore_stats(

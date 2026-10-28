@@ -113,3 +113,4 @@ liga1_rollback_*.db*
 *.db-shm
 *.db-wal
 *.db-journal
+.runner.lock

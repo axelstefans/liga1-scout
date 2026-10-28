@@ -100,10 +100,21 @@ def scrape_and_store_matches(conn, api_client) -> list[dict]:
         if records:
             conn.execute("BEGIN TRANSACTION")
             conn.executemany('''
-                INSERT OR REPLACE INTO matches (
+                INSERT INTO matches (
                     match_id, home_team_id, away_team_id, match_date, round,
                     home_score, away_score, status, match_url, season_id, scraped_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(match_id) DO UPDATE SET
+                    home_team_id = excluded.home_team_id,
+                    away_team_id = excluded.away_team_id,
+                    match_date = excluded.match_date,
+                    round = excluded.round,
+                    home_score = excluded.home_score,
+                    away_score = excluded.away_score,
+                    status = excluded.status,
+                    match_url = excluded.match_url,
+                    season_id = excluded.season_id,
+                    scraped_at = excluded.scraped_at
             ''', records)
             conn.execute("COMMIT")
             total_inserted += len(records)

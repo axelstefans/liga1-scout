@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Pattern to capture 8-character alphanumeric Flashscore event IDs from HTML / Feed / URLs
 EVENT_ID_REGEX = re.compile(
-    r'(?:~AA÷|AA÷|g_1_|mid[=:]\s*["\']?|data-(?:event-id|mid)=["\']?|/(?:partido|match)/)([a-zA-Z0-9]{8})(?![a-zA-Z0-9_])'
+    r'(?:~AA÷|AA÷|g_1_|mid[=:]\s*["\']?|data-(?:event-id|mid)=["\']?|/(?:partido|match)/)(?!(?:voleibol|baseball|baloncesto))([a-zA-Z0-9]{8})(?![a-zA-Z0-9_])'
 )
 
 

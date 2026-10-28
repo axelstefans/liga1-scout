@@ -2,6 +2,13 @@ import sqlite3
 from typing import List, Optional, Dict, Any
 from ..schemas.referee import RefereeSummary, RefereeMatchItem, RefereeDetailResponse, TeamRef, YellowCardsSplit
 
+# Bayesian smoothing parameters for home cards percentage (Sesgo Local)
+# Prior is derived from empirical Liga 1 data (~46.8% home cards proportion)
+# Formula: (home_cards + BAYESIAN_PRIOR_HOME_CARDS) / (total_cards + BAYESIAN_PRIOR_WEIGHT) * 100.0
+BAYESIAN_PRIOR_WEIGHT: float = 4.0  # Equivalent pseudo-sample of 4 total cards
+BAYESIAN_PRIOR_HOME_CARDS: float = 1.87  # 4.0 * 0.468 = 1.872 expected home cards in Liga 1
+MIN_MATCHES_BIAS_RANKING: int = 3  # Minimum matches directed to qualify for home bias ranking
+
 
 def get_referees_summary(
     db: sqlite3.Connection,
@@ -113,7 +120,10 @@ def get_referees_summary(
         pens_avg = round(pens_total / m_count, 2) if m_count > 0 else 0.0
         fouls_avg = round(fouls_total / m_count, 1) if m_count > 0 else 0.0
         over_4_5_pct = round((over_4_5_count / m_count) * 100.0, 1) if m_count > 0 else 0.0
-        home_cards_pct = round((home_cards_sum / total_cards) * 100.0, 1) if total_cards > 0 else 50.0
+        # Bayesian smoothing toward empirical Liga 1 home cards proportion (~46.8%)
+        home_cards_pct = round(((home_cards_sum + BAYESIAN_PRIOR_HOME_CARDS) / (total_cards + BAYESIAN_PRIOR_WEIGHT)) * 100.0, 1)
+        is_sufficient = (m_count >= MIN_MATCHES_BIAS_RANKING)
+        sample_label = "Suficiente" if is_sufficient else "Muestra en construcción"
 
         results.append(
             RefereeSummary(
@@ -136,7 +146,9 @@ def get_referees_summary(
                 penalties_avg=pens_avg,
                 fouls_avg=fouls_avg,
                 over_4_5_cards_pct=over_4_5_pct,
-                home_cards_pct=home_cards_pct
+                home_cards_pct=home_cards_pct,
+                sample_label=sample_label,
+                is_sample_sufficient=is_sufficient
             )
         )
 
@@ -279,7 +291,9 @@ def get_referee_detail(
             penalties_avg=0.0,
             fouls_avg=0.0,
             over_4_5_cards_pct=0.0,
-            home_cards_pct=50.0
+            home_cards_pct=round((BAYESIAN_PRIOR_HOME_CARDS / BAYESIAN_PRIOR_WEIGHT) * 100.0, 1),
+            sample_label="Muestra en construcción",
+            is_sample_sufficient=False
         )
 
     # 2. Total matches count in DB

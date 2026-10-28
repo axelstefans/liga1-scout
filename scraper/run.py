@@ -27,6 +27,7 @@ from scraper.sources.percentiles import compute_and_store_percentiles
 from scraper.sources.heatmap import scrape_and_store_heatmaps
 from scraper.sources.match_period_stats import scrape_and_store_match_period_stats
 from scraper.sources.team_metrics import recompute_all_team_metrics, recompute_match_team_metrics
+from scraper.sources.referees import scrape_and_store_referees
 from scripts.sync_discovered_matches import run_sync, print_summary_report
 
 import LanusStats as ls
@@ -48,6 +49,7 @@ def main(argv=None):
     parser.add_argument("--heatmaps-only", action="store_true", help="Run only the heatmaps pipeline step")
     parser.add_argument("--period-stats-only", action="store_true", help="Run only the match period stats pipeline step")
     parser.add_argument("--team-metrics-only", action="store_true", help="Run only the team match metrics calculation pipeline step")
+    parser.add_argument("--referees-only", action="store_true", help="Run only the referee ingestion pipeline step")
     parser.add_argument("--flashscore-only", action="store_true", help="Run only the Flashscore match team stats synchronization step")
     parser.add_argument("--flashscore-limit", type=int, default=None, help="Maximum number of Flashscore matches to process in this run")
     parser.add_argument("--flashscore-dry-run", action="store_true", help="Run Flashscore discovery and check pending matches without downloading stats")
@@ -104,6 +106,10 @@ def main(argv=None):
     if args.period_stats_only or args.full:
         scrape_and_store_match_period_stats(conn, api_client, matches, test_mode=args.test_mode)
             
+    if args.referees_only or args.full:
+        logger.info("Starting referee assignment and officials synchronization...")
+        scrape_and_store_referees(conn)
+
     if args.transfermarkt_only or args.full:
         logger.info("Initialising LanusStats Transfermarkt module...")
         tm_lanus = ls.Transfermarkt()
