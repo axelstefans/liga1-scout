@@ -891,11 +891,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
   const radarGeometry = useMemo(() => {
     const numSlices = activeMetrics.length;
     const angleStep = (2 * Math.PI) / numSlices;
-    const cx = 284;
-    const cy = 235;
+    const cx = 330;
+    const cy = 236;
     const rMin = 0;
-    const rMax = 205;
-    const rLabel = 228;
+    const rMax = 206;
+    const rLabel = 226;
 
     const minutes = seasonStats?.minutes_played || 1;
 
@@ -937,16 +937,16 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       const badgeX = cx + rBadge * Math.cos(thetaMid);
       const badgeY = cy + rBadge * Math.sin(thetaMid);
 
-      // Peripheral label position strictly outside at rLabel = 228
+      // Peripheral label position strictly outside at rLabel = 222
       const labelX = cx + rLabel * Math.cos(thetaMid);
       const labelY = cy + rLabel * Math.sin(thetaMid);
 
-      // Determine textAnchor based on horizontal position relative to cx=284:
+      // Determine textAnchor based on horizontal position relative to cx=285:
       const dx = labelX - cx;
       const textAnchor: 'start' | 'end' | 'middle' = 
         Math.abs(dx) < 25 ? 'middle' : dx > 0 ? 'start' : 'end';
 
-      // Radial divider ray projecting from rMin to rMax (205)
+      // Radial divider ray projecting from rMin to rMax (202)
       const rayX1 = cx + rMin * Math.cos(thetaStart);
       const rayY1 = cy + rMin * Math.sin(thetaStart);
       const rayX2 = cx + rMax * Math.cos(thetaStart);
@@ -1846,21 +1846,6 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       }
     }
     return (profile?.position === 'D' ? 'Full Back' : profile?.position) || selectedPositionGroup || 'Full Back';
-  })();
-
-  const cohortName = (() => {
-    const role = seasonStats?.cohort_role_group || profile?.cohort_role_group;
-    if (role) {
-      switch (role) {
-        case 'Full Back': return 'Full Backs';
-        case 'Centre Back': return 'Centre Backs';
-        case 'Defensive Mid': return 'Defensive Midfielders';
-        case 'Central Mid': return 'Central Midfielders';
-        case 'Attacking Mid': return 'Attacking Midfielders';
-        default: return `${role}s`;
-      }
-    }
-    return (playerPositionGroup === 'Defender' || playerPositionGroup === 'Full Back') ? 'Full Backs' : `${playerPositionGroup}s`;
   })();
 
   const formatCohortAbbr = (role: string | null | undefined): string | null => {
@@ -2791,14 +2776,14 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           <div className="relative flex-1 min-w-0 bg-white rounded-xl border border-slate-200/90 p-3 shadow-sm min-h-[460px] flex items-center overflow-hidden">
             
             {/* Center Pizza Chart Canvas Wrapper */}
-            <div className="w-full h-[445px] flex items-center justify-start select-none">
+            <div className="w-full h-[475px] flex items-center justify-start select-none">
               <svg 
-                viewBox="0 0 880 480" 
+                viewBox="0 0 820 480" 
                 preserveAspectRatio="xMinYMid meet"
                 className="w-full h-full block overflow-visible"
               >
                 {/* Layer 0: Circular Background Disc */}
-                <circle cx={284} cy={235} r={205} fill="#f1f5f9" stroke="none" />
+                <circle cx={330} cy={236} r={206} fill="#f1f5f9" stroke="none" />
 
                 {/* Layer 1 (Background): Filled blue pizza wedges */}
                 <g className="pizza-slices">
@@ -2839,10 +2824,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
                 {/* Layer 3 (Concentric Percentile Rings Over the Wedges) */}
                 <g pointerEvents="none">
-                  <circle cx={284} cy={235} r={205 * 0.25} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
-                  <circle cx={284} cy={235} r={205 * 0.5} fill="none" stroke="#f59e0b" strokeWidth="1.3" strokeDasharray="4 4" />
-                  <circle cx={284} cy={235} r={205 * 0.75} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
-                  <circle cx={284} cy={235} r={205} fill="none" stroke="#64748b" strokeWidth="1.2" />
+                  <circle cx={330} cy={236} r={206 * 0.25} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
+                  <circle cx={330} cy={236} r={206 * 0.5} fill="none" stroke="#f59e0b" strokeWidth="1.3" strokeDasharray="4 4" />
+                  <circle cx={330} cy={236} r={206 * 0.75} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
+                  <circle cx={330} cy={236} r={206} fill="none" stroke="#64748b" strokeWidth="1.2" />
                 </g>
 
                 {/* Floating Numeric Value Badges at edge of each slice */}
@@ -2915,17 +2900,19 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             </div>
 
             {/* Top 10 Leaders Overlay Widget */}
-            <div className="absolute top-2.5 right-2.5 w-64 bg-white/95 backdrop-blur-sm rounded-xl border border-slate-200/80 p-2.5 shadow-sm z-10 pointer-events-auto">
-              <div className="text-[11px] font-bold text-slate-800 pb-1.5 border-b border-slate-100 mb-2 whitespace-nowrap truncate">
+            <div className="absolute top-3 right-3 w-[220px] bg-white rounded-xl border border-slate-200/80 p-2.5 shadow-sm z-10 pointer-events-auto">
+              <div className="text-[11px] font-bold text-slate-800 pb-1 mb-1 truncate">
                 {(() => {
                   const activeMetric = RADAR_METRICS.find(m => m.key === currentLeaderboardStat);
                   const label = activeMetric ? activeMetric.label : (activeHoveredMetricDef ? activeHoveredMetricDef.label : 'Pass Accuracy');
-                  return `${label} — Top 10 ${cohortName}`;
+                  const isPercentage = Boolean(activeMetric?.isPercentage || activeHoveredMetricDef?.isPercentage);
+                  const displayLabel = isPercentage && !label.includes('%') ? `${label} (%)` : label;
+                  return `${displayLabel} — Top 10`;
                 })()}
               </div>
 
               {/* Top 10 List Table with Row Dividers */}
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100/90">
                 {isTopPlayersLoading && (
                   <p className="text-[10px] text-slate-400 py-6 text-center">Loading rankings...</p>
                 )}
@@ -2943,10 +2930,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     return (
                       <div 
                         key={player.player_id}
-                        className={`flex items-center justify-between px-1.5 py-1 rounded transition-colors ${
+                        className={`flex items-start justify-between text-[10.5px] py-1 px-1 rounded transition-colors leading-tight ${
                           isCurrentPlayer 
                             ? 'font-semibold' 
-                            : 'hover:bg-slate-100/80 text-slate-700'
+                            : 'hover:bg-slate-50 text-slate-700'
                         }`}
                         style={
                           isCurrentPlayer
@@ -2957,21 +2944,23 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                             : undefined
                         }
                       >
-                        <div className="flex-1 min-w-0 pr-2 leading-tight text-[10px] text-slate-700 break-words">
+                        <span className="text-slate-400 font-normal w-3.5 shrink-0 pt-0.5">
+                          {player.rank}.
+                        </span>
+                        <div className="flex-1 min-w-0 pr-1.5 break-words">
                           <span 
-                            className={isCurrentPlayer ? 'font-bold' : 'font-semibold text-slate-800'}
+                            className={`font-medium ${isCurrentPlayer ? 'font-bold text-slate-900' : 'text-slate-700'}`}
                             style={isCurrentPlayer ? { color: clubTextColor } : undefined}
                           >
-                            {player.rank}. {player.name}
+                            {player.name}
                           </span>
-                          <span className="text-slate-500 font-normal">
-                            {' — '}{player.team_name}
+                          <span className="text-slate-400 font-normal ml-1">
+                            {'— '}{player.team_name}
                           </span>
                         </div>
 
-                        <span className="shrink-0 text-right font-semibold text-slate-900 text-[10.5px] font-mono ml-1.5">
+                        <span className={`tabular-nums font-semibold shrink-0 text-right pt-0.5 ml-1 ${isCurrentPlayer ? 'text-slate-900 font-bold' : 'text-slate-800'}`}>
                           {formattedValue}
-                          {(RADAR_METRICS.find(m => m.key === currentLeaderboardStat)?.isPercentage || activeHoveredMetricDef?.isPercentage) ? '%' : ''}
                         </span>
                       </div>
                     );
