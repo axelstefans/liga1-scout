@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { PlayerMatchStats } from '../services/api';
+import { ScoutingLang, TRANSLATIONS } from '../i18n/scoutingReport';
 
 interface TimeInPositionProps {
   matchStats: PlayerMatchStats[] | undefined;
@@ -10,6 +11,7 @@ interface TimeInPositionProps {
   orientation?: 'horizontal' | 'vertical';
   playerName?: string;
   minPctThreshold?: number;
+  lang?: ScoutingLang;
 }
 
 const POSITION_COORDS: Record<string, { x: number, y: number }> = {
@@ -120,14 +122,18 @@ const GENERIC_POSITIONS = new Set(['D', 'M', 'F', 'G']);
 const TimeInPosition: React.FC<TimeInPositionProps> = ({ 
   matchStats, 
   themeColor,
-  title = 'Time in Position',
+  title,
   titleClassName = 'font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case mb-2',
   className = 'bg-white border border-slate-200 p-3 rounded-lg shadow-2xs',
   orientation = 'horizontal',
   playerName,
   minPctThreshold = 10,
+  lang = 'en',
 }) => {
   const isVertical = orientation === 'vertical';
+  const t1 = TRANSLATIONS[lang].floor1;
+  const resolvedTitle = title ?? t1.timeInPositionTitle;
+  const formatPos = (pos: string) => t1.posAbbr[pos] || pos;
 
   const { positionStats, pitchStats, totalMinutes } = useMemo(() => {
     if (!matchStats || matchStats.length === 0) {
@@ -253,16 +259,16 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
           {/* Header */}
           <div className="px-1">
             <div className="text-xs font-bold text-slate-900 text-center">
-              {playerName ? `${playerName} — Time in Position` : title}
+              {playerName ? `${playerName} — ${t1.timeInPositionTitle}` : resolvedTitle}
             </div>
             <div className="text-[10px] text-slate-500 text-center mb-1">
-              {totalMinutes.toLocaleString()} minutes across {pitchStats.length} {pitchStats.length === 1 ? 'position' : 'positions'}
+              {t1.minutesAcrossPositions(totalMinutes.toLocaleString(), pitchStats.length)}
             </div>
           </div>
 
           {pitchStats.length === 0 ? (
             <div className="h-48 flex items-center justify-center">
-              <p className="text-xs text-slate-400">No positional data available.</p>
+              <p className="text-xs text-slate-400">{t1.noPositionalData}</p>
             </div>
           ) : (
             /* Pitch SVG (viewBox="0 0 200 310") */
@@ -300,6 +306,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                 // Dynamic radius based on season percentage
                 const radius = isPrimary ? 13 : Math.max(9.5, 9.5 + (stat.pct / 100) * 3);
                 const secondaryOpacity = Math.max(0.20, Math.min(0.70, 0.20 + (stat.pct / 100) * 0.50));
+                const displayPos = formatPos(stat.pos);
 
                 return (
                   <g key={stat.pos}>
@@ -384,7 +391,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                       fontSize="7.5"
                       className="select-none pointer-events-none"
                     >
-                      {stat.pos}
+                      {displayPos}
                     </text>
                   </g>
                 );
@@ -397,24 +404,27 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
         {top3Stats.length > 0 && (
           <div className="shrink-0 mt-auto bg-white rounded-xl border border-slate-200/80 p-3 flex flex-col justify-center shadow-sm">
             <div className="space-y-1.5">
-              {top3Stats.map((stat) => (
-                <div key={stat.pos} className="flex items-center justify-between text-xs py-0.5">
-                  <div className="w-12 flex justify-start">
-                    <span 
-                      className={`w-6 h-6 rounded-full ${stat.pos.length > 2 ? 'text-[7.5px] tracking-tight' : 'text-[9.5px]'} font-bold flex items-center justify-center font-sans`}
-                      style={{ backgroundColor: primaryColor, color: '#FFFFFF' }}
-                    >
-                      {stat.pos}
+              {top3Stats.map((stat) => {
+                const displayPos = formatPos(stat.pos);
+                return (
+                  <div key={stat.pos} className="flex items-center justify-between text-xs py-0.5">
+                    <div className="w-12 flex justify-start">
+                      <span 
+                        className={`w-6 h-6 rounded-full ${displayPos.length > 2 ? 'text-[7.5px] tracking-tight' : 'text-[9.5px]'} font-bold flex items-center justify-center font-sans`}
+                        style={{ backgroundColor: primaryColor, color: '#FFFFFF' }}
+                      >
+                        {displayPos}
+                      </span>
+                    </div>
+                    <span className="text-center flex-1 text-xs font-semibold text-slate-800 font-sans">
+                      {stat.mins.toLocaleString()}
+                    </span>
+                    <span className="text-right w-12 text-xs text-slate-500 font-mono">
+                      {Math.round(stat.pct)}%
                     </span>
                   </div>
-                  <span className="text-center flex-1 text-xs font-semibold text-slate-800 font-sans">
-                    {stat.mins.toLocaleString()}
-                  </span>
-                  <span className="text-right w-12 text-xs text-slate-500 font-mono">
-                    {Math.round(stat.pct)}%
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -424,11 +434,11 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
 
   return (
     <div className={className}>
-      <div className={titleClassName}>{title}</div>
+      <div className={titleClassName}>{resolvedTitle}</div>
       
       {positionStats.length === 0 ? (
         <div className="h-64 flex items-center justify-center">
-          <p className="text-sm text-gray-500">No positional data available.</p>
+          <p className="text-sm text-gray-500">{t1.noPositionalData}</p>
         </div>
       ) : (
         <>
@@ -453,6 +463,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                 const coords = POSITION_COORDS[stat.pos] || POSITION_COORDS['CM']; 
                 const isTop3 = rank < 3;
                 const opacity = rank === 0 ? 0.95 : rank === 1 ? 0.75 : rank === 2 ? 0.55 : 0.3;
+                const displayPos = formatPos(stat.pos);
 
                 return (
                   <g key={stat.pos} opacity={opacity}>
@@ -494,7 +505,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
                           textAnchor="middle"
                           style={{ textShadow: '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white' }}
                         >
-                          {stat.pos}
+                          {displayPos}
                         </text>
                       </>
                     ) : (
@@ -519,7 +530,7 @@ const TimeInPosition: React.FC<TimeInPositionProps> = ({
               <div key={stat.pos} className="flex items-center justify-between p-2 bg-cream rounded-md border border-border">
                 <div className="flex items-center gap-3">
                   <div className="min-w-[2.5rem] h-8 px-2 flex items-center justify-center rounded-full text-white text-xs font-bold shadow-sm border border-white" style={{ backgroundColor: themeColor || '#1e40af' }}>
-                    {stat.pos}
+                    {formatPos(stat.pos)}
                   </div>
                   <span className="text-gray-500 text-sm font-medium">{stat.mins}&apos;</span>
                 </div>

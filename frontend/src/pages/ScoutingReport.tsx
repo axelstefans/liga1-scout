@@ -20,6 +20,7 @@ import {
 import { teamsApi, rankingsApi, TeamBase, SimilarPlayer, PlayerRankingEntry, PlayerSeasonStats, PlayerShot, PlayerDribble, HeatmapPoint } from '../services/api';
 import TimeInPosition from '../components/TimeInPosition';
 import { getTeamCrestUrl, getTeamThemeColor, getTeamTextColor, getBadgeTextColor } from '../utils/teams';
+import { useScoutingLanguage } from '../i18n/scoutingReport';
 
 const DEFAULT_PLAYER_ID = 1090720; // Marco Huamán
 
@@ -184,7 +185,7 @@ export const ROLE_RADAR_KEYS: Record<string, string[]> = {
   ],
 };
 
-const RADAR_SLICE_OPTIONS = RADAR_METRICS.map(m => m.label);
+const RADAR_SLICE_OPTIONS = RADAR_METRICS.map(m => m.key);
 
 const AVAILABLE_METRICS = [
   { key: 'goals', label: 'Goals', category: 'Attacking' },
@@ -582,6 +583,7 @@ const ScoutingReport: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const playerId = id ? parseInt(id, 10) : DEFAULT_PLAYER_ID;
   const navigate = useNavigate();
+  const { lang, setLang, t } = useScoutingLanguage('es');
 
   // --------------------------------------------------------------------------
   // Configuration State
@@ -854,39 +856,31 @@ const ScoutingReport: React.FC = () => {
   }, [seasonStats?.cohort_role_group]);
 
   const radarSliceOptions = useMemo(() => {
-    return roleMetrics.map(m => m.label);
+    return roleMetrics.map(m => m.key);
   }, [roleMetrics]);
 
   useEffect(() => {
-    setActiveRadarSlices(roleMetrics.map(m => m.label));
+    setActiveRadarSlices(roleMetrics.map(m => m.key));
   }, [seasonStats?.cohort_role_group, playerId, roleMetrics]);
 
   const activeMetrics = useMemo(() => {
-    const allowedLabels = new Set(radarSliceOptions);
-    const validActive = activeRadarSlices.filter(label => allowedLabels.has(label));
-    const filtered = roleMetrics.filter(m => validActive.includes(m.label));
+    const allowedKeys = new Set(radarSliceOptions);
+    const validActive = activeRadarSlices.filter(key => allowedKeys.has(key));
+    const filtered = roleMetrics.filter(m => validActive.includes(m.key));
     return filtered.length > 0 ? filtered : roleMetrics;
   }, [roleMetrics, radarSliceOptions, activeRadarSlices]);
 
-const getSplitMetricLabel = (label: string): [string, string | null] => {
-  const customSplits: Record<string, [string, string]> = {
-    'Expected Goals': ['Expected', 'Goals (xG)'],
-    'Shots on Target': ['Shots on', 'Target'],
-    'Key Passes': ['Key', 'Passes'],
-    'Pass Accuracy': ['Pass Acc', '%'],
-    'Final 3rd Passes': ['Final 3rd', 'Passes'],
-    'Ground Duels %': ['Ground', 'Duels %'],
-    'Aerial Duels': ['Aerial', 'Duels'],
+  const getSplitMetricLabel = (metricKey: string, fallbackLabel: string): [string, string | null] => {
+    const translatedSplit = t.metrics[metricKey]?.radarSplit;
+    if (translatedSplit) {
+      return translatedSplit;
+    }
+    const parts = fallbackLabel.split(' ');
+    if (parts.length > 1) {
+      return [parts[0], parts.slice(1).join(' ')];
+    }
+    return [fallbackLabel, null];
   };
-  if (customSplits[label]) {
-    return customSplits[label];
-  }
-  const parts = label.split(' ');
-  if (parts.length > 1) {
-    return [parts[0], parts.slice(1).join(' ')];
-  }
-  return [label, null];
-};
 
   const radarGeometry = useMemo(() => {
     const numSlices = activeMetrics.length;
@@ -1310,8 +1304,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
   const metricXDef = AVAILABLE_METRICS.find(m => m.key === scatterMetricX);
   const metricYDef = AVAILABLE_METRICS.find(m => m.key === scatterMetricY);
-  const metricXLabel = metricXDef?.label || scatterMetricX;
-  const metricYLabel = metricYDef?.label || scatterMetricY;
+  const metricXLabel = t.metrics[scatterMetricX]?.long || metricXDef?.label || scatterMetricX;
+  const metricYLabel = t.metrics[scatterMetricY]?.long || metricYDef?.label || scatterMetricY;
 
   const yMap = useMemo(() => {
     const map = new Map<number, { val: number; entry: PlayerRankingEntry }>();
@@ -1559,7 +1553,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       successful_dribbles: 'Completed Dribbles',
     };
     const metricDef = AVAILABLE_METRICS.find(m => m.key === metricKey);
-    const label = metricLabels[metricKey] || metricDef?.label || metricKey.replace(/_/g, ' ');
+    const label = t.metrics[metricKey]?.long || metricLabels[metricKey] || metricDef?.label || metricKey.replace(/_/g, ' ');
 
     if (!rankings || rankings.length === 0) {
       return {
@@ -1794,7 +1788,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       ticks: calibratedTicks,
       calibrated: isCalibrated,
     };
-  }, [benchmarkMode, targetGroup, selectedPositionGroup, playerId, profile, seasonStats, similarPlayersMap, excludedTeamNames, minAge, maxAge]);
+  }, [benchmarkMode, targetGroup, selectedPositionGroup, playerId, profile, seasonStats, similarPlayersMap, excludedTeamNames, minAge, maxAge, t]);
 
   const beeswarm1Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric1, b1Rankings, { calibrated: true }), [computeBeeswarmStrip, beeswarmMetric1, b1Rankings]);
   const beeswarm2Data = useMemo(() => computeBeeswarmStrip(beeswarmMetric2, b2Rankings, { calibrated: true }), [computeBeeswarmStrip, beeswarmMetric2, b2Rankings]);
@@ -1836,46 +1830,20 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
   const positionLabel = (() => {
     const role = seasonStats?.cohort_role_group || profile?.cohort_role_group;
     if (role) {
-      switch (role) {
-        case 'Full Back': return 'Full Back';
-        case 'Centre Back': return 'Centre Back';
-        case 'Defensive Mid': return 'Defensive Midfielder';
-        case 'Central Mid': return 'Central Midfielder';
-        case 'Attacking Mid': return 'Attacking Midfielder';
-        default: return role;
-      }
+      return t.floor1.roles[role] || role;
     }
-    return (profile?.position === 'D' ? 'Full Back' : profile?.position) || selectedPositionGroup || 'Full Back';
+    const rawPos = (profile?.position === 'D' ? 'Full Back' : profile?.position) || selectedPositionGroup || 'Full Back';
+    return t.floor1.roles[rawPos] || rawPos;
   })();
 
   const formatCohortAbbr = (role: string | null | undefined): string | null => {
-    switch (role) {
-      case 'Full Back': return 'FBs';
-      case 'Centre Back': return 'CBs';
-      case 'Defensive Mid': return 'DMs';
-      case 'Central Mid': return 'CMs';
-      case 'Attacking Mid': return 'AMs';
-      default: return role ? `${role}s` : null;
-    }
+    if (!role) return null;
+    return t.floor1.cohortAbbr[role] || `${role}s`;
   };
 
   const getPositionGroupPlural = (posGroup: string | null | undefined): string => {
-    switch (posGroup) {
-      case 'Defender':
-      case 'D':
-        return 'Defenders';
-      case 'Midfielder':
-      case 'M':
-        return 'Midfielders';
-      case 'Forward':
-      case 'F':
-        return 'Forwards';
-      case 'Goalkeeper':
-      case 'G':
-        return 'Goalkeepers';
-      default:
-        return posGroup ? `${posGroup}s` : 'Players';
-    }
+    if (!posGroup) return t.floor1.playersPlural;
+    return t.floor1.cohortPlural[posGroup] || `${posGroup}s`;
   };
 
   const cohortCount = useMemo(() => {
@@ -1898,7 +1866,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     }
     const posPlural = getPositionGroupPlural(profile?.position_group || playerPositionGroup);
     return `vs ${size} ${posPlural}`;
-  }, [seasonStats?.cohort_role_group, seasonStats?.cohort_size, cohortCount, profile?.position_group, playerPositionGroup]);
+  }, [seasonStats?.cohort_role_group, seasonStats?.cohort_size, cohortCount, profile?.position_group, playerPositionGroup, t]);
 
   // Export Handlers
   // --------------------------------------------------------------------------
@@ -1996,7 +1964,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error('Failed to export PNG:', err);
-      alert('Could not generate PNG export. Please try again.');
+      alert(t.export.pngError);
     } finally {
       targetElement.style.cursor = originalTargetCursor;
       document.body.style.cursor = originalBodyCursor;
@@ -2069,7 +2037,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
       pdf.save(filename);
     } catch (err) {
       console.error('Failed to export PDF:', err);
-      alert('Could not generate PDF export. Please try again.');
+      alert(t.export.pdfError);
     } finally {
       targetElement.style.cursor = originalTargetCursor;
       document.body.style.cursor = originalBodyCursor;
@@ -2081,12 +2049,32 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
     <div className="min-h-screen bg-white text-slate-800 antialiased font-sans">
       
       {/* =================================================================== */}
-      {/* TOP TITLE: Plain, clean text heading at top-left                    */}
+      {/* TOP TITLE & LANGUAGE SWITCH                                         */}
       {/* =================================================================== */}
-      <div className="w-full max-w-[1520px] mx-auto px-6 pt-8 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900 mb-4 tracking-tight">
-          Interactive Scouting Report Template
+      <div className="w-full max-w-[1520px] mx-auto px-6 pt-8 pb-4 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          {t.headerTitle}
         </h1>
+        <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-semibold shrink-0">
+          <button
+            type="button"
+            onClick={() => setLang('es')}
+            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+              lang === 'es' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            ES
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang('en')}
+            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+              lang === 'en' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            EN
+          </button>
+        </div>
       </div>
 
       {/* =================================================================== */}
@@ -2097,13 +2085,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         {/* 1. DATA CONFIGURATION */}
         <div className="space-y-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
-            Data Configuration
+            {t.config.dataConfigTitle}
           </h2>
 
           {/* Min age & Max age in one horizontal row with synchronized dual-fill track */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">Min age:</label>
+              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">{t.config.minAge}</label>
               <input
                 type="number"
                 min={16}
@@ -2133,7 +2121,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               />
             </div>
             <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">Max age:</label>
+              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">{t.config.maxAge}</label>
               <input
                 type="number"
                 min={16}
@@ -2167,7 +2155,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           {/* Leagues (filter who's in the pool) */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Leagues (filter who&apos;s in the pool)
+              {t.config.leaguesLabel}
             </label>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <label className="flex items-center space-x-2 cursor-pointer">
@@ -2194,7 +2182,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           {/* Teams to exclude Popover */}
           <div className="relative" ref={excludeDropdownRef}>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Teams to exclude ({appliedExcludedTeams.length}/{teams?.length || 18})
+              {t.config.excludeTeamsLabel(appliedExcludedTeams.length, teams?.length || 18)}
             </label>
             <button
               type="button"
@@ -2207,9 +2195,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <span>
-                {appliedExcludedTeams.length > 0 
-                  ? `${appliedExcludedTeams.length} ${appliedExcludedTeams.length === 1 ? 'team' : 'teams'} excluded` 
-                  : 'No teams excluded'}
+                {t.config.excludedStatus(appliedExcludedTeams.length)}
               </span>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
@@ -2218,7 +2204,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-3 space-y-2.5">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                   <span className="text-xs font-bold uppercase text-slate-700 tracking-wider">
-                    Filter Clubs ({pendingExcludedTeams.length}/{teams?.length || 18})
+                    {t.config.filterClubsTitle(pendingExcludedTeams.length, teams?.length || 18)}
                   </span>
                   <div className="flex items-center space-x-2 text-xs">
                     <button 
@@ -2226,14 +2212,14 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       onClick={() => setPendingExcludedTeams(teams ? teams.map((t: TeamBase) => t.team_id) : [])} 
                       className="font-semibold text-slate-700 hover:text-slate-900 underline cursor-pointer"
                     >
-                      All
+                      {t.config.all}
                     </button>
                     <button 
                       type="button"
                       onClick={() => setPendingExcludedTeams([])} 
                       className="font-semibold text-slate-500 hover:text-slate-700 underline cursor-pointer"
                     >
-                      None
+                      {t.config.none}
                     </button>
                     <button
                       type="button"
@@ -2243,14 +2229,14 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       }}
                       className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-0.5 rounded text-xs font-semibold cursor-pointer transition-colors"
                     >
-                      Apply
+                      {t.config.apply}
                     </button>
                   </div>
                 </div>
 
                 <input
                   type="text"
-                  placeholder="filter team name..."
+                  placeholder={t.config.filterTeamPlaceholder}
                   value={teamSearchQuery}
                   onChange={(e) => setTeamSearchQuery(e.target.value)}
                   className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
@@ -2284,7 +2270,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[11px] text-slate-500">
-                    {pendingExcludedTeams.length} of {teams?.length || 18} selected
+                    {t.config.selectedCount(pendingExcludedTeams.length, teams?.length || 18)}
                   </span>
                   <button
                     type="button"
@@ -2294,7 +2280,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     }}
                     className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer transition-colors"
                   >
-                    Apply
+                    {t.config.apply}
                   </button>
                 </div>
               </div>
@@ -2305,7 +2291,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         {/* 2. BENCHMARK MODE & TARGET LEAGUE */}
         <div className="space-y-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
-            Benchmark Mode & Target League
+            {t.config.benchmarkTitle}
           </h2>
 
           <div className="flex flex-wrap items-center gap-6 text-sm">
@@ -2317,7 +2303,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 onChange={() => setBenchmarkMode('all')}
                 className="text-slate-800 focus:ring-0 cursor-pointer"
               />
-              <span className="text-slate-800 font-medium">vs all teams</span>
+              <span className="text-slate-800 font-medium">{t.config.vsAllTeams}</span>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -2327,7 +2313,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 onChange={() => setBenchmarkMode('own')}
                 className="text-slate-800 focus:ring-0 cursor-pointer"
               />
-              <span className="text-slate-800 font-medium">vs own team</span>
+              <span className="text-slate-800 font-medium">{t.config.vsOwnTeam}</span>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -2337,22 +2323,22 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 onChange={() => setBenchmarkMode('target')}
                 className="text-slate-800 focus:ring-0 cursor-pointer"
               />
-              <span className="text-slate-800 font-medium">vs target tier &rarr;</span>
+              <span className="text-slate-800 font-medium">{t.config.vsTargetTier}</span>
             </label>
           </div>
 
           {benchmarkMode === 'target' && (
             <div className="pt-1">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Target tier / group</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.targetTierLabel}</label>
               <select
                 value={targetGroup}
                 onChange={(e) => setTargetGroup(e.target.value)}
                 className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
-                <option value="top6">Top 6 Clubs (Title Contenders: 'U', Alianza, Cristal, Melgar, Cusco, Cienciano)</option>
-                <option value="lima">Lima Powerhouses (Alianza, 'U', Cristal, Sport Boys)</option>
-                <option value="altitude">Altitude Clubs (Sierra: Melgar, Cienciano, Cusco, ADT, Huancayo)</option>
-                <option value="provincial">Provincial Clubs (Outside Lima)</option>
+                <option value="top6">{t.config.targetGroups.top6}</option>
+                <option value="lima">{t.config.targetGroups.lima}</option>
+                <option value="altitude">{t.config.targetGroups.altitude}</option>
+                <option value="provincial">{t.config.targetGroups.provincial}</option>
               </select>
             </div>
           )}
@@ -2362,40 +2348,40 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Metrics for Scatterplot & Beeswarm Distributions
+              {t.config.metricsSectionTitle}
             </h2>
             <button
               type="button"
               onClick={() => applyPreset(currentRole)}
               className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-              title={currentRole ? `Restablecer métricas sugeridas para ${currentRole}` : 'Restablecer métricas por defecto'}
+              title={t.config.resetPresetTitle(currentRole ? (t.floor1.roles[currentRole] || currentRole) : null)}
             >
-              Restablecer preset{currentRole ? ` (${currentRole})` : ''}
+              {t.config.resetPreset(currentRole ? (t.floor1.roles[currentRole] || currentRole) : null)}
             </button>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">X axis</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.xAxis}</label>
               <select
                 value={xAxisMetric}
                 onChange={(e) => setXAxisMetric(e.target.value)}
                 className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{m.label}</option>
+                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Y axis</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.yAxis}</label>
               <select
                 value={yAxisMetric}
                 onChange={(e) => setYAxisMetric(e.target.value)}
                 className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{m.label}</option>
+                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
                 ))}
               </select>
             </div>
@@ -2403,40 +2389,40 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Beeswarm 1</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.beeswarm(1)}</label>
               <select
                 value={beeswarm1}
                 onChange={(e) => setBeeswarm1(e.target.value)}
                 className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{m.label}</option>
+                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Beeswarm 2</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.beeswarm(2)}</label>
               <select
                 value={beeswarm2}
                 onChange={(e) => setBeeswarm2(e.target.value)}
                 className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{m.label}</option>
+                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div className="w-1/2 pr-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Beeswarm 3</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.beeswarm(3)}</label>
             <select
               value={beeswarm3}
               onChange={(e) => setBeeswarm3(e.target.value)}
               className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
             >
               {AVAILABLE_METRICS.map(m => (
-                <option key={m.key} value={m.key}>{m.label}</option>
+                <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
               ))}
             </select>
           </div>
@@ -2445,32 +2431,32 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
         {/* 4. SELECT POSITION, PLAYER & SLICES */}
         <div className="space-y-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
-            Select Position, Player & Slices
+            {t.config.positionPlayerSlicesTitle}
           </h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Position group</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.positionGroupLabel}</label>
               <select
                 value={selectedPositionGroup}
                 onChange={(e) => setSelectedPositionGroup(e.target.value)}
                 className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
               >
                 {POSITION_GROUPS.map((pos) => (
-                  <option key={pos} value={pos}>{pos}</option>
+                  <option key={pos} value={pos}>{t.config.positionGroups[pos] || pos}</option>
                 ))}
               </select>
             </div>
 
             <div className="relative" ref={playerSearchRef}>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Player</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.playerLabel}</label>
               <button
                 type="button"
                 onClick={() => setIsPlayerSearchOpen(!isPlayerSearchOpen)}
                 className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left truncate cursor-pointer"
               >
                 <span className="truncate font-medium">
-                  {isProfileLoading ? 'Loading...' : `${profile?.name || `Player #${playerId}`} — ${profile?.team?.name || 'Alianza Lima'}`}
+                  {isProfileLoading ? t.config.loading : `${profile?.name || `Player #${playerId}`} — ${profile?.team?.name || 'Alianza Lima'}`}
                 </span>
                 <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-1" />
               </button>
@@ -2484,7 +2470,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         type="text"
                         value={playerSearchQuery}
                         onChange={(e) => setPlayerSearchQuery(e.target.value)}
-                        placeholder="Search player name..."
+                        placeholder={t.config.searchPlayerPlaceholder}
                         className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-300 rounded text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
                         autoFocus
                       />
@@ -2493,10 +2479,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
                   <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
                     {isSearchLoading && (
-                      <p className="p-3 text-xs text-slate-400 text-center">Searching...</p>
+                      <p className="p-3 text-xs text-slate-400 text-center">{t.config.searching}</p>
                     )}
                     {!isSearchLoading && playerSearchQuery.length >= 2 && searchResults?.length === 0 && (
-                      <p className="p-3 text-xs text-slate-500 text-center">No players found</p>
+                      <p className="p-3 text-xs text-slate-500 text-center">{t.config.noPlayersFound}</p>
                     )}
                     {searchResults && searchResults.map((p) => (
                       <button
@@ -2511,7 +2497,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         <div className="truncate">
                           <p className="font-semibold text-slate-800 truncate">{p.name} — {p.team_name || 'Liga 1'}</p>
                           <p className="text-[11px] text-slate-500 truncate">
-                            {p.position_group || 'Unknown'}
+                            {p.position_group ? (t.config.positionGroups[p.position_group] || p.position_group) : t.config.unknownPosition}
                           </p>
                         </div>
                         {p.player_id === playerId && (
@@ -2528,35 +2514,35 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           {/* Radar slices multi-select dropdown */}
           <div className="relative" ref={radarDropdownRef}>
             <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Radar slices ({activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length}/{radarSliceOptions.length})
+              {t.config.radarSlicesLabel(activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length, radarSliceOptions.length)}
             </label>
             <button
               type="button"
               onClick={() => setIsRadarDropdownOpen(!isRadarDropdownOpen)}
               className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left cursor-pointer"
             >
-              <span>{activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length} slices selected</span>
+              <span>{t.config.slicesSelected(activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length)}</span>
               <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-1" />
             </button>
 
             {isRadarDropdownOpen && (
               <div className="absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2.5 space-y-1.5">
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-xs font-bold uppercase text-slate-800">Toggle Slices</span>
+                  <span className="text-xs font-bold uppercase text-slate-800">{t.config.toggleSlices}</span>
                   <div className="flex items-center space-x-2">
                     <button 
                       type="button"
                       onClick={() => setActiveRadarSlices(radarSliceOptions)} 
                       className="text-xs font-semibold text-slate-700 hover:underline cursor-pointer"
                     >
-                      All
+                      {t.config.allSlices}
                     </button>
                     <button 
                       type="button"
                       onClick={() => setActiveRadarSlices([])} 
                       className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
                     >
-                      None
+                      {t.config.noneSlices}
                     </button>
                   </div>
                 </div>
@@ -2566,7 +2552,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       key={slice} 
                       className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs"
                     >
-                      <span className="text-slate-700">{slice}</span>
+                      <span className="text-slate-700">{t.metrics[slice]?.short || slice}</span>
                       <input
                         type="checkbox"
                         checked={activeRadarSlices.includes(slice)}
@@ -2660,18 +2646,18 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
 
                 {/* Bottom Technical Spec List: Compact 2-Column Left-Aligned Grid */}
                 <div className="grid grid-cols-[62px_1fr] gap-x-2 gap-y-1 pt-1.5 border-t border-slate-100 text-[11px]">
-                <span className="text-slate-400 font-medium text-left">Position</span>
+                <span className="text-slate-400 font-medium text-left">{t.floor1.position}</span>
                 <span className="text-slate-800 font-semibold text-left flex items-center gap-1">{positionLabel}</span>
 
-                <span className="text-slate-400 font-medium text-left">Age</span>
+                <span className="text-slate-400 font-medium text-left">{t.floor1.age}</span>
                 <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">{playerAge || 24}</span>
 
-                <span className="text-slate-400 font-medium text-left">Minutes</span>
+                <span className="text-slate-400 font-medium text-left">{t.floor1.minutes}</span>
                 <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">
                   {(seasonStats?.minutes_played || 1869).toLocaleString()}&apos;
                 </span>
 
-                <span className="text-slate-400 font-medium text-left">Country</span>
+                <span className="text-slate-400 font-medium text-left">{t.floor1.country}</span>
                 <span className="text-slate-800 font-semibold text-left flex items-center gap-1">
                   <img 
                     src={`https://flagcdn.com/w20/${countryCode}.png`} 
@@ -2679,13 +2665,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     alt="" 
                     className="w-3.5 h-2.5 object-cover rounded-xs shrink-0" 
                   />
-                  <span>{profile?.nationality || 'Peru'}</span>
+                  <span>{t.floor1.countries[(profile?.nationality || 'peru').toLowerCase()] || profile?.nationality || t.floor1.countries.peru}</span>
                 </span>
 
-                <span className="text-slate-400 font-medium text-left">Shirt #</span>
+                <span className="text-slate-400 font-medium text-left">{t.floor1.shirtNumber}</span>
                 <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">{profile?.shirt_number || '23'}</span>
 
-                <span className="text-slate-400 font-medium text-left">League</span>
+                <span className="text-slate-400 font-medium text-left">{t.floor1.league}</span>
                 <span className="text-slate-800 font-semibold text-left flex items-center gap-1">Liga 1</span>
                 </div>
               </div>
@@ -2737,8 +2723,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       onMouseEnter={() => setHoveredMetric(metric.key)}
                       onMouseLeave={() => setHoveredMetric(null)}
                     >
-                      <span className="text-slate-700 font-medium truncate max-w-[100px] font-sans" title={metric.label}>
-                        {metric.label}
+                      <span className="text-slate-700 font-medium truncate max-w-[100px] font-sans" title={t.metrics[metric.key]?.short || metric.label}>
+                        {t.metrics[metric.key]?.short || metric.label}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <div className="text-[10px] font-mono text-slate-600 text-right min-w-[48px] flex items-center justify-end">
@@ -2756,7 +2742,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           {isLowConfidence ? (
                             <span
                               className="text-amber-500 font-bold text-[10px] leading-none cursor-help select-none"
-                              title="Cohorte pequeño o muchos ceros: percentil poco estable"
+                              title={t.floor1.lowConfidenceTooltip}
                             >
                               *
                             </span>
@@ -2872,7 +2858,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 {/* Perimeter Metric Labels outside outer ring */}
                 <g pointerEvents="none">
                   {radarGeometry.map(({ metric, labelX, labelY, textAnchor }) => {
-                    const [line1, line2] = getSplitMetricLabel(metric.label);
+                    const [line1, line2] = getSplitMetricLabel(metric.key, metric.label);
 
                     return (
                       <text
@@ -2904,17 +2890,18 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               <div className="text-[11px] font-bold text-slate-800 pb-1 mb-1 truncate">
                 {(() => {
                   const activeMetric = RADAR_METRICS.find(m => m.key === currentLeaderboardStat);
-                  const label = activeMetric ? activeMetric.label : (activeHoveredMetricDef ? activeHoveredMetricDef.label : 'Pass Accuracy');
+                  const metricKey = activeMetric?.key || activeHoveredMetricDef?.key || 'accurate_passes_percentage';
+                  const label = t.metrics[metricKey]?.short || (activeMetric ? activeMetric.label : (activeHoveredMetricDef ? activeHoveredMetricDef.label : 'Pass Accuracy'));
                   const isPercentage = Boolean(activeMetric?.isPercentage || activeHoveredMetricDef?.isPercentage);
                   const displayLabel = isPercentage && !label.includes('%') ? `${label} (%)` : label;
-                  return `${displayLabel} — Top 10`;
+                  return `${displayLabel} — ${t.floor1.top10Suffix}`;
                 })()}
               </div>
 
               {/* Top 10 List Table with Row Dividers */}
               <div className="divide-y divide-slate-100/90">
                 {isTopPlayersLoading && (
-                  <p className="text-[10px] text-slate-400 py-6 text-center">Loading rankings...</p>
+                  <p className="text-[10px] text-slate-400 py-6 text-center">{t.floor1.loadingRankings}</p>
                 )}
 
                 {!isTopPlayersLoading && topPlayers && topPlayers.length > 0 ? (
@@ -2967,7 +2954,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                   })
                 ) : (
                   !isTopPlayersLoading && (
-                    <p className="text-[10px] text-slate-400 py-6 text-center">No rankings found.</p>
+                    <p className="text-[10px] text-slate-400 py-6 text-center">{t.floor1.noRankingsFound}</p>
                   )
                 )}
               </div>
@@ -2981,6 +2968,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               themeColor={clubThemeColor} 
               orientation="vertical"
               playerName={playerName}
+              lang={lang}
               className="w-full h-full flex-1 flex flex-col justify-between gap-2.5 min-h-0"
             />
           </div>
@@ -2996,10 +2984,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
           <div className="lg:col-span-4 xl:col-span-4 w-full bg-white border border-slate-200/80 rounded-xl p-3 flex flex-col justify-between h-full shadow-sm">
             <div className="pb-2">
               <h3 className="text-[13px] font-bold text-slate-900 tracking-tight">
-                Most similar to {playerName}
+                {t.floor2.mostSimilarTo(playerName)}
               </h3>
               <p className="text-[10.5px] text-slate-400 font-sans mt-0.5">
-                15 closest in {positionLabel} · 15 metrics
+                {t.floor2.closestSubtitle(positionLabel, 15)}
               </p>
             </div>
 
@@ -3041,7 +3029,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                 })
               ) : (
                 !isSimilarLoading && (
-                  <p className="text-sm text-slate-400 p-6 text-center">No similar players found.</p>
+                  <p className="text-sm text-slate-400 p-6 text-center">{t.floor2.noSimilarFound}</p>
                 )
               )}
             </div>
@@ -3053,11 +3041,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* 1. Shots & Goals Visualizer (FIFA Standard Metric Attacking Half-Pitch) */}
               <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Shots</div>
-                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{shots.length} Shots · {goals} Goals · {total_xg.toFixed(2)} xG</p>
+                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — {t.floor2.shotsTitle}</div>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{t.floor2.shotsSubtitle(shots.length, goals, total_xg.toFixed(2))}</p>
                   <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-600 font-medium">
-                    <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 align-middle"></span>Goal</span>
-                    <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 align-middle"></span>No goal</span>
+                    <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 align-middle"></span>{t.floor2.goal}</span>
+                    <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 align-middle"></span>{t.floor2.noGoal}</span>
                   </div>
                 </div>
 
@@ -3172,7 +3160,7 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                       : Math.max(((hy - 4.5) / 52.5) * 100, 8);
 
                     const isGoal = hoveredShot.shot_type?.toLowerCase() === 'goal';
-                    const outcomeText = isGoal ? 'Goal' : 'No goal';
+                    const outcomeText = isGoal ? t.floor2.goal : t.floor2.noGoal;
                     const xgVal = (hoveredShot.calculated_xg || 0).toFixed(2);
                     const distVal = hoveredShot.distance_m ? `${hoveredShot.distance_m.toFixed(1)}m` : 'N/A';
                     const bodyPart = hoveredShot.body_part ? hoveredShot.body_part.replace(/_/g, ' ') : null;
@@ -3207,13 +3195,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* 2. Key Chances & Assists Visualizer (Vertical Full Pitch) */}
               <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Chances</div>
-                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{bigChancesCount} Big Chances · {chancesCount} Chances · {assistsCount} Assists</p>
+                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — {t.floor2.chancesTitle}</div>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{t.floor2.chancesSubtitle(bigChancesCount, chancesCount, assistsCount)}</p>
                   <div className="flex items-center justify-center gap-3 mt-1 text-[9px] text-slate-600 font-medium">
-                    <span><span className="inline-block w-2.5 h-0.5 bg-emerald-500 mr-1 align-middle"></span>Open Play</span>
-                    <span><span className="inline-block w-2.5 h-0.5 border-t border-dashed border-cyan-500 mr-1 align-middle"></span>Cross</span>
-                    <span><span className="inline-block w-2.5 h-0.5 bg-teal-400 mr-1 align-middle"></span>Set Play</span>
-                    <span><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1 align-middle"></span>Assist</span>
+                    <span><span className="inline-block w-2.5 h-0.5 bg-emerald-500 mr-1 align-middle"></span>{t.floor2.openPlay}</span>
+                    <span><span className="inline-block w-2.5 h-0.5 border-t border-dashed border-cyan-500 mr-1 align-middle"></span>{t.floor2.cross}</span>
+                    <span><span className="inline-block w-2.5 h-0.5 bg-teal-400 mr-1 align-middle"></span>{t.floor2.setPlay}</span>
+                    <span><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1 align-middle"></span>{t.floor2.assist}</span>
                   </div>
                 </div>
 
@@ -3410,10 +3398,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                         }}
                       >
                         <span className={hoveredChance.isAssist ? 'text-amber-300 font-semibold' : 'text-emerald-400 font-medium'}>
-                          {hoveredChance.type}
+                          {t.floor2.chanceTypes[hoveredChance.type] || hoveredChance.type}
                         </span>
                         <span className="text-slate-500">·</span>
-                        <span className="text-slate-200">{hoveredChance.recipient || 'Pass'}</span>
+                        <span className="text-slate-200">{t.floor2.chanceRecipients[hoveredChance.recipient || 'Pass'] || hoveredChance.recipient || 'Pass'}</span>
                         <span className="text-slate-500">·</span>
                         <span className="font-mono text-slate-300">xA: {(hoveredChance.xa || 0.05).toFixed(2)}</span>
                       </div>
@@ -3425,11 +3413,11 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* 3. Take-ons / Dribbles Visualizer (Standard Attacking Half-Pitch) */}
               <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Take-ons</div>
-                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{successfulCount}/{totalTakeOns} successful · {successPct}%</p>
+                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — {t.floor2.takeOnsTitle}</div>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{t.floor2.takeOnsSubtitle(successfulCount, totalTakeOns, successPct)}</p>
                   <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-600 font-medium">
-                    <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 align-middle"></span>Successful</span>
-                    <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5 align-middle"></span>Unsuccessful</span>
+                    <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 align-middle"></span>{t.floor2.successful}</span>
+                    <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5 align-middle"></span>{t.floor2.unsuccessful}</span>
                   </div>
                 </div>
 
@@ -3626,8 +3614,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     const leftPct = Math.max(12, Math.min(88, (x / 68) * 100));
                     const topPct = Math.max(6, Math.min(92, (y / 52.5) * 100));
 
-                    const outcomeText = hoveredDribble.is_successful ? 'Successful' : 'Unsuccessful';
-                    const minuteText = (hoveredDribble as any).minute ? `${(hoveredDribble as any).minute}'` : 'Take-on';
+                    const outcomeText = hoveredDribble.is_successful ? t.floor2.successful : t.floor2.unsuccessful;
+                    const minuteText = (hoveredDribble as any).minute ? `${(hoveredDribble as any).minute}'` : t.floor2.takeOnFallback;
 
                     return (
                       <div 
@@ -3651,8 +3639,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* 4. Pass Starts Visualizer (Vertical Zonal Heatmap Matrix) */}
               <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Pass Starts</div>
-                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{totalOpenPlayPasses} Open Play Passes</p>
+                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — {t.floor2.passStartsTitle}</div>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{t.floor2.openPlayPasses(totalOpenPlayPasses)}</p>
                 </div>
 
                 <div className="relative w-full aspect-[68/105] max-w-[215px] mx-auto overflow-hidden">
@@ -3752,8 +3740,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* 5. Pass Endings Visualizer (Vertical Zonal Heatmap Matrix) */}
               <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Pass Endings</div>
-                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{totalPassEndsCount} Open Play Pass Endpoints</p>
+                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — {t.floor2.passEndingsTitle}</div>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{t.floor2.openPlayPassEndpoints(totalPassEndsCount)}</p>
                 </div>
 
                 <div className="relative w-full aspect-[68/105] max-w-[215px] mx-auto overflow-hidden">
@@ -3853,8 +3841,8 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
               {/* 6. Season Activity Heatmap Visualizer (Vertical Monochromatic Density Cloud) */}
               <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-sm h-full">
                 <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — Heatmap</div>
-                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{totalActionsCount} Open Play Actions</p>
+                  <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">{playerName} — {t.floor2.heatmapTitle}</div>
+                  <p className="text-[10.5px] font-medium text-slate-500 font-sans mt-0.5">{t.floor2.openPlayActions(totalActionsCount)}</p>
                 </div>
 
                 <div className="relative w-full aspect-[68/105] max-w-[215px] mx-auto overflow-hidden">
@@ -4154,10 +4142,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                           {hoveredBeeswarmPoint.name}
                         </div>
                         <div className="text-[10px] text-zinc-400 mt-0.5 leading-snug">
-                          {hoveredBeeswarmPoint.team_name || 'Liga 1'} · {hoveredBeeswarmPoint.position === 'D' ? 'Full Back' : (hoveredBeeswarmPoint.position || hoveredBeeswarmPoint.position_group || 'Player')}
+                          {hoveredBeeswarmPoint.team_name || 'Liga 1'} · {(() => {
+                            const rawPos = hoveredBeeswarmPoint.position === 'D' ? 'Full Back' : (hoveredBeeswarmPoint.position || hoveredBeeswarmPoint.position_group || t.floor3.playerFallback);
+                            return t.floor1.roles[rawPos] || rawPos;
+                          })()}
                         </div>
                         <div className="text-[9.5px] text-zinc-400 mt-0.5">
-                          Age {hoveredBeeswarmPoint.age ?? (hoveredBeeswarmPoint.isTarget ? playerAge : null) ?? resolvePlayerAge(similarPlayersMap.get(hoveredBeeswarmPoint.player_id)) ?? '—'} · Min {hoveredBeeswarmPoint.minutes_played != null ? hoveredBeeswarmPoint.minutes_played.toLocaleString() : '—'}
+                          {t.floor3.ageLabel} {hoveredBeeswarmPoint.age ?? (hoveredBeeswarmPoint.isTarget ? playerAge : null) ?? resolvePlayerAge(similarPlayersMap.get(hoveredBeeswarmPoint.player_id)) ?? '—'} · {t.floor3.minLabel} {hoveredBeeswarmPoint.minutes_played != null ? hoveredBeeswarmPoint.minutes_played.toLocaleString() : '—'}
                         </div>
                         <div className="border-t border-zinc-700/60 my-2" />
                         <div className="text-[11px] font-medium text-zinc-300 flex justify-between gap-3">
@@ -4403,10 +4394,13 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
                     {hoveredScatterPoint.name}
                   </div>
                   <div className="text-[10px] text-zinc-400 mt-0.5 leading-snug">
-                    {hoveredScatterPoint.team_name || 'Liga 1'} · {hoveredScatterPoint.position === 'D' ? 'Full Back' : (hoveredScatterPoint.position || hoveredScatterPoint.position_group || 'Player')}
+                    {hoveredScatterPoint.team_name || 'Liga 1'} · {(() => {
+                      const rawPos = hoveredScatterPoint.position === 'D' ? 'Full Back' : (hoveredScatterPoint.position || hoveredScatterPoint.position_group || t.floor3.playerFallback);
+                      return t.floor1.roles[rawPos] || rawPos;
+                    })()}
                   </div>
                   <div className="text-[9.5px] text-zinc-400 mt-0.5">
-                    Age {hoveredScatterPoint.age ?? (hoveredScatterPoint.isTarget ? playerAge : null) ?? resolvePlayerAge(similarPlayersMap.get(hoveredScatterPoint.player_id)) ?? '—'} · Min {hoveredScatterPoint.minutes_played != null ? hoveredScatterPoint.minutes_played.toLocaleString() : '—'}
+                    {t.floor3.ageLabel} {hoveredScatterPoint.age ?? (hoveredScatterPoint.isTarget ? playerAge : null) ?? resolvePlayerAge(similarPlayersMap.get(hoveredScatterPoint.player_id)) ?? '—'} · {t.floor3.minLabel} {hoveredScatterPoint.minutes_played != null ? hoveredScatterPoint.minutes_played.toLocaleString() : '—'}
                   </div>
                   <div className="border-t border-zinc-700/60 my-2" />
                   <div className="space-y-1">
@@ -4433,10 +4427,10 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm h-full p-3 flex flex-col items-center justify-center">
               <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
                 <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">
-                  {playerName} — Defending
+                  {playerName} — {t.floor3.defendingTitle}
                 </div>
                 <p className="text-[10px] text-slate-500 font-sans">
-                  {totalDefendingActions} total · {tacklesCount} Tackles · {recoveriesCount} Recoveries · {aerialCount} Aerial
+                  {t.floor3.defendingSubtitle(totalDefendingActions, tacklesCount, recoveriesCount, aerialCount)}
                 </p>
               </div>
 
@@ -4540,12 +4534,12 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             {isExportingPng ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating PNG...
+                {t.export.generatingPng}
               </>
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Download PNG
+                {t.export.downloadPng}
               </>
             )}
           </button>
@@ -4559,12 +4553,12 @@ const getSplitMetricLabel = (label: string): [string, string | null] => {
             {isExportingPdf ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating PDF...
+                {t.export.generatingPdf}
               </>
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Download PDF
+                {t.export.downloadPdf}
               </>
             )}
           </button>
