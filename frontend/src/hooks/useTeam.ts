@@ -176,3 +176,14 @@ export const useTeamSetPieces = (
 
 export { useTeamFlashscoreSummary } from './useTeamFlashscoreSummary';
 
+
+import { matchesApi, MatchSheet01Response } from '../services/api';
+
+export const useMatchSheet01Chances = (matchId?: number | null, enabled: boolean = true) => {
+  return useQuery<MatchSheet01Response>({
+    queryKey: ['matches', matchId, 'sheet-01-chances'],
+    queryFn: () => matchesApi.getSheet01Chances(matchId!),
+    enabled: Boolean(matchId) && enabled,
+    staleTime: 1000 * 60 * 10,
+  });
+};

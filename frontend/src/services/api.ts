@@ -1149,3 +1149,88 @@ export const getRefereeMatches = async (
   });
   return response.data;
 };
+
+
+// ---------------------------------------------------------------------------
+// Match Report Sheet 01 / 04 ("The result and the chances") API
+// ---------------------------------------------------------------------------
+
+export interface MatchSheetTeamInfo {
+  team_id: number;
+  name: string;
+  short_name: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  score: number;
+}
+
+export interface MatchSheetTeamMetrics {
+  goals: number;
+  xg: number;
+  npxg: number;
+  xgot: number | null;
+  shots_total: number;
+  shots_on_target: number;
+  shots_inside_box: number;
+  shots_outside_box: number;
+  xg_per_shot: number;
+  big_chances: number;
+}
+
+export interface MatchSheetXgFlowPoint {
+  minute: number;
+  home_xg: number;
+  away_xg: number;
+  event_type: 'start' | 'shot' | 'goal' | 'own_goal' | 'end';
+  is_home: boolean | null;
+  shot_xg: number;
+  player_name: string | null;
+  result: string | null;
+  shot_id: number | null;
+}
+
+export interface MatchSheetShotItem {
+  index: number;
+  shot_id: number;
+  is_home: boolean;
+  team_id: number;
+  x: number;
+  y: number;
+  distance_m: number;
+  xg: number;
+  result: 'goal' | 'saved' | 'miss' | 'blocked';
+  situation: 'open_play' | 'set_piece' | 'corner' | 'penalty' | 'fast_break';
+  body_part: 'right_foot' | 'left_foot' | 'head' | 'other';
+  player_name: string;
+  player_jersey: number | null;
+  minute: number | null;
+}
+
+export interface MatchSheet01Response {
+  match_id: number;
+  match_date: string;
+  round: number | null;
+  tournament: string;
+  season: string;
+  has_xgot: boolean;
+  has_flashscore_big_chances: boolean;
+  final_minute: number;
+  home_team: MatchSheetTeamInfo;
+  away_team: MatchSheetTeamInfo;
+  metrics: {
+    home: MatchSheetTeamMetrics;
+    away: MatchSheetTeamMetrics;
+  };
+  xg_flow: MatchSheetXgFlowPoint[];
+  shots: {
+    home: MatchSheetShotItem[];
+    away: MatchSheetShotItem[];
+  };
+}
+
+export const matchesApi = {
+  getSheet01Chances: async (matchId: number): Promise<MatchSheet01Response> => {
+    const response = await apiClient.get<MatchSheet01Response>(`/matches/${matchId}/sheet-01-chances`);
+    return response.data;
+  },
+};
