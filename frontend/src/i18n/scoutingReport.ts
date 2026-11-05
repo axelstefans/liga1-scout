@@ -123,6 +123,171 @@ export interface ScoutingTranslations {
     pdfError: string;
   };
   metrics: Record<string, MetricTranslation>;
+  matchSheet01: MatchSheet01Translations;
+  matchSheet03: MatchSheet03Translations;
+}
+
+export interface MatchSheet03Translations {
+  friezeLeft: string;
+  friezeRight: string;
+  title: string;
+  subtitle: string;
+  venue: {
+    stadium: string;
+    altitude: string;
+    surface: string;
+    referee: string;
+    smallSample: string;
+    unavailable: string;
+  };
+  gameState: {
+    title: string;
+    regulationTime: string;
+    lead: string;
+    draw: string;
+    trail: string;
+    noGoals: string;
+  };
+  halves: {
+    title: string;
+    firstHalf: string;
+    secondHalf: string;
+    xg: string;
+    goals: string;
+    corners: string;
+    fouls: string;
+    yellowCards: string;
+    possession: string;
+    shots: string;
+    shotsTotal: string;
+    shotsOnTarget: string;
+  };
+  attackChannels: {
+    title: string;
+    subtitle: string;
+    left: string;
+    center: string;
+    right: string;
+  };
+  shotTypology: {
+    title: string;
+    openPlay: string;
+    setPiece: string;
+    counterAttack: string;
+    penalty: string;
+    other: string;
+    total: string;
+  };
+}
+
+export interface MatchSheet01Translations {
+  friezeLeft: string;
+  friezeRight: string;
+  title: string;
+  subtitle: (tournament: string, round: number | null, dateStr: string) => string;
+  conceptualSubtitle: string;
+  months: string[];
+  kpis: {
+    xg: { label: string; sublabel: string };
+    xgot: { label: string; sublabel: string };
+    shots: { label: string; sublabel: string };
+    onTarget: { label: string; sublabel: string };
+  };
+  module01: {
+    number: string;
+    title: string;
+    subtitle: string;
+    editorialTitle: string;
+    editorialSubtitle: string;
+    xAxisLabel: string;
+    yAxisLabel: string;
+    stoppageSuffix: string;
+    axisNote: string;
+    empty: string;
+    ownGoalTag: string;
+    penTag: string;
+  };
+  module02: {
+    number: string;
+    title: string;
+    subtitle: string;
+    scaleNote: string;
+    empty: string;
+    fieldTiltLabel: string;
+    deepCompletionsLabel: string;
+    metrics: {
+      goals: string;
+      xgPerShot: string;
+      bigChances: string;
+      boxEntries: string;
+      fieldTilt: string;
+      deepCompletions: string;
+    };
+  };
+  module0304: {
+    homeNumber: string;
+    awayNumber: string;
+    shotMapTitle: (teamName: string) => string;
+    shotMapSubtitle: string;
+    attacksRight: string;
+    densityLabel: string;
+    densityUnavailable: string;
+    legendGoal: string;
+    legendSaved: string;
+    legendBlocked: string;
+    legendOffTarget: string;
+    legendOwnHalf: string;
+    legendSize: string;
+    emptyShots: string;
+  };
+  module05: {
+    number: string;
+    title: string;
+    subtitle: string;
+    yAxisLabel: string;
+    stops: {
+      created: string;
+      onFrame: string;
+      struck: string;
+      scored: string;
+    };
+    editorialStops: {
+      created: string;
+      onFrame: string;
+      struck: string;
+      scored: string;
+    };
+    xgotMissingNote: string;
+    ownGoalNote: (n: number) => string;
+    empty: string;
+  };
+  module06: {
+    number: string;
+    title: string;
+    subtitle: string;
+    xAxisLabel: string;
+    tieOffsetNote: string;
+    categories: {
+      goals: string;
+      saved: string;
+      blocked: string;
+      offTarget: string;
+    };
+    woodworkBadge: (n: number) => string;
+    empty: string;
+  };
+  footer: {
+    dataSource: string;
+    copyright: string;
+    exportButton: string;
+    exportingButton: string;
+    selectMatchPrompt: string;
+    loadingSheet: string;
+    errorTitle: string;
+    retryButton: string;
+    noData: string;
+    modelEstimates: string;
+  };
 }
 
 export const TRANSLATIONS: Record<ScoutingLang, ScoutingTranslations> = {
@@ -425,6 +590,169 @@ export const TRANSLATIONS: Record<ScoutingLang, ScoutingTranslations> = {
         radarSplit: ['Despejes', null],
       },
     },
+    matchSheet01: {
+      friezeLeft: 'TACTICAL / MATCH ANALYSIS',
+      friezeRight: '01 / 03',
+      title: 'Resultado y ocasiones',
+      subtitle: (tournament, round, dateStr) =>
+        `Liga 1 2026 · Torneo ${tournament}${round ? ` · Fecha ${round}` : ''}${dateStr ? ` · ${dateStr}` : ''}`,
+      conceptualSubtitle: 'De dónde vinieron los goles y si la calidad de las ocasiones correspondió al marcador.',
+      months: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+      kpis: {
+        xg: { label: 'EXPECTED GOALS', sublabel: '' },
+        xgot: { label: 'EXPECTED GOALS ON TARGET', sublabel: '' },
+        shots: { label: 'SHOTS', sublabel: '' },
+        onTarget: { label: 'ON TARGET', sublabel: '' },
+      },
+      module01: {
+        number: '01',
+        title: 'Flujo de xG',
+        subtitle: 'Evolución acumulada minuto a minuto',
+        editorialTitle: 'Expected goals through the match',
+        editorialSubtitle: 'xG acumulado por tiro | cada escalón es un remate | minuto del evento',
+        xAxisLabel: 'Minuto de juego',
+        yAxisLabel: 'xG acumulado',
+        stoppageSuffix: 'añadido',
+        axisNote: "Eje X: 0' a 90'+ (añadido y goles en descuento escalonados cronológicamente)",
+        empty: 'Sin flujo de xG registrado para este encuentro',
+        ownGoalTag: 'AG',
+        penTag: 'PEN',
+      },
+      module02: {
+        number: '02',
+        title: 'Chance balance',
+        subtitle: 'Two bars per metric; shared scale within each row; — = unavailable',
+        scaleNote: 'Escala normalizada por fila · Local (sólido) vs Visitante (tramado)',
+        empty: 'Sin métricas de balance disponibles',
+        fieldTiltLabel: 'Field tilt',
+        deepCompletionsLabel: 'Deep completions',
+        metrics: {
+          goals: 'Goals',
+          xgPerShot: 'xG per shot',
+          bigChances: 'Big chances',
+          boxEntries: 'Box entries',
+          fieldTilt: 'Field tilt',
+          deepCompletions: 'Deep completions',
+        },
+      },
+      module0304: {
+        homeNumber: '03',
+        awayNumber: '04',
+        shotMapTitle: (teamName) => `${teamName} · tiros`,
+        shotMapSubtitle: 'Área de punto = xG del tiro; estrellas = goles; sombreado = densidad de toques | ataca →',
+        attacksRight: 'Ataca →',
+        densityLabel: 'Densidad: acciones con balón en campo rival (6×5)',
+        densityUnavailable: 'Densidad espacial no disponible',
+        legendGoal: '★ Gol',
+        legendSaved: 'Atajado',
+        legendBlocked: 'Bloqueado',
+        legendOffTarget: 'Fuera / Poste',
+        legendOwnHalf: "Borde punteado: tiro desde campo propio (anclado en x'=50)",
+        legendSize: 'Radio ∝ √(xG)',
+        emptyShots: 'Sin tiros registrados',
+      },
+      module05: {
+        number: '05',
+        title: 'De la ocasión al gol',
+        subtitle: 'Pre-shot xG, the share that reached the frame, its post-shot value, and goals',
+        yAxisLabel: 'Goles esperados / goles',
+        stops: {
+          created: 'Created',
+          onFrame: 'On frame',
+          struck: 'Struck',
+          scored: 'Scored',
+        },
+        editorialStops: {
+          created: 'Created',
+          onFrame: 'On frame',
+          struck: 'Struck',
+          scored: 'Scored',
+        },
+        xgotMissingNote: 'Parada Struck (xGOT) sin tramo: partido sin cobertura post-tiro',
+        ownGoalNote: (n) => `Incluye ${n} autogol(es) a favor`,
+        empty: 'Sin datos de conversión disponibles',
+      },
+      module06: {
+        number: '06',
+        title: 'Resultados de los tiros',
+        subtitle: 'Recorded outcome counts | both teams use the same shot-count axis',
+        xAxisLabel: 'Tiros',
+        tieOffsetNote: 'Valores iguales desfasados verticalmente',
+        categories: {
+          goals: 'Goals',
+          saved: 'Saved',
+          blocked: 'Blocked',
+          offTarget: 'Off target',
+        },
+        woodworkBadge: (n) => `Postes: ${n}`,
+        empty: 'Sin desenlaces de tiro registrados',
+      },
+      footer: {
+        dataSource:
+          'Fuentes: SofaScore (coordenadas, xG calculado y eventos espaciales) · Flashscore (xGOT y grandes ocasiones)',
+        copyright: 'LIGA 1 PERÚ · UNIDAD DE ANÁLISIS TÁCTICO Y SCOUTING EDITORIAL',
+        exportButton: 'Exportar PNG',
+        exportingButton: 'Exportando...',
+        selectMatchPrompt: 'Selecciona un partido jugado en el selector superior para visualizar la Lámina 01 / 03.',
+        loadingSheet: 'Construyendo Lámina 01 / 03 — Resultado y ocasiones...',
+        errorTitle: 'Error al consultar el reporte del partido seleccionado',
+        retryButton: 'Reintentar',
+        noData: 'No se registran datos tácticos para el partido seleccionado.',
+        modelEstimates: 'Local model values are estimates',
+      },
+    },
+    matchSheet03: {
+      friezeLeft: 'LIGA 1 TE APUESTO · REPORTE DE PARTIDO',
+      friezeRight: 'LÁMINA 03 / 03',
+      title: 'Match statistics and performance data hub',
+      subtitle: 'Consolidación métrica exhaustiva comparando datos de eventos de Sofascore y Flashscore.',
+      venue: {
+        stadium: 'Estadio',
+        altitude: 'm s. n. m.',
+        surface: 'Superficie',
+        referee: 'Árbitro',
+        smallSample: 'muestra pequeña',
+        unavailable: '—',
+      },
+      gameState: {
+        title: 'CRONOLOGÍA DE GOLES Y ESTADO DE JUEGO',
+        regulationTime: '90 min reglamentarios',
+        lead: 'Ventaja',
+        draw: 'Empate',
+        trail: 'Desventaja',
+        noGoals: 'Sin goles en el partido',
+      },
+      halves: {
+        title: 'DESGLOSE POR MITADES (1T / 2T)',
+        firstHalf: '1T · PRIMER TIEMPO',
+        secondHalf: '2T · SEGUNDO TIEMPO',
+        xg: 'xG',
+        goals: 'Goles',
+        corners: 'Córners',
+        fouls: 'Faltas',
+        yellowCards: 'Amarillas',
+        possession: 'Posesión',
+        shots: 'Tiros',
+        shotsTotal: 'Tiros Totales',
+        shotsOnTarget: 'Tiros a Puerta',
+      },
+      attackChannels: {
+        title: 'CANALES DE ATAQUE',
+        subtitle: 'Pases completados en último tercio (x ≥ 66.7)',
+        left: 'Banda Izquierda',
+        center: 'Pasillo Central',
+        right: 'Banda Derecha',
+      },
+      shotTypology: {
+        title: 'TIPOLOGÍA DE REMATES',
+        openPlay: 'Jugada abierta',
+        setPiece: 'Balón parado',
+        counterAttack: 'Contraataque',
+        penalty: 'Penalti',
+        other: 'Otros',
+        total: 'Total remates',
+      },
+    },
   },
   en: {
     headerTitle: 'Interactive Scouting Report Template',
@@ -723,6 +1051,169 @@ export const TRANSLATIONS: Record<ScoutingLang, ScoutingTranslations> = {
         short: 'Clearances',
         long: 'Clearances',
         radarSplit: ['Clearances', null],
+      },
+    },
+    matchSheet01: {
+      friezeLeft: 'TACTICAL / MATCH ANALYSIS',
+      friezeRight: '01 / 03',
+      title: 'The result and the chances',
+      subtitle: (tournament, round, dateStr) =>
+        `Liga 1 2026 · ${tournament} Tournament${round ? ` · Round ${round}` : ''}${dateStr ? ` · ${dateStr}` : ''}`,
+      conceptualSubtitle: 'Where the goals came from and whether the chance quality matched the scoreline.',
+      months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      kpis: {
+        xg: { label: 'EXPECTED GOALS', sublabel: '' },
+        xgot: { label: 'EXPECTED GOALS ON TARGET', sublabel: '' },
+        shots: { label: 'SHOTS', sublabel: '' },
+        onTarget: { label: 'ON TARGET', sublabel: '' },
+      },
+      module01: {
+        number: '01',
+        title: 'xG flow',
+        subtitle: 'Cumulative minute-by-minute progression',
+        editorialTitle: 'Expected goals through the match',
+        editorialSubtitle: 'Cumulative shot xG | each step is one attempt | elapsed event minute',
+        xAxisLabel: 'Elapsed minute',
+        yAxisLabel: 'Cumulative xG',
+        stoppageSuffix: 'added',
+        axisNote: "X-axis: 0' to 90'+ (stoppage time and added-time goals staggered chronologically)",
+        empty: 'No xG flow recorded for this match',
+        ownGoalTag: 'OG',
+        penTag: 'PEN',
+      },
+      module02: {
+        number: '02',
+        title: 'Chance balance',
+        subtitle: 'Two bars per metric; shared scale within each row; — = unavailable',
+        scaleNote: 'Row-normalized scale · Home (solid) vs Away (hatched)',
+        empty: 'No chance balance metrics available',
+        fieldTiltLabel: 'Field tilt',
+        deepCompletionsLabel: 'Deep completions',
+        metrics: {
+          goals: 'Goals',
+          xgPerShot: 'xG per shot',
+          bigChances: 'Big chances',
+          boxEntries: 'Box entries',
+          fieldTilt: 'Field tilt',
+          deepCompletions: 'Deep completions',
+        },
+      },
+      module0304: {
+        homeNumber: '03',
+        awayNumber: '04',
+        shotMapTitle: (teamName) => `${teamName} · shots`,
+        shotMapSubtitle: 'Point area = shot xG; stars = goals; shading = touch density | attacks →',
+        attacksRight: 'Attacks →',
+        densityLabel: 'Density: opponent-half ball actions (6×5)',
+        densityUnavailable: 'Spatial density unavailable',
+        legendGoal: '★ Goal',
+        legendSaved: 'Saved',
+        legendBlocked: 'Blocked',
+        legendOffTarget: 'Off target / Post',
+        legendOwnHalf: "Dashed rim: shot from own half (anchored at x'=50)",
+        legendSize: 'Radius ∝ √(xG)',
+        emptyShots: 'No shots recorded',
+      },
+      module05: {
+        number: '05',
+        title: 'From chance to goal',
+        subtitle: 'Pre-shot xG, the share that reached the frame, its post-shot value, and goals',
+        yAxisLabel: 'Expected goals / goals',
+        stops: {
+          created: 'Created',
+          onFrame: 'On frame',
+          struck: 'Struck',
+          scored: 'Scored',
+        },
+        editorialStops: {
+          created: 'Created',
+          onFrame: 'On frame',
+          struck: 'Struck',
+          scored: 'Scored',
+        },
+        xgotMissingNote: 'Struck (xGOT) segment omitted: no post-shot coverage for this match',
+        ownGoalNote: (n) => `Includes ${n} own goal(s) in favor`,
+        empty: 'No conversion data available',
+      },
+      module06: {
+        number: '06',
+        title: 'Shot outcomes',
+        subtitle: 'Recorded outcome counts | both teams use the same shot-count axis',
+        xAxisLabel: 'Shots',
+        tieOffsetNote: 'Equal values vertically offset',
+        categories: {
+          goals: 'Goals',
+          saved: 'Saved',
+          blocked: 'Blocked',
+          offTarget: 'Off target',
+        },
+        woodworkBadge: (n) => `Woodwork: ${n}`,
+        empty: 'No shot outcomes recorded',
+      },
+      footer: {
+        dataSource:
+          'Sources: SofaScore (coordinates, calculated xG & spatial events) · Flashscore (xGOT & big chances)',
+        copyright: 'LIGA 1 PERU · TACTICAL ANALYSIS & EDITORIAL SCOUTING UNIT',
+        exportButton: 'Export PNG',
+        exportingButton: 'Exporting...',
+        selectMatchPrompt: 'Select a played match in the top selector to view Sheet 01 / 03.',
+        loadingSheet: 'Building Sheet 01 / 03 — The result and the chances...',
+        errorTitle: 'Error fetching the selected match report',
+        retryButton: 'Retry',
+        noData: 'No tactical data recorded for the selected match.',
+        modelEstimates: 'Local model values are estimates',
+      },
+    },
+    matchSheet03: {
+      friezeLeft: 'LIGA 1 TE APUESTO · MATCH REPORT',
+      friezeRight: 'SHEET 03 / 03',
+      title: 'Match statistics and performance data hub',
+      subtitle: 'Comprehensive metric consolidation comparing Sofascore and Flashscore event data.',
+      venue: {
+        stadium: 'Stadium',
+        altitude: 'm a.s.l.',
+        surface: 'Surface',
+        referee: 'Referee',
+        smallSample: 'small sample',
+        unavailable: '—',
+      },
+      gameState: {
+        title: 'GOALS CHRONOLOGY & GAME STATE',
+        regulationTime: '90 min regulation',
+        lead: 'Lead',
+        draw: 'Draw',
+        trail: 'Trail',
+        noGoals: 'No goals in match',
+      },
+      halves: {
+        title: 'HALVES BREAKDOWN (1H / 2H)',
+        firstHalf: '1H · FIRST HALF',
+        secondHalf: '2H · SECOND HALF',
+        xg: 'xG',
+        goals: 'Goals',
+        corners: 'Corners',
+        fouls: 'Fouls',
+        yellowCards: 'Yellow cards',
+        possession: 'Possession',
+        shots: 'Shots',
+        shotsTotal: 'Total Shots',
+        shotsOnTarget: 'Shots on Target',
+      },
+      attackChannels: {
+        title: 'ATTACK CHANNELS',
+        subtitle: 'Final third completed passes (x ≥ 66.7)',
+        left: 'Left Flank',
+        center: 'Central Channel',
+        right: 'Right Flank',
+      },
+      shotTypology: {
+        title: 'SHOT TYPOLOGY',
+        openPlay: 'Open play',
+        setPiece: 'Set piece',
+        counterAttack: 'Counter attack',
+        penalty: 'Penalty',
+        other: 'Other',
+        total: 'Total shots',
       },
     },
   },

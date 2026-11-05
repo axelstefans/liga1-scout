@@ -1,6 +1,8 @@
 import logging
+import math
 import time
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 from ..db import is_cached, log_scrape
 from .. import config
 from .formation_parser import get_tactical_position, build_substitutions_position_map
@@ -11,6 +13,118 @@ def camel_to_snake(name):
     import re
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
+
+
+def save_match_cards(
+    conn,
+    match_id: int,
+    home_team_id: int,
+    away_team_id: int,
+    incidents_list: List[Dict[str, Any]]
+) -> int:
+    """
+    Guarda incidencias de tarjetas en match_card_incidents de forma idempotente.
+    """
+    conn.execute("DELETE FROM match_card_incidents WHERE match_id = ?", (match_id,))
+    records = []
+    for inc in incidents_list:
+        if not isinstance(inc, dict) or inc.get("incidentType") != "card":
+            continue
+
+        team_info = inc.get("team")
+        team_id = team_info.get("id") if isinstance(team_info, dict) else None
+        if not team_id:
+            is_home = inc.get("isHome")
+            if is_home is not None:
+                team_id = home_team_id if is_home else away_team_id
+            else:
+                team_id = home_team_id
+
+        player_info = inc.get("player")
+        player_id = player_info.get("id") if isinstance(player_info, dict) else None
+        player_name = player_info.get("name") if isinstance(player_info, dict) else None
+        minute = inc.get("time")
+        extra_minute = inc.get("addedTime", 0) or 0
+        card_type = inc.get("incidentClass") or "yellow"
+        reason = inc.get("reason")
+        rescinded = 1 if bool(inc.get("rescinded", False)) else 0
+
+        if player_id is not None and minute is not None and team_id is not None:
+            records.append((
+                match_id,
+                team_id,
+                player_id,
+                player_name,
+                int(minute),
+                int(extra_minute),
+                str(card_type),
+                reason,
+                rescinded
+            ))
+
+    if records:
+        conn.executemany("""
+            INSERT INTO match_card_incidents (
+                match_id, team_id, player_id, player_name, minute, extra_minute, card_type, reason, rescinded
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, records)
+    return len(records)
+
+
+def save_match_substitutions(
+    conn,
+    match_id: int,
+    home_team_id: int,
+    away_team_id: int,
+    incidents_list: List[Dict[str, Any]]
+) -> int:
+    """
+    Guarda incidencias de sustituciones en match_substitution_incidents de forma idempotente.
+    """
+    conn.execute("DELETE FROM match_substitution_incidents WHERE match_id = ?", (match_id,))
+    records = []
+    for inc in incidents_list:
+        if not isinstance(inc, dict) or inc.get("incidentType") != "substitution":
+            continue
+
+        team_info = inc.get("team")
+        team_id = team_info.get("id") if isinstance(team_info, dict) else None
+        if not team_id:
+            is_home = inc.get("isHome")
+            if is_home is not None:
+                team_id = home_team_id if is_home else away_team_id
+            else:
+                team_id = home_team_id
+
+        p_in = inc.get("playerIn")
+        p_out = inc.get("playerOut")
+        p_in_id = p_in.get("id") if isinstance(p_in, dict) else None
+        p_in_name = p_in.get("name") if isinstance(p_in, dict) else None
+        p_out_id = p_out.get("id") if isinstance(p_out, dict) else None
+        p_out_name = p_out.get("name") if isinstance(p_out, dict) else None
+        minute = inc.get("time")
+        extra_minute = inc.get("addedTime", 0) or 0
+
+        if p_in_id is not None and p_out_id is not None and minute is not None and team_id is not None:
+            records.append((
+                match_id,
+                team_id,
+                p_in_id,
+                p_in_name,
+                p_out_id,
+                p_out_name,
+                int(minute),
+                int(extra_minute)
+            ))
+
+    if records:
+        conn.executemany("""
+            INSERT INTO match_substitution_incidents (
+                match_id, team_id, player_in_id, player_in_name, player_out_id, player_out_name, minute, extra_minute
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, records)
+    return len(records)
+
 
 def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
     resource_type = "match_stats"
@@ -70,12 +184,17 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                                         default_position=p_entry.get('position', 'Unknown')
                                     )
 
-                    # Inferencia de suplentes mediante incidentes
+                    # Inferencia de suplentes e incidentes disciplinarios
                     incidents_data = sofascore_lanus.sofascore_request(f'api/v1/event/{str(match_id)}/incidents')
                     incidents_list = incidents_data.get("incidents", []) if isinstance(incidents_data, dict) else []
                     sub_inferred_positions, sub_replaced_players, sub_sources = build_substitutions_position_map(
                         incidents_list, tactical_positions
                     )
+
+                    home_team_id = match.get('home_team_id')
+                    away_team_id = match.get('away_team_id')
+                    save_match_cards(conn, match_id, home_team_id, away_team_id, incidents_list)
+                    save_match_substitutions(conn, match_id, home_team_id, away_team_id, incidents_list)
 
                 time.sleep(1) # Pequeño delay de cortesía después de la llamada extra
                 # ==========================================
@@ -126,6 +245,26 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                             pos_source = sub_sources.get(player_id, 'fallback')
                             replaced_id = sub_replaced_players.get(player_id)
 
+                        fouls_val = flat_dict.get('fouls')
+                        if fouls_val is not None:
+                            try:
+                                if isinstance(fouls_val, float) and math.isnan(fouls_val):
+                                    fouls_val = None
+                                else:
+                                    fouls_val = int(fouls_val)
+                            except (ValueError, TypeError):
+                                fouls_val = None
+
+                        was_fouled_val = flat_dict.get('wasFouled')
+                        if was_fouled_val is not None:
+                            try:
+                                if isinstance(was_fouled_val, float) and math.isnan(was_fouled_val):
+                                    was_fouled_val = None
+                                else:
+                                    was_fouled_val = int(was_fouled_val)
+                            except (ValueError, TypeError):
+                                was_fouled_val = None
+
                         # Prepare insert dictionary
                         stat_data = {
                             'player_id': player_id,
@@ -144,7 +283,9 @@ def scrape_and_store_match_stats(conn, sofascore_lanus, matches) -> int:
                             'interceptions': flat_dict.get('interceptionWon'),
                             'key_passes': flat_dict.get('keyPass'),
                             'minutes_played': flat_dict.get('minutesPlayed'),
-                            'total_shots': flat_dict.get('totalShots')
+                            'total_shots': flat_dict.get('totalShots'),
+                            'fouls': fouls_val,
+                            'was_fouled': was_fouled_val,
                         }
                         
                         # Calculate accurate_passes_pct

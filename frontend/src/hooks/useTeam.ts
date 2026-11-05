@@ -177,12 +177,21 @@ export const useTeamSetPieces = (
 export { useTeamFlashscoreSummary } from './useTeamFlashscoreSummary';
 
 
-import { matchesApi, MatchSheet01Response } from '../services/api';
+import { matchesApi, MatchSheet01Response, MatchSheet02Response, getMatchReportSheet02 } from '../services/api';
 
 export const useMatchSheet01Chances = (matchId?: number | null, enabled: boolean = true) => {
   return useQuery<MatchSheet01Response>({
     queryKey: ['matches', matchId, 'sheet-01-chances'],
     queryFn: () => matchesApi.getSheet01Chances(matchId!),
+    enabled: Boolean(matchId) && enabled,
+    staleTime: 1000 * 60 * 10,
+  });
+};
+
+export const useMatchSheet02Buildup = (matchId?: number | null, enabled: boolean = true) => {
+  return useQuery<MatchSheet02Response>({
+    queryKey: ['matches', matchId, 'sheet-02'],
+    queryFn: () => getMatchReportSheet02(matchId!),
     enabled: Boolean(matchId) && enabled,
     staleTime: 1000 * 60 * 10,
   });

@@ -31,6 +31,8 @@ import {
   TeamPeriodDominanceCard 
 } from '../components/clubs';
 import MatchReportSheet01, { formatEditorialDate } from '../components/clubs/MatchReportSheet01';
+import MatchReportSheet02 from '../components/clubs/MatchReportSheet02';
+import MatchReportSheet03 from '../components/clubs/MatchReportSheet03';
 import TacticalSheetErrorBoundary from '../components/clubs/TacticalSheetErrorBoundary';
 import { VenueFilter, ContextFilter, TeamMetricEntry, TeamMatchItem } from '../services/api';
 import {
@@ -41,13 +43,12 @@ import {
 
 type TournamentFilter = 'all' | 'Apertura' | 'Clausura';
 type ClubViewMode = 'general' | 'match_report';
-type MatchReportSheetId = '01' | '02' | '03' | '04';
+type MatchReportSheetId = '01' | '02' | '03';
 
-const MATCH_REPORT_SHEETS: { id: MatchReportSheetId; label: string; subtitle: string }[] = [
-  { id: '01', label: '01 RESULTADO Y OCASIONES', subtitle: 'The result and the chances' },
-  { id: '02', label: '02 CONSTRUCCIÓN Y ÁREA', subtitle: 'Build-up and box access' },
-  { id: '03', label: '03 PRESIÓN Y PÉRDIDAS', subtitle: 'Pressing and turnovers' },
-  { id: '04', label: '04 APORTE INDIVIDUAL', subtitle: 'Individual performance' },
+const MATCH_REPORT_SHEETS: { id: MatchReportSheetId; label: string; subtitle: string; disabled?: boolean }[] = [
+  { id: '01', label: '01 · Ocasiones & xG', subtitle: 'The result and the chances' },
+  { id: '02', label: '02 · Construcción', subtitle: 'Build-up and box access' },
+  { id: '03', label: '03 · Data Hub', subtitle: 'Pressing and turnovers' },
 ];
 
 type ChartId = 'radar' | 'pass_network' | 'shot_map' | 'attack_zones' | 'defensive_actions';
@@ -628,7 +629,7 @@ export const ClubDetailAnalytics: React.FC = () => {
             <span className="hidden sm:inline-block font-mono text-[10.5px] text-slate-400 uppercase tracking-widest">
               {clubViewMode === 'general'
                 ? 'VISTA ACUMULADA DE TEMPORADA'
-                : 'ANÁLISIS TÁCTICO PARTIDO A PARTIDO (4 LÁMINAS)'}
+                : 'ANÁLISIS TÁCTICO PARTIDO A PARTIDO (3 LÁMINAS)'}
             </span>
           </div>
         </div>
@@ -671,22 +672,26 @@ export const ClubDetailAnalytics: React.FC = () => {
                 </span>
               </div>
 
-              {/* Bottom Row: 4-Sheet Editorial Sub-Navigation */}
-              <div className="flex items-center gap-2 sm:gap-6 overflow-x-auto no-scrollbar">
+              {/* Bottom Row: Segmented Control Sub-Navigation */}
+              <div className="inline-flex p-1 bg-slate-100/80 rounded-lg border border-slate-200/60 gap-1 my-3 overflow-x-auto no-scrollbar">
                 {MATCH_REPORT_SHEETS.map((sheet) => {
                   const isActive = activeSheet === sheet.id;
+                  const isDisabled = sheet.disabled;
                   return (
                     <button
                       key={sheet.id}
                       type="button"
-                      onClick={() => setActiveSheet(sheet.id)}
-                      className={`py-2.5 px-1 text-[11px] sm:text-xs font-mono tracking-[0.1em] uppercase whitespace-nowrap transition-all cursor-pointer ${
-                        isActive
-                          ? 'border-b-2 border-slate-900 text-slate-900 font-bold'
-                          : 'border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-normal'
+                      disabled={isDisabled}
+                      onClick={() => !isDisabled && setActiveSheet(sheet.id)}
+                      className={`px-3.5 py-1.5 text-xs transition-all whitespace-nowrap ${
+                        isDisabled
+                          ? 'opacity-40 cursor-not-allowed font-medium text-slate-400'
+                          : isActive
+                          ? 'font-bold text-slate-900 bg-white shadow-sm border border-slate-200/50 rounded-md cursor-default'
+                          : 'font-semibold text-slate-500 hover:text-slate-900 rounded-md cursor-pointer'
                       }`}
                     >
-                      [ {sheet.label} ]
+                      {sheet.label}
                     </button>
                   );
                 })}
@@ -710,10 +715,18 @@ export const ClubDetailAnalytics: React.FC = () => {
               <TacticalSheetErrorBoundary resetKey={validReportMatchId}>
                 <MatchReportSheet01 matchId={validReportMatchId} />
               </TacticalSheetErrorBoundary>
+            ) : activeSheet === '02' ? (
+              <TacticalSheetErrorBoundary resetKey={validReportMatchId}>
+                <MatchReportSheet02 matchId={validReportMatchId} />
+              </TacticalSheetErrorBoundary>
+            ) : activeSheet === '03' ? (
+              <TacticalSheetErrorBoundary resetKey={validReportMatchId}>
+                <MatchReportSheet03 matchId={validReportMatchId} />
+              </TacticalSheetErrorBoundary>
             ) : (
               <div className="bg-white border border-slate-200/80 rounded-xl p-12 text-center space-y-2">
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-slate-800">
-                  [ {MATCH_REPORT_SHEETS.find((s) => s.id === activeSheet)?.label} ]
+                  {MATCH_REPORT_SHEETS.find((s) => s.id === activeSheet)?.label}
                 </p>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
                   Esta lámina táctica se habilitará en las siguientes fases de implementación del Reporte de Partido.
