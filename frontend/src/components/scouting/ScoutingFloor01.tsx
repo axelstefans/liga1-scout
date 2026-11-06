@@ -24,6 +24,7 @@ export interface RadarGeometryItem {
   metric: RadarMetricDef;
   pct: number;
   pathData: string;
+  bgPathData?: string;
   badgeX: number;
   badgeY: number;
   labelX: number;
@@ -64,8 +65,8 @@ export interface ScoutingFloor01Props {
 
 export const RADAR_CENTER_X = 350;
 export const RADAR_CENTER_Y = 350;
-export const RADAR_MAX_RADIUS = 230;
-export const RADAR_LABEL_RADIUS = 256;
+export const RADAR_MAX_RADIUS = 252;
+export const RADAR_LABEL_RADIUS = 307;
 
 const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
   t,
@@ -84,9 +85,9 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
   hoveredMetric,
   setHoveredMetric,
   clubThemeColor,
-  clubTextColor,
+  clubTextColor: _clubTextColor,
   clubTextRgb,
-  radarBadgeTextColor,
+  radarBadgeTextColor: _radarBadgeTextColor,
   getSplitMetricLabel,
   currentLeaderboardStat,
   activeHoveredMetricDef,
@@ -281,26 +282,35 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
               preserveAspectRatio="xMidYMid meet"
               className="w-full max-w-[640px] h-auto block"
             >
-              {/* Layer 0: Circular Background Disc */}
-              <circle cx={RADAR_CENTER_X} cy={RADAR_CENTER_Y} r={RADAR_MAX_RADIUS} fill="#f1f5f9" stroke="none" />
+              {/* Layer 0: Background Wedges */}
+              <g className="radar-bg-wedges">
+                {radarGeometry.map(({ metric, bgPathData }) => (
+                  <path
+                    key={`bg-${metric.key}`}
+                    d={bgPathData}
+                    fill="#f4f4f4"
+                    stroke="#dddddd"
+                    strokeWidth="1"
+                  />
+                ))}
+              </g>
 
               {/* Layer 1 (Background): Filled pizza wedges */}
               <g className="pizza-slices">
                 {radarGeometry.map(({ metric, pathData }) => {
                   const isHovered = hoveredMetric === metric.key;
-                  const fillOpacity = isHovered ? 0.75 : 0.95;
-
                   return (
                     <path
                       key={metric.key}
                       d={pathData}
                       fill={clubThemeColor}
-                      fillOpacity={fillOpacity}
-                      stroke="#cbd5e1"
-                      strokeWidth="1"
+                      fillOpacity={isHovered ? 1.0 : 0.70}
+                      stroke={clubThemeColor}
+                      strokeWidth="1.5"
+                      style={{ cursor: 'pointer' }}
                       onMouseEnter={() => setHoveredMetric(metric.key)}
                       onMouseLeave={() => setHoveredMetric(null)}
-                      className="cursor-pointer transition-all duration-150"
+                      className="transition-opacity duration-150"
                     />
                   );
                 })}
@@ -315,48 +325,43 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
                     y1={ray.y1}
                     x2={ray.x2}
                     y2={ray.y2}
-                    stroke="#94a3b8"
-                    strokeWidth="1"
+                    stroke="#999999"
+                    strokeWidth="0.7"
                   />
                 ))}
               </g>
 
               {/* Layer 3 (Concentric Percentile Rings Over the Wedges) */}
               <g pointerEvents="none">
+                {/* 25% Quartile */}
                 <circle
-                  cx={RADAR_CENTER_X}
-                  cy={RADAR_CENTER_Y}
-                  r={RADAR_MAX_RADIUS * 0.25}
+                  cx={350}
+                  cy={350}
+                  r={63}
                   fill="none"
-                  stroke="#94a3b8"
+                  stroke="#aaaaaa"
                   strokeWidth="1"
-                  strokeDasharray="3 3"
-                />
-                <circle
-                  cx={RADAR_CENTER_X}
-                  cy={RADAR_CENTER_Y}
-                  r={RADAR_MAX_RADIUS * 0.5}
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="1.3"
                   strokeDasharray="4 4"
                 />
+                {/* 50% Median (Orange) */}
                 <circle
-                  cx={RADAR_CENTER_X}
-                  cy={RADAR_CENTER_Y}
-                  r={RADAR_MAX_RADIUS * 0.75}
+                  cx={350}
+                  cy={350}
+                  r={126}
                   fill="none"
-                  stroke="#94a3b8"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
+                  stroke="#e8a33d"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 4"
                 />
+                {/* 75% Quartile */}
                 <circle
-                  cx={RADAR_CENTER_X}
-                  cy={RADAR_CENTER_Y}
-                  r={RADAR_MAX_RADIUS}
+                  cx={350}
+                  cy={350}
+                  r={189}
                   fill="none"
-                  stroke="#64748b"
-                  strokeWidth="1.2"
+                  stroke="#aaaaaa"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
                 />
               </g>
 
@@ -364,33 +369,30 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
               <g pointerEvents="none">
                 {radarGeometry.map(({ metric, badgeX, badgeY, formattedValue }) => {
                   const isHovered = hoveredMetric === metric.key;
-                  const badgeW = 34;
-                  const badgeH = 15;
                   return (
                     <g
                       key={`badge-${metric.key}`}
-                      className="transition-transform duration-150"
-                      filter="drop-shadow(0 1px 2px rgba(0,0,0,0.15))"
+                      transform={`translate(${badgeX}, ${badgeY})`}
+                      style={{ pointerEvents: 'none' }}
                     >
                       <rect
-                        x={badgeX - badgeW / 2}
-                        y={badgeY - badgeH / 2}
-                        width={badgeW}
-                        height={badgeH}
+                        x={-22}
+                        y={-10}
+                        width={44}
+                        height={20}
                         rx={3}
                         fill={isHovered ? '#0F172A' : clubThemeColor}
-                        stroke="#FFFFFF"
-                        strokeWidth="0.8"
+                        stroke="white"
+                        strokeWidth="1"
                       />
                       <text
-                        x={badgeX}
-                        y={badgeY}
-                        fontSize="9"
-                        fontWeight="bold"
-                        fill={isHovered ? '#FFFFFF' : radarBadgeTextColor}
                         textAnchor="middle"
-                        dominantBaseline="central"
-                        fontFamily="ui-monospace, monospace"
+                        dy="0.35em"
+                        fill="white"
+                        fontSize="11"
+                        fontWeight="600"
+                        fontFamily="system-ui, sans-serif"
+                        className="select-none"
                       >
                         {formattedValue}
                       </text>
@@ -399,36 +401,54 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
                 })}
               </g>
 
-              {/* Perimeter Metric Labels in 2 centered lines (text-anchor="middle" font-size="11px") */}
+              {/* Perimeter Metric Labels in 1 or 2 lines */}
               <g pointerEvents="none">
                 {radarGeometry.map(({ metric, labelX, labelY }) => {
                   const [line1, line2] = getSplitMetricLabel(metric.key, metric.label);
-
                   return (
-                    <text
-                      key={`lbl-${metric.key}`}
-                      x={labelX}
-                      y={labelY}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize="11px"
-                      className="font-bold fill-slate-800 select-none tracking-tight"
-                    >
+                    <g key={`lbl-${metric.key}`} transform={`translate(${labelX}, ${labelY})`}>
                       {line2 ? (
                         <>
-                          <tspan x={labelX} dy="-0.55em">
+                          <text
+                            textAnchor="middle"
+                            y={-7}
+                            dy="0.35em"
+                            fontSize="16"
+                            fontWeight="600"
+                            fill="#1a1d1c"
+                            fontFamily="system-ui, sans-serif"
+                            className="select-none"
+                          >
                             {line1}
-                          </tspan>
-                          <tspan x={labelX} dy="1.15em">
+                          </text>
+                          <text
+                            textAnchor="middle"
+                            y={7}
+                            dy="0.35em"
+                            fontSize="16"
+                            fontWeight="600"
+                            fill="#1a1d1c"
+                            fontFamily="system-ui, sans-serif"
+                            className="select-none"
+                          >
                             {line2}
-                          </tspan>
+                          </text>
                         </>
                       ) : (
-                        <tspan x={labelX} dy="0.1em">
+                        <text
+                          textAnchor="middle"
+                          y={0}
+                          dy="0.35em"
+                          fontSize="16"
+                          fontWeight="600"
+                          fill="#1a1d1c"
+                          fontFamily="system-ui, sans-serif"
+                          className="select-none"
+                        >
                           {line1}
-                        </tspan>
+                        </text>
                       )}
-                    </text>
+                    </g>
                   );
                 })}
               </g>
@@ -437,7 +457,7 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
 
           {/* Top 10 Leaders Panel in natural flex flow */}
           <div className="flex-[1_1_0px] max-w-[240px] shrink-0 bg-[#fafafa] border border-[#e0e0e0] rounded-[6px] p-[14px_16px] text-[13px] self-start">
-            <div className="text-[11.5px] font-bold text-slate-800 pb-1.5 mb-1.5 border-b border-[#e0e0e0] truncate">
+            <div className="font-semibold text-[12px] text-[#222222] mb-1.5 leading-snug">
               {(() => {
                 const activeMetric = radarMetrics.find((m) => m.key === currentLeaderboardStat);
                 const metricKey =
@@ -457,8 +477,8 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
               })()}
             </div>
 
-            {/* Top 10 List Table with Row Dividers */}
-            <div className="divide-y divide-[#e0e0e0]/60">
+            {/* Top 10 List Table */}
+            <div className="flex flex-col">
               {isTopPlayersLoading && (
                 <p className="text-[10px] text-slate-400 py-6 text-center">{t.floor1.loadingRankings}</p>
               )}
@@ -469,50 +489,37 @@ const ScoutingFloor01: React.FC<ScoutingFloor01Props> = ({
                   const formattedValue =
                     typeof player.value === 'number'
                       ? player.value % 1 !== 0
-                        ? player.value.toFixed(1)
+                        ? player.value.toFixed(2)
                         : player.value
                       : player.value;
 
                   return (
                     <div
                       key={player.player_id}
-                      className={`flex items-start justify-between text-[11px] py-1 px-1 rounded transition-colors leading-tight ${
-                        isCurrentPlayer ? 'font-semibold' : 'hover:bg-slate-100/70 text-slate-700'
-                      }`}
+                      className="flex items-start justify-between py-[3px] border-b border-[#eeeeee] text-[11px] leading-tight"
                       style={
                         isCurrentPlayer
                           ? {
-                              backgroundColor: `rgba(${clubTextRgb.r}, ${clubTextRgb.g}, ${clubTextRgb.b}, 0.12)`,
-                              border: `1px solid rgba(${clubTextRgb.r}, ${clubTextRgb.g}, ${clubTextRgb.b}, 0.35)`,
+                              backgroundColor: `rgba(${clubTextRgb.r}, ${clubTextRgb.g}, ${clubTextRgb.b}, 0.10)`,
+                              borderRadius: '4px',
+                              paddingLeft: '4px',
+                              paddingRight: '4px',
                             }
                           : undefined
                       }
                     >
-                      <span className="text-slate-400 font-normal w-4 shrink-0 pt-0.5">
-                        {player.rank}.
-                      </span>
-                      <div className="flex-1 min-w-0 pr-1.5 break-words">
-                        <span
-                          className={`font-medium ${
-                            isCurrentPlayer ? 'font-bold text-slate-900' : 'text-slate-700'
-                          }`}
-                          style={isCurrentPlayer ? { color: clubTextColor } : undefined}
-                        >
+                      <div className="min-w-0 pr-1.5">
+                        <span className="text-[#999999] w-[16px] inline-block shrink-0">
+                          {player.rank}.
+                        </span>
+                        <b className={isCurrentPlayer ? 'text-[#111111]' : 'font-bold text-[#222222]'}>
                           {player.name}
-                        </span>
-                        <span className="text-slate-400 font-normal ml-1">
-                          {'— '}
-                          {player.team_name}
-                        </span>
+                        </b>
+                        <span className="text-[#888888] font-normal"> — {player.team_name}</span>
                       </div>
-
-                      <span
-                        className={`tabular-nums font-semibold shrink-0 text-right pt-0.5 ml-1 ${
-                          isCurrentPlayer ? 'text-slate-900 font-bold' : 'text-slate-800'
-                        }`}
-                      >
+                      <div className="text-[#444444] tabular-nums font-medium shrink-0 ml-1.5 pt-[0.5px]">
                         {formattedValue}
-                      </span>
+                      </div>
                     </div>
                   );
                 })
