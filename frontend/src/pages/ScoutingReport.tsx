@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Search, ChevronDown, Check, Download, Loader2 
-} from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { toPng, toBlob } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { 
@@ -18,7 +16,13 @@ import {
   usePlayerHeatmap
 } from '../hooks/usePlayer';
 import { teamsApi, rankingsApi, TeamBase, SimilarPlayer, PlayerRankingEntry, PlayerSeasonStats, PlayerShot, PlayerDribble, HeatmapPoint } from '../services/api';
-import TimeInPosition from '../components/TimeInPosition';
+import ScoutingConfigPanel from '../components/scouting/ScoutingConfigPanel';
+import ScoutingFloor01, {
+  RADAR_CENTER_X,
+  RADAR_CENTER_Y,
+  RADAR_MAX_RADIUS,
+  RADAR_LABEL_RADIUS,
+} from '../components/scouting/ScoutingFloor01';
 import { getTeamCrestUrl, getTeamThemeColor, getTeamTextColor, getBadgeTextColor } from '../utils/teams';
 import { useScoutingLanguage } from '../i18n/scoutingReport';
 
@@ -885,11 +889,11 @@ const ScoutingReport: React.FC = () => {
   const radarGeometry = useMemo(() => {
     const numSlices = activeMetrics.length;
     const angleStep = (2 * Math.PI) / numSlices;
-    const cx = 330;
-    const cy = 236;
+    const cx = RADAR_CENTER_X;
+    const cy = RADAR_CENTER_Y;
     const rMin = 0;
-    const rMax = 206;
-    const rLabel = 226;
+    const rMax = RADAR_MAX_RADIUS;
+    const rLabel = RADAR_LABEL_RADIUS;
 
     const minutes = seasonStats?.minutes_played || 1;
 
@@ -2046,12 +2050,11 @@ const ScoutingReport: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 antialiased font-sans">
-      
+    <div className="min-h-screen bg-white text-slate-800 antialiased font-sans p-[12px] w-full flex flex-col gap-3">
       {/* =================================================================== */}
       {/* TOP TITLE & LANGUAGE SWITCH                                         */}
       {/* =================================================================== */}
-      <div className="w-full max-w-[1520px] mx-auto px-6 pt-8 pb-4 flex items-center justify-between gap-4">
+      <div className="w-full max-w-full flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
           {t.headerTitle}
         </h1>
@@ -2078,903 +2081,102 @@ const ScoutingReport: React.FC = () => {
       </div>
 
       {/* =================================================================== */}
-      {/* TIER 1: VERTICAL CENTERED CONFIGURATION COLUMN (Strict Spec)        */}
+      {/* TIER 1: FULL-WIDTH CONFIGURATION PANEL                              */}
       {/* =================================================================== */}
-      <section className="w-full max-w-[680px] mx-auto py-6 px-4 space-y-6 text-slate-700 text-sm">
-        
-        {/* 1. DATA CONFIGURATION */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
-            {t.config.dataConfigTitle}
-          </h2>
-
-          {/* Min age & Max age in one horizontal row with synchronized dual-fill track */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">{t.config.minAge}</label>
-              <input
-                type="number"
-                min={16}
-                max={42}
-                value={minAge}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 16;
-                  const clamped = Math.max(16, Math.min(val, maxAge));
-                  setMinAge(clamped);
-                }}
-                className="w-14 px-2 py-1 border border-slate-300 rounded text-center text-sm font-medium text-slate-800 bg-white focus:outline-none focus:border-slate-500"
-              />
-              <input
-                type="range"
-                min={16}
-                max={42}
-                value={minAge}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  const clamped = Math.min(val, maxAge);
-                  setMinAge(clamped);
-                }}
-                style={{
-                  background: `linear-gradient(to right, #e2e8f0 0%, #e2e8f0 ${((minAge - 16) / 26) * 100}%, #1e293b ${((minAge - 16) / 26) * 100}%, #1e293b ${((maxAge - 16) / 26) * 100}%, #e2e8f0 ${((maxAge - 16) / 26) * 100}%, #e2e8f0 100%)`
-                }}
-                className="w-full h-1.5 rounded appearance-none cursor-pointer accent-slate-800"
-              />
-            </div>
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-slate-700 whitespace-nowrap min-w-[55px]">{t.config.maxAge}</label>
-              <input
-                type="number"
-                min={16}
-                max={42}
-                value={maxAge}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 42;
-                  const clamped = Math.min(42, Math.max(val, minAge));
-                  setMaxAge(clamped);
-                }}
-                className="w-14 px-2 py-1 border border-slate-300 rounded text-center text-sm font-medium text-slate-800 bg-white focus:outline-none focus:border-slate-500"
-              />
-              <input
-                type="range"
-                min={16}
-                max={42}
-                value={maxAge}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  const clamped = Math.max(val, minAge);
-                  setMaxAge(clamped);
-                }}
-                style={{
-                  background: `linear-gradient(to right, #e2e8f0 0%, #e2e8f0 ${((minAge - 16) / 26) * 100}%, #1e293b ${((minAge - 16) / 26) * 100}%, #1e293b ${((maxAge - 16) / 26) * 100}%, #e2e8f0 ${((maxAge - 16) / 26) * 100}%, #e2e8f0 100%)`
-                }}
-                className="w-full h-1.5 rounded appearance-none cursor-pointer accent-slate-800"
-              />
-            </div>
-          </div>
-
-          {/* Leagues (filter who's in the pool) */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              {t.config.leaguesLabel}
-            </label>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedLeagues.includes('liga1_2026')}
-                  onChange={() => toggleLeague('liga1_2026')}
-                  className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
-                />
-                <span className="text-slate-800 font-medium">Liga 1 (2026)</span>
-              </label>
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedLeagues.includes('liga1_apertura')}
-                  onChange={() => toggleLeague('liga1_apertura')}
-                  className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
-                />
-                <span className="text-slate-600">Torneo Apertura</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Teams to exclude Popover */}
-          <div className="relative" ref={excludeDropdownRef}>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              {t.config.excludeTeamsLabel(appliedExcludedTeams.length, teams?.length || 18)}
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                if (!isExcludeDropdownOpen) {
-                  setPendingExcludedTeams([...appliedExcludedTeams]);
-                }
-                setIsExcludeDropdownOpen(!isExcludeDropdownOpen);
-              }}
-              className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              <span>
-                {t.config.excludedStatus(appliedExcludedTeams.length)}
-              </span>
-              <ChevronDown className="w-4 h-4 text-slate-400" />
-            </button>
-
-            {isExcludeDropdownOpen && (
-              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-3 space-y-2.5">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-xs font-bold uppercase text-slate-700 tracking-wider">
-                    {t.config.filterClubsTitle(pendingExcludedTeams.length, teams?.length || 18)}
-                  </span>
-                  <div className="flex items-center space-x-2 text-xs">
-                    <button 
-                      type="button"
-                      onClick={() => setPendingExcludedTeams(teams ? teams.map((t: TeamBase) => t.team_id) : [])} 
-                      className="font-semibold text-slate-700 hover:text-slate-900 underline cursor-pointer"
-                    >
-                      {t.config.all}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setPendingExcludedTeams([])} 
-                      className="font-semibold text-slate-500 hover:text-slate-700 underline cursor-pointer"
-                    >
-                      {t.config.none}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAppliedExcludedTeams([...pendingExcludedTeams]);
-                        setIsExcludeDropdownOpen(false);
-                      }}
-                      className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-0.5 rounded text-xs font-semibold cursor-pointer transition-colors"
-                    >
-                      {t.config.apply}
-                    </button>
-                  </div>
-                </div>
-
-                <input
-                  type="text"
-                  placeholder={t.config.filterTeamPlaceholder}
-                  value={teamSearchQuery}
-                  onChange={(e) => setTeamSearchQuery(e.target.value)}
-                  className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
-                />
-
-                <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                  {filteredTeams.map((team: TeamBase) => {
-                    const isChecked = pendingExcludedTeams.includes(team.team_id);
-                    return (
-                      <label
-                        key={team.team_id}
-                        className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs text-slate-700"
-                      >
-                        <span className="truncate pr-2 font-medium">{team.name}</span>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            setPendingExcludedTeams(prev =>
-                              prev.includes(team.team_id)
-                                ? prev.filter(id => id !== team.team_id)
-                                : [...prev, team.team_id]
-                            );
-                          }}
-                          className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-500">
-                    {t.config.selectedCount(pendingExcludedTeams.length, teams?.length || 18)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAppliedExcludedTeams([...pendingExcludedTeams]);
-                      setIsExcludeDropdownOpen(false);
-                    }}
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer transition-colors"
-                  >
-                    {t.config.apply}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 2. BENCHMARK MODE & TARGET LEAGUE */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
-            {t.config.benchmarkTitle}
-          </h2>
-
-          <div className="flex flex-wrap items-center gap-6 text-sm">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                name="benchmarkMode"
-                checked={benchmarkMode === 'all'}
-                onChange={() => setBenchmarkMode('all')}
-                className="text-slate-800 focus:ring-0 cursor-pointer"
-              />
-              <span className="text-slate-800 font-medium">{t.config.vsAllTeams}</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                name="benchmarkMode"
-                checked={benchmarkMode === 'own'}
-                onChange={() => setBenchmarkMode('own')}
-                className="text-slate-800 focus:ring-0 cursor-pointer"
-              />
-              <span className="text-slate-800 font-medium">{t.config.vsOwnTeam}</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                name="benchmarkMode"
-                checked={benchmarkMode === 'target'}
-                onChange={() => setBenchmarkMode('target')}
-                className="text-slate-800 focus:ring-0 cursor-pointer"
-              />
-              <span className="text-slate-800 font-medium">{t.config.vsTargetTier}</span>
-            </label>
-          </div>
-
-          {benchmarkMode === 'target' && (
-            <div className="pt-1">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.targetTierLabel}</label>
-              <select
-                value={targetGroup}
-                onChange={(e) => setTargetGroup(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
-              >
-                <option value="top6">{t.config.targetGroups.top6}</option>
-                <option value="lima">{t.config.targetGroups.lima}</option>
-                <option value="altitude">{t.config.targetGroups.altitude}</option>
-                <option value="provincial">{t.config.targetGroups.provincial}</option>
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* 3. METRICS FOR SCATTERPLOT & BEESWARM DISTRIBUTIONS */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              {t.config.metricsSectionTitle}
-            </h2>
-            <button
-              type="button"
-              onClick={() => applyPreset(currentRole)}
-              className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-              title={t.config.resetPresetTitle(currentRole ? (t.floor1.roles[currentRole] || currentRole) : null)}
-            >
-              {t.config.resetPreset(currentRole ? (t.floor1.roles[currentRole] || currentRole) : null)}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.xAxis}</label>
-              <select
-                value={xAxisMetric}
-                onChange={(e) => setXAxisMetric(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
-              >
-                {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.yAxis}</label>
-              <select
-                value={yAxisMetric}
-                onChange={(e) => setYAxisMetric(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
-              >
-                {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.beeswarm(1)}</label>
-              <select
-                value={beeswarm1}
-                onChange={(e) => setBeeswarm1(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
-              >
-                {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.beeswarm(2)}</label>
-              <select
-                value={beeswarm2}
-                onChange={(e) => setBeeswarm2(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
-              >
-                {AVAILABLE_METRICS.map(m => (
-                  <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="w-1/2 pr-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.beeswarm(3)}</label>
-            <select
-              value={beeswarm3}
-              onChange={(e) => setBeeswarm3(e.target.value)}
-              className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
-            >
-              {AVAILABLE_METRICS.map(m => (
-                <option key={m.key} value={m.key}>{t.metrics[m.key]?.long || m.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* 4. SELECT POSITION, PLAYER & SLICES */}
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
-            {t.config.positionPlayerSlicesTitle}
-          </h2>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.positionGroupLabel}</label>
-              <select
-                value={selectedPositionGroup}
-                onChange={(e) => setSelectedPositionGroup(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white cursor-pointer"
-              >
-                {POSITION_GROUPS.map((pos) => (
-                  <option key={pos} value={pos}>{t.config.positionGroups[pos] || pos}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="relative" ref={playerSearchRef}>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">{t.config.playerLabel}</label>
-              <button
-                type="button"
-                onClick={() => setIsPlayerSearchOpen(!isPlayerSearchOpen)}
-                className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left truncate cursor-pointer"
-              >
-                <span className="truncate font-medium">
-                  {isProfileLoading ? t.config.loading : `${profile?.name || `Player #${playerId}`} — ${profile?.team?.name || 'Alianza Lima'}`}
-                </span>
-                <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-1" />
-              </button>
-
-              {isPlayerSearchOpen && (
-                <div className="absolute right-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                  <div className="p-2 border-b border-slate-100 bg-slate-50">
-                    <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                      <input
-                        type="text"
-                        value={playerSearchQuery}
-                        onChange={(e) => setPlayerSearchQuery(e.target.value)}
-                        placeholder={t.config.searchPlayerPlaceholder}
-                        className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-300 rounded text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
-                    {isSearchLoading && (
-                      <p className="p-3 text-xs text-slate-400 text-center">{t.config.searching}</p>
-                    )}
-                    {!isSearchLoading && playerSearchQuery.length >= 2 && searchResults?.length === 0 && (
-                      <p className="p-3 text-xs text-slate-500 text-center">{t.config.noPlayersFound}</p>
-                    )}
-                    {searchResults && searchResults.map((p) => (
-                      <button
-                        key={p.player_id}
-                        type="button"
-                        onClick={() => {
-                          setIsPlayerSearchOpen(false);
-                          navigate(`/scouting/${p.player_id}`);
-                        }}
-                        className="w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        <div className="truncate">
-                          <p className="font-semibold text-slate-800 truncate">{p.name} — {p.team_name || 'Liga 1'}</p>
-                          <p className="text-[11px] text-slate-500 truncate">
-                            {p.position_group ? (t.config.positionGroups[p.position_group] || p.position_group) : t.config.unknownPosition}
-                          </p>
-                        </div>
-                        {p.player_id === playerId && (
-                          <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 ml-2" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Radar slices multi-select dropdown */}
-          <div className="relative" ref={radarDropdownRef}>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              {t.config.radarSlicesLabel(activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length, radarSliceOptions.length)}
-            </label>
-            <button
-              type="button"
-              onClick={() => setIsRadarDropdownOpen(!isRadarDropdownOpen)}
-              className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-sm text-slate-800 bg-white text-left cursor-pointer"
-            >
-              <span>{t.config.slicesSelected(activeRadarSlices.filter(s => radarSliceOptions.includes(s)).length)}</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-1" />
-            </button>
-
-            {isRadarDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-2.5 space-y-1.5">
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-xs font-bold uppercase text-slate-800">{t.config.toggleSlices}</span>
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      type="button"
-                      onClick={() => setActiveRadarSlices(radarSliceOptions)} 
-                      className="text-xs font-semibold text-slate-700 hover:underline cursor-pointer"
-                    >
-                      {t.config.allSlices}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setActiveRadarSlices([])} 
-                      className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
-                    >
-                      {t.config.noneSlices}
-                    </button>
-                  </div>
-                </div>
-                <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                  {radarSliceOptions.map(slice => (
-                    <label 
-                      key={slice} 
-                      className="flex items-center justify-between p-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs"
-                    >
-                      <span className="text-slate-700">{t.metrics[slice]?.short || slice}</span>
-                      <input
-                        type="checkbox"
-                        checked={activeRadarSlices.includes(slice)}
-                        onChange={() => toggleRadarSlice(slice)}
-                        className="rounded border-slate-300 text-slate-800 focus:ring-0 cursor-pointer"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-      </section>
+      <ScoutingConfigPanel
+        t={t}
+        minAge={minAge}
+        setMinAge={setMinAge}
+        maxAge={maxAge}
+        setMaxAge={setMaxAge}
+        selectedLeagues={selectedLeagues}
+        toggleLeague={toggleLeague}
+        excludeDropdownRef={excludeDropdownRef}
+        isExcludeDropdownOpen={isExcludeDropdownOpen}
+        setIsExcludeDropdownOpen={setIsExcludeDropdownOpen}
+        appliedExcludedTeams={appliedExcludedTeams}
+        setAppliedExcludedTeams={setAppliedExcludedTeams}
+        pendingExcludedTeams={pendingExcludedTeams}
+        setPendingExcludedTeams={setPendingExcludedTeams}
+        teamSearchQuery={teamSearchQuery}
+        setTeamSearchQuery={setTeamSearchQuery}
+        teams={teams}
+        filteredTeams={filteredTeams}
+        benchmarkMode={benchmarkMode}
+        setBenchmarkMode={setBenchmarkMode}
+        targetGroup={targetGroup}
+        setTargetGroup={setTargetGroup}
+        currentRole={currentRole}
+        applyPreset={applyPreset}
+        xAxisMetric={xAxisMetric}
+        setXAxisMetric={setXAxisMetric}
+        yAxisMetric={yAxisMetric}
+        setYAxisMetric={setYAxisMetric}
+        beeswarm1={beeswarm1}
+        setBeeswarm1={setBeeswarm1}
+        beeswarm2={beeswarm2}
+        setBeeswarm2={setBeeswarm2}
+        beeswarm3={beeswarm3}
+        setBeeswarm3={setBeeswarm3}
+        availableMetrics={AVAILABLE_METRICS}
+        selectedPositionGroup={selectedPositionGroup}
+        setSelectedPositionGroup={setSelectedPositionGroup}
+        positionGroups={POSITION_GROUPS}
+        playerSearchRef={playerSearchRef}
+        isPlayerSearchOpen={isPlayerSearchOpen}
+        setIsPlayerSearchOpen={setIsPlayerSearchOpen}
+        isProfileLoading={isProfileLoading}
+        profile={profile}
+        playerId={playerId}
+        playerSearchQuery={playerSearchQuery}
+        setPlayerSearchQuery={setPlayerSearchQuery}
+        isSearchLoading={isSearchLoading}
+        searchResults={searchResults}
+        onSelectPlayer={(targetId) => navigate(`/scouting/${targetId}`)}
+        radarDropdownRef={radarDropdownRef}
+        isRadarDropdownOpen={isRadarDropdownOpen}
+        setIsRadarDropdownOpen={setIsRadarDropdownOpen}
+        activeRadarSlices={activeRadarSlices}
+        setActiveRadarSlices={setActiveRadarSlices}
+        radarSliceOptions={radarSliceOptions}
+        toggleRadarSlice={toggleRadarSlice}
+      />
 
       {/* =================================================================== */}
       {/* TIER 2: FULL-BLEED PANORAMIC DOSSIER CANVAS                         */}
       {/* =================================================================== */}
-      <div id="scouting-dossier-canvas" ref={dossierRef} className="w-full max-w-[1520px] mx-auto p-2.5 flex flex-col gap-2 bg-slate-100">
+      <div id="scouting-dossier-canvas" ref={dossierRef} className="w-full max-w-full bg-[#EEF0EE] p-[10px] flex flex-col gap-[10px] rounded-[8px]">
         
         {/* ----------------------------------------------------------------- */}
         {/* FLOOR 1: Bio & Polar Pizza Rose Radar Section                     */}
         {/* ----------------------------------------------------------------- */}
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch w-full">
-          
-          {/* FLOOR 1 LEFT: Two Distinct Stacked Cards (Bio Card + Standalone Percentile Mini-Table) */}
-          <div className="w-full lg:w-[235px] shrink-0 flex flex-col justify-start gap-2.5">
-            {/* Card 1: Player Bio Card (Top) */}
-            <div className="bg-white rounded-xl border border-slate-200/80 p-2 shadow-sm h-fit">
-              {/* Inset Frame */}
-              <div className="border border-slate-200/90 rounded-xl p-2.5 flex flex-col justify-between bg-white">
-                {/* Top Identity Row */}
-                <div className="flex items-start justify-between">
-                  <img
-                    src={getTeamCrestUrl(profile?.team?.team_id, profile?.team?.logo_url)}
-                    alt=""
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (target.src !== '/liga1-logo.png') {
-                        target.src = '/liga1-logo.png';
-                      }
-                    }}
-                    className="w-6 h-6 object-contain shrink-0"
-                  />
-                  <div className="text-center flex-1 mx-2 min-w-0">
-                    {(() => {
-                      const parts = playerName.trim().split(/\s+/);
-                      const firstName = parts[0] || playerName;
-                      const lastName = parts.slice(1).join(' ');
-                      return (
-                        <>
-                          <div className="text-xs font-semibold text-slate-700 leading-tight text-center">
-                            {firstName}
-                          </div>
-                          {lastName && (
-                            <div className="text-sm font-black text-slate-900 leading-tight text-center">
-                              {lastName}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                    <div className="text-[10.5px] font-medium text-slate-500 leading-tight text-center mt-0.5">
-                      {profile?.team?.name || 'Alianza Lima'}
-                    </div>
-                  </div>
-                  <img
-                    src="/liga1-logo.png"
-                    alt="Liga 1"
-                    className="w-4 h-4 object-contain shrink-0"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-
-                {/* Centered Circular Headshot Container */}
-                <div className="w-24 h-24 rounded-full mx-auto my-2 border-2 border-slate-200/90 shadow-md overflow-hidden bg-slate-50 flex items-center justify-center relative shrink-0">
-                  <img
-                    src={`/players/${playerId}.png`}
-                    alt={playerName}
-                    className="w-full h-full object-cover object-top"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.onerror = null;
-                      target.src = '/liga1-logo.png';
-                    }}
-                  />
-                </div>
-
-                {/* Bottom Technical Spec List: Compact 2-Column Left-Aligned Grid */}
-                <div className="grid grid-cols-[62px_1fr] gap-x-2 gap-y-1 pt-1.5 border-t border-slate-100 text-[11px]">
-                <span className="text-slate-400 font-medium text-left">{t.floor1.position}</span>
-                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">{positionLabel}</span>
-
-                <span className="text-slate-400 font-medium text-left">{t.floor1.age}</span>
-                <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">{playerAge || 24}</span>
-
-                <span className="text-slate-400 font-medium text-left">{t.floor1.minutes}</span>
-                <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">
-                  {(seasonStats?.minutes_played || 1869).toLocaleString()}&apos;
-                </span>
-
-                <span className="text-slate-400 font-medium text-left">{t.floor1.country}</span>
-                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">
-                  <img 
-                    src={`https://flagcdn.com/w20/${countryCode}.png`} 
-                    crossOrigin="anonymous"
-                    alt="" 
-                    className="w-3.5 h-2.5 object-cover rounded-xs shrink-0" 
-                  />
-                  <span>{t.floor1.countries[(profile?.nationality || 'peru').toLowerCase()] || profile?.nationality || t.floor1.countries.peru}</span>
-                </span>
-
-                <span className="text-slate-400 font-medium text-left">{t.floor1.shirtNumber}</span>
-                <span className="text-slate-800 font-semibold text-left flex items-center gap-1 font-mono">{profile?.shirt_number || '23'}</span>
-
-                <span className="text-slate-400 font-medium text-left">{t.floor1.league}</span>
-                <span className="text-slate-800 font-semibold text-left flex items-center gap-1">Liga 1</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Standalone Percentile Mini-Table (Bottom) */}
-            <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-2xs h-fit">
-              {/* Cohort Header */}
-              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1 px-1">
-                {cohortHeaderLabel}
-              </div>
-
-              {/* Metric Rows: compact vertical stack with faint dividers */}
-              <div className="divide-y divide-slate-100/90">
-                {activeMetrics.map((metric) => {
-                  let rawPct = seasonStats ? (seasonStats[metric.pctKey] as number | undefined | null) : null;
-                  if ((rawPct === null || rawPct === undefined) && metric.key === 'expected_goals') {
-                    rawPct = seasonStats?.expected_goals_pct ?? 50;
-                  }
-                  const pct = typeof rawPct === 'number' && !isNaN(rawPct) ? Math.round(rawPct) : 50;
-                  let rawVal = seasonStats ? (seasonStats[metric.key as keyof PlayerSeasonStats] as number | undefined | null) : null;
-                  if ((rawVal === null || rawVal === undefined) && metric.key === 'expected_goals') {
-                    rawVal = seasonStats?.expected_goals ?? 0;
-                  }
-                  const minutes = seasonStats?.minutes_played || 1;
-                  const numVal = metric.isPercentage
-                    ? (rawVal ?? 0)
-                    : (((rawVal ?? 0) / minutes) * 90);
-                  const signPrefix = numVal > 0 ? '+' : '';
-                  const valStr = metric.isPercentage
-                    ? `${signPrefix}${numVal.toFixed(1)}%`
-                    : `${signPrefix}${numVal.toFixed(2)}`;
-
-                  const badgeBg = 
-                    pct >= 90 ? 'bg-emerald-600 text-white' :
-                    pct >= 70 ? 'bg-emerald-500 text-white' :
-                    pct >= 40 ? 'bg-amber-400 text-white' :
-                    'bg-rose-500 text-white';
-
-                  const isHovered = hoveredMetric === metric.key;
-                  const isLowConfidence = seasonStats?.low_confidence_metrics?.includes(metric.key) ?? false;
-
-                  return (
-                    <div 
-                      key={metric.key} 
-                      className={`py-1 px-1 text-[10.5px] flex items-center justify-between transition-colors cursor-pointer ${
-                        isHovered ? 'bg-blue-50/80 ring-1 ring-blue-200/60' : 'hover:bg-slate-50'
-                      }`}
-                      onMouseEnter={() => setHoveredMetric(metric.key)}
-                      onMouseLeave={() => setHoveredMetric(null)}
-                    >
-                      <span className="text-slate-700 font-medium truncate max-w-[100px] font-sans" title={t.metrics[metric.key]?.short || metric.label}>
-                        {t.metrics[metric.key]?.short || metric.label}
-                      </span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <div className="text-[10px] font-mono text-slate-600 text-right min-w-[48px] flex items-center justify-end">
-                          {pct >= 50 ? (
-                            <span className="text-emerald-600 font-mono text-[9px] mr-1">▲</span>
-                          ) : (
-                            <span className="text-rose-500 font-mono text-[9px] mr-1">▼</span>
-                          )}
-                          <span>{valStr}</span>
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <span className={`w-5.5 h-3.5 min-w-[22px] text-[9px] font-mono font-bold rounded flex items-center justify-center text-white shrink-0 ${badgeBg}`}>
-                            {pct}
-                          </span>
-                          {isLowConfidence ? (
-                            <span
-                              className="text-amber-500 font-bold text-[10px] leading-none cursor-help select-none"
-                              title={t.floor1.lowConfidenceTooltip}
-                            >
-                              *
-                            </span>
-                          ) : (
-                            <span className="w-1.5" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* FLOOR 1 CENTER: Pure SVG Polar Pizza Radar & Top 10 Leaders Overlay */}
-          <div className="relative flex-1 min-w-0 bg-white rounded-xl border border-slate-200/90 p-3 shadow-sm min-h-[460px] flex items-center overflow-hidden">
-            
-            {/* Center Pizza Chart Canvas Wrapper */}
-            <div className="w-full h-[475px] flex items-center justify-start select-none">
-              <svg 
-                viewBox="0 0 820 480" 
-                preserveAspectRatio="xMinYMid meet"
-                className="w-full h-full block overflow-visible"
-              >
-                {/* Layer 0: Circular Background Disc */}
-                <circle cx={330} cy={236} r={206} fill="#f1f5f9" stroke="none" />
-
-                {/* Layer 1 (Background): Filled blue pizza wedges */}
-                <g className="pizza-slices">
-                  {radarGeometry.map(({ metric, pathData }) => {
-                    const isHovered = hoveredMetric === metric.key;
-                    const fillOpacity = isHovered ? 0.75 : 0.95;
-
-                    return (
-                      <path
-                        key={metric.key}
-                        d={pathData}
-                        fill={clubThemeColor}
-                        fillOpacity={fillOpacity}
-                        stroke="#cbd5e1"
-                        strokeWidth="1"
-                        onMouseEnter={() => setHoveredMetric(metric.key)}
-                        onMouseLeave={() => setHoveredMetric(null)}
-                        className="cursor-pointer transition-all duration-150"
-                      />
-                    );
-                  })}
-                </g>
-
-                {/* Layer 2 (Radial Lines / Spokes): Continuous grayish dividers over wedges */}
-                <g pointerEvents="none">
-                  {radarGeometry.map(({ metric, ray }) => (
-                    <line
-                      key={`ray-${metric.key}`}
-                      x1={ray.x1}
-                      y1={ray.y1}
-                      x2={ray.x2}
-                      y2={ray.y2}
-                      stroke="#94a3b8"
-                      strokeWidth="1"
-                    />
-                  ))}
-                </g>
-
-                {/* Layer 3 (Concentric Percentile Rings Over the Wedges) */}
-                <g pointerEvents="none">
-                  <circle cx={330} cy={236} r={206 * 0.25} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
-                  <circle cx={330} cy={236} r={206 * 0.5} fill="none" stroke="#f59e0b" strokeWidth="1.3" strokeDasharray="4 4" />
-                  <circle cx={330} cy={236} r={206 * 0.75} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 3" />
-                  <circle cx={330} cy={236} r={206} fill="none" stroke="#64748b" strokeWidth="1.2" />
-                </g>
-
-                {/* Floating Numeric Value Badges at edge of each slice */}
-                <g pointerEvents="none">
-                  {radarGeometry.map(({ metric, badgeX, badgeY, formattedValue }) => {
-                    const isHovered = hoveredMetric === metric.key;
-                    const badgeW = 32;
-                    const badgeH = 14;
-                    return (
-                      <g 
-                        key={`badge-${metric.key}`} 
-                        className="transition-transform duration-150"
-                        filter="drop-shadow(0 1px 2px rgba(0,0,0,0.15))"
-                      >
-                        <rect
-                          x={badgeX - badgeW / 2}
-                          y={badgeY - badgeH / 2}
-                          width={badgeW}
-                          height={badgeH}
-                          rx={3}
-                          fill={isHovered ? '#0F172A' : clubThemeColor}
-                          stroke="#FFFFFF"
-                          strokeWidth="0.8"
-                        />
-                        <text
-                          x={badgeX}
-                          y={badgeY}
-                          fontSize="8.5"
-                          fontWeight="bold"
-                          fill={isHovered ? '#FFFFFF' : radarBadgeTextColor}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fontFamily="ui-monospace, monospace"
-                        >
-                          {formattedValue}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </g>
-
-                {/* Perimeter Metric Labels outside outer ring */}
-                <g pointerEvents="none">
-                  {radarGeometry.map(({ metric, labelX, labelY, textAnchor }) => {
-                    const [line1, line2] = getSplitMetricLabel(metric.key, metric.label);
-
-                    return (
-                      <text
-                        key={`lbl-${metric.key}`}
-                        x={labelX}
-                        y={labelY}
-                        textAnchor={textAnchor}
-                        dominantBaseline="central"
-                        className="text-[11px] font-bold fill-slate-800 select-none tracking-tight"
-                      >
-                        {line2 ? (
-                          <>
-                            <tspan x={labelX} dy="-0.6em">{line1}</tspan>
-                            <tspan x={labelX} dy="1.2em">{line2}</tspan>
-                          </>
-                        ) : (
-                          <tspan x={labelX} dy="0.1em">{line1}</tspan>
-                        )}
-                      </text>
-                    );
-                  })}
-                </g>
-
-              </svg>
-            </div>
-
-            {/* Top 10 Leaders Overlay Widget */}
-            <div className="absolute top-3 right-3 w-[220px] bg-white rounded-xl border border-slate-200/80 p-2.5 shadow-sm z-10 pointer-events-auto">
-              <div className="text-[11px] font-bold text-slate-800 pb-1 mb-1 truncate">
-                {(() => {
-                  const activeMetric = RADAR_METRICS.find(m => m.key === currentLeaderboardStat);
-                  const metricKey = activeMetric?.key || activeHoveredMetricDef?.key || 'accurate_passes_percentage';
-                  const label = t.metrics[metricKey]?.short || (activeMetric ? activeMetric.label : (activeHoveredMetricDef ? activeHoveredMetricDef.label : 'Pass Accuracy'));
-                  const isPercentage = Boolean(activeMetric?.isPercentage || activeHoveredMetricDef?.isPercentage);
-                  const displayLabel = isPercentage && !label.includes('%') ? `${label} (%)` : label;
-                  return `${displayLabel} — ${t.floor1.top10Suffix}`;
-                })()}
-              </div>
-
-              {/* Top 10 List Table with Row Dividers */}
-              <div className="divide-y divide-slate-100/90">
-                {isTopPlayersLoading && (
-                  <p className="text-[10px] text-slate-400 py-6 text-center">{t.floor1.loadingRankings}</p>
-                )}
-
-                {!isTopPlayersLoading && topPlayers && topPlayers.length > 0 ? (
-                  topPlayers.map((player) => {
-                    const isCurrentPlayer = player.player_id === playerId;
-                    const formattedValue = 
-                      typeof player.value === 'number'
-                        ? player.value % 1 !== 0
-                          ? player.value.toFixed(1)
-                          : player.value
-                        : player.value;
-
-                    return (
-                      <div 
-                        key={player.player_id}
-                        className={`flex items-start justify-between text-[10.5px] py-1 px-1 rounded transition-colors leading-tight ${
-                          isCurrentPlayer 
-                            ? 'font-semibold' 
-                            : 'hover:bg-slate-50 text-slate-700'
-                        }`}
-                        style={
-                          isCurrentPlayer
-                            ? {
-                                backgroundColor: `rgba(${clubTextRgb.r}, ${clubTextRgb.g}, ${clubTextRgb.b}, 0.12)`,
-                                border: `1px solid rgba(${clubTextRgb.r}, ${clubTextRgb.g}, ${clubTextRgb.b}, 0.35)`,
-                              }
-                            : undefined
-                        }
-                      >
-                        <span className="text-slate-400 font-normal w-3.5 shrink-0 pt-0.5">
-                          {player.rank}.
-                        </span>
-                        <div className="flex-1 min-w-0 pr-1.5 break-words">
-                          <span 
-                            className={`font-medium ${isCurrentPlayer ? 'font-bold text-slate-900' : 'text-slate-700'}`}
-                            style={isCurrentPlayer ? { color: clubTextColor } : undefined}
-                          >
-                            {player.name}
-                          </span>
-                          <span className="text-slate-400 font-normal ml-1">
-                            {'— '}{player.team_name}
-                          </span>
-                        </div>
-
-                        <span className={`tabular-nums font-semibold shrink-0 text-right pt-0.5 ml-1 ${isCurrentPlayer ? 'text-slate-900 font-bold' : 'text-slate-800'}`}>
-                          {formattedValue}
-                        </span>
-                      </div>
-                    );
-                  })
-                ) : (
-                  !isTopPlayersLoading && (
-                    <p className="text-[10px] text-slate-400 py-6 text-center">{t.floor1.noRankingsFound}</p>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* FLOOR 1 RIGHT: Time in Position */}
-          <div className="w-full lg:w-[285px] shrink-0 self-stretch flex flex-col">
-            <TimeInPosition 
-              matchStats={matchStats} 
-              themeColor={clubThemeColor} 
-              orientation="vertical"
-              playerName={playerName}
-              lang={lang}
-              className="w-full h-full flex-1 flex flex-col justify-between gap-2.5 min-h-0"
-            />
-          </div>
-
-        </div>
-
+        <ScoutingFloor01
+          t={t}
+          lang={lang}
+          playerId={playerId}
+          playerName={playerName}
+          profile={profile}
+          seasonStats={seasonStats}
+          matchStats={matchStats}
+          positionLabel={positionLabel}
+          playerAge={playerAge}
+          countryCode={countryCode}
+          cohortHeaderLabel={cohortHeaderLabel}
+          activeMetrics={activeMetrics}
+          radarGeometry={radarGeometry}
+          hoveredMetric={hoveredMetric}
+          setHoveredMetric={setHoveredMetric}
+          clubThemeColor={clubThemeColor}
+          clubTextColor={clubTextColor}
+          clubTextRgb={clubTextRgb}
+          radarBadgeTextColor={radarBadgeTextColor}
+          getSplitMetricLabel={getSplitMetricLabel}
+          currentLeaderboardStat={currentLeaderboardStat}
+          activeHoveredMetricDef={activeHoveredMetricDef}
+          radarMetrics={RADAR_METRICS}
+          isTopPlayersLoading={isTopPlayersLoading}
+          topPlayers={topPlayers}
+        />
         {/* ----------------------------------------------------------------- */}
         {/* FLOOR 2: Similarity & Real Event Pitches Section                  */}
         {/* ----------------------------------------------------------------- */}
