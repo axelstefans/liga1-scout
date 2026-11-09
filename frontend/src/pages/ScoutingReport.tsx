@@ -19,6 +19,16 @@ import { teamsApi, rankingsApi, TeamBase, SimilarPlayer, PlayerRankingEntry, Pla
 import ScoutingConfigPanel from '../components/scouting/ScoutingConfigPanel';
 import ScoutingFloor01 from '../components/scouting/ScoutingFloor01';
 import ScoutingFloor02 from '../components/scouting/ScoutingFloor02';
+import { BeeswarmCard } from '../components/scouting/floor03/BeeswarmCard';
+import { ScatterPlotCard } from '../components/scouting/floor03/ScatterPlotCard';
+import { DefendingPitchCard } from '../components/scouting/floor03/DefendingPitchCard';
+import {
+  BeeswarmPoint,
+  BeeswarmTick,
+  BeeswarmStripData,
+  BeeswarmHoverState,
+  ScatterPoint,
+} from '../components/scouting/floor03/scoutingFloor03Utils';
 import { getTeamThemeColor, getTeamTextColor, getBadgeTextColor } from '../utils/teams';
 import { useScoutingLanguage } from '../i18n/scoutingReport';
 
@@ -29,76 +39,13 @@ export const RADAR_LABEL_RADIUS = 307;
 
 const DEFAULT_PLAYER_ID = 1090720; // Marco Huamán
 
-export interface ScatterPoint {
-  player_id: number;
-  name: string;
-  team_name: string;
-  position: string | null;
-  position_group: string | null;
-  minutes_played: number;
-  x: number;
-  y: number;
-  svgX: number;
-  svgY: number;
-  isTarget: boolean;
-  age?: number | null;
-}
-
-export interface BeeswarmPoint {
-  player_id: number;
-  name: string;
-  team_name: string;
-  position?: string | null;
-  position_group?: string | null;
-  minutes_played?: number | null;
-  age?: number | null;
-  val: number;
-  svgX: number;
-  svgY: number;
-  isTarget: boolean;
-  percentile?: number;
-}
-
-export interface BeeswarmTick {
-  val: number;
-  x: number;
-  label: string;
-}
-
-export interface BeeswarmStripData {
-  key: string;
-  label: string;
-  minVal: number;
-  maxVal: number;
-  domainMin?: number;
-  domainMax?: number;
-  medianVal: number;
-  p25Val: number;
-  p75Val: number;
-  targetVal: number | null;
-  percentile: number;
-  points: BeeswarmPoint[];
-  targetPoint: BeeswarmPoint | null;
-  ticks?: BeeswarmTick[];
-  calibrated?: boolean;
-}
-
-export interface BeeswarmHoverState {
-  player_id: number;
-  name: string;
-  team_name: string;
-  position?: string | null;
-  position_group?: string | null;
-  minutes_played?: number | null;
-  age?: number | null;
-  val: number;
-  metricLabel: string;
-  metricKey: string;
-  svgX: number;
-  svgY: number;
-  isTarget: boolean;
-  percentile?: number;
-}
+export type {
+  BeeswarmPoint,
+  BeeswarmTick,
+  BeeswarmStripData,
+  BeeswarmHoverState,
+  ScatterPoint,
+};
 
 export interface RadarMetricDef {
   key: string;
@@ -362,7 +309,7 @@ const getCountryCode = (country?: string | null) => {
 
 const PHOTO_PEERS_COUNT = 5;
 
-const PEER_RING_CLASSES = [
+export const PEER_RING_CLASSES = [
   'ring-2 ring-emerald-500',
   'ring-2 ring-amber-500',
   'ring-2 ring-sky-500',
@@ -433,7 +380,7 @@ interface PlayerNodeAvatarProps {
   onClick?: () => void;
 }
 
-const PlayerNodeAvatar: React.FC<PlayerNodeAvatarProps> = ({
+export const PlayerNodeAvatar: React.FC<PlayerNodeAvatarProps> = ({
   playerId,
   name,
   isTarget = false,
@@ -900,8 +847,6 @@ const ScoutingReport: React.FC = () => {
 
   const numDefCols = 5;
   const numDefRows = 6;
-  const defColWidth = 68 / numDefCols; // 13.6
-  const defRowHeight = 105 / numDefRows; // 17.5
 
   const defendingGrid = useMemo(() => {
     const grid = Array.from({ length: numDefRows }, () => Array(numDefCols).fill(0));
@@ -958,7 +903,6 @@ const ScoutingReport: React.FC = () => {
   const SCATTER_PLOT_TOP = 14;
   const SCATTER_PLOT_WIDTH = 308;
   const SCATTER_PLOT_HEIGHT = 222;
-  const SCATTER_PLOT_RIGHT = SCATTER_PLOT_LEFT + SCATTER_PLOT_WIDTH; // 344
   const SCATTER_PLOT_BOTTOM = SCATTER_PLOT_TOP + SCATTER_PLOT_HEIGHT; // 236
 
   const metricXDef = AVAILABLE_METRICS.find(m => m.key === scatterMetricX);
@@ -1856,608 +1800,72 @@ const ScoutingReport: React.FC = () => {
         {/* ----------------------------------------------------------------- */}
         {/* FLOOR 3: Distributions & Defending Section                         */}
         {/* ----------------------------------------------------------------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch w-full">
           
           {/* FLOOR 3 LEFT: 3 Standalone Distribution Cards (Cols 1-4) */}
-          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200/80 p-2.5 flex flex-col justify-between gap-2.5 h-full shadow-2xs">
-            {[beeswarm1Data, beeswarm2Data, beeswarm3Data].map((strip) => {
-              const similarPeers = getTopStripPeers(strip);
-              const similarPeerIds = new Set(similarPeers.map(p => p.player_id));
-              const neutralPoints = strip.points.filter(p => !p.isTarget && !similarPeerIds.has(p.player_id));
-
-              // Calibrated 1D strip geometry (viewBox 0 0 320 88)
-              const canvasHeight = 88;
-              const pointsY = 39;
-              const avatarTopPct = (pointsY / canvasHeight) * 100;
-
-              // refX calculation using calibrated domain
-              const refNorm = strip.domainMin !== undefined && strip.domainMax !== undefined
-                ? (strip.medianVal - strip.domainMin) / (strip.domainMax - strip.domainMin || 1)
-                : (strip.medianVal - strip.minVal) / (strip.maxVal - strip.minVal || 1);
-              const refX = 18 + Math.max(0, Math.min(1, refNorm)) * 284;
-
-              return (
-                <div
-                  key={`strip-${strip.key}`}
-                  className="border border-slate-200/90 rounded-lg p-2.5 flex-1 flex flex-col justify-between bg-[#FCFCFD]"
-                >
-                  {/* Header inside each card (Top-Left) */}
-                  <div className="text-[11px] font-bold text-slate-800 font-sans tracking-tight mb-0.5">
-                    {strip.label}
-                  </div>
-
-                    {/* 1D Distribution SVG Canvas per Strip */}
-                    <div className="relative w-full">
-                      <svg viewBox="0 0 320 88" className="w-full h-auto block select-none">
-                        {/* Group Median Vertical Reference Guide (llega a la baseline en 74) */}
-                        <line
-                          x1={refX}
-                          y1={4}
-                          x2={refX}
-                          y2={74}
-                          stroke="#94A3B8"
-                          strokeWidth={0.8}
-                          strokeDasharray="2.5 2.5"
-                        />
-
-                        {/* Baseline: de domainMin (18) a domainMax (302) */}
-                        <line
-                          x1={18}
-                          y1={74}
-                          x2={302}
-                          y2={74}
-                          stroke="#A3A3A3"
-                          strokeWidth={0.8}
-                        />
-
-                        {/* Marcas de extremo en domainMin y domainMax (y=74 a y=77) */}
-                        <line x1={18} y1={74} x2={18} y2={77} stroke="#A3A3A3" strokeWidth={0.8} />
-                        <line x1={302} y1={74} x2={302} y2={77} stroke="#A3A3A3" strokeWidth={0.8} />
-
-                        {/* Ticks redondos del dominio */}
-                        <g pointerEvents="none">
-                          {(strip.ticks || []).map((tick, tIdx) => (
-                            <g key={`tick-${strip.key}-${tIdx}`}>
-                              <line
-                                x1={tick.x}
-                                y1={74}
-                                x2={tick.x}
-                                y2={77}
-                                stroke="#A3A3A3"
-                                strokeWidth={0.8}
-                              />
-                              <text
-                                x={tick.x}
-                                y="85"
-                                textAnchor="middle"
-                                fontSize="7"
-                                fontFamily="sans-serif"
-                                fontWeight="500"
-                                fill="#52525B"
-                              >
-                                {tick.label}
-                              </text>
-                            </g>
-                          ))}
-                        </g>
-
-                        {/* Layer 1 (League Peers): puntos de fondo en cy=39 */}
-                        <g>
-                          {neutralPoints.map((pt) => {
-                            const isHovered = hoveredBeeswarmPoint?.player_id === pt.player_id && hoveredBeeswarmPoint?.metricKey === strip.key;
-                            return (
-                              <circle
-                                key={`peer-${strip.key}-${pt.player_id}`}
-                                cx={pt.svgX}
-                                cy={39}
-                                r="2.2"
-                                fill={isHovered ? "#0F172A" : "#7A7A7A"}
-                                fillOpacity={isHovered ? 1 : 0.6}
-                                className="transition-all duration-150 cursor-pointer"
-                                onMouseEnter={() => setHoveredBeeswarmPoint({
-                                  player_id: pt.player_id,
-                                  name: pt.name,
-                                  team_name: pt.team_name,
-                                  position: pt.position || pt.position_group,
-                                  position_group: pt.position_group,
-                                  minutes_played: pt.minutes_played,
-                                  age: pt.age ?? resolvePlayerAge(similarPlayersMap.get(pt.player_id)),
-                                  val: pt.val,
-                                  metricLabel: strip.label,
-                                  metricKey: strip.key,
-                                  svgX: pt.svgX,
-                                  svgY: 39,
-                                  isTarget: false,
-                                  percentile: pt.percentile,
-                                })}
-                                onMouseLeave={() => setHoveredBeeswarmPoint(null)}
-                              />
-                            );
-                          })}
-                        </g>
-                      </svg>
-
-                      {/* Layer 2 (Top Similar Peers & Target Player Headshot Avatars) */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        {similarPeers.map((pt, pIdx) => {
-                          const ringColor = PEER_RING_COLORS[pIdx % PEER_RING_COLORS.length];
-                          const ringClass = PEER_RING_CLASSES[pIdx % PEER_RING_CLASSES.length];
-                          const isHovered = hoveredBeeswarmPoint?.player_id === pt.player_id && hoveredBeeswarmPoint?.metricKey === strip.key;
-                          const leftPct = (pt.svgX / 320) * 100;
-                          return (
-                            <div
-                              key={`similar-avatar-${strip.key}-${pt.player_id}`}
-                              className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2"
-                              style={{
-                                left: `${leftPct}%`,
-                                top: `${avatarTopPct}%`,
-                                width: `${(11.5 / 320) * 100}%`,
-                                minWidth: '16px',
-                                aspectRatio: '1',
-                              }}
-                            >
-                              <PlayerNodeAvatar
-                                playerId={pt.player_id}
-                                name={pt.name}
-                                ringColor={ringColor}
-                                ringClass={ringClass}
-                                sizeClass="w-full h-full"
-                                style={{ width: '100%', height: '100%', aspectRatio: '1' }}
-                                isHovered={isHovered}
-                                onMouseEnter={() => setHoveredBeeswarmPoint({
-                                  player_id: pt.player_id,
-                                  name: pt.name,
-                                  team_name: pt.team_name,
-                                  position: pt.position || pt.position_group,
-                                  position_group: pt.position_group,
-                                  minutes_played: pt.minutes_played,
-                                  age: pt.age ?? resolvePlayerAge(similarPlayersMap.get(pt.player_id)),
-                                  val: pt.val,
-                                  metricLabel: strip.label,
-                                  metricKey: strip.key,
-                                  svgX: pt.svgX,
-                                  svgY: pointsY,
-                                  isTarget: false,
-                                  percentile: pt.percentile,
-                                })}
-                                onMouseLeave={() => setHoveredBeeswarmPoint(null)}
-                                onClick={() => navigate(`/scouting/${pt.player_id}`)}
-                              />
-                            </div>
-                          );
-                        })}
-
-                        {strip.targetPoint && (() => {
-                          const tp = strip.targetPoint;
-                          const isHovered = hoveredBeeswarmPoint?.player_id === tp.player_id && hoveredBeeswarmPoint?.metricKey === strip.key;
-                          const leftPct = (tp.svgX / 320) * 100;
-                          return (
-                            <div
-                              key={`target-avatar-${strip.key}-${tp.player_id}`}
-                              className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 z-15"
-                              style={{
-                                left: `${leftPct}%`,
-                                top: `${avatarTopPct}%`,
-                                width: `${(11.5 / 320) * 100}%`,
-                                minWidth: '16px',
-                                aspectRatio: '1',
-                              }}
-                            >
-                              <PlayerNodeAvatar
-                                playerId={tp.player_id}
-                                name={tp.name}
-                                isTarget={true}
-                                targetRingColor={clubTextColor}
-                                sizeClass="w-full h-full"
-                                style={{ width: '100%', height: '100%', aspectRatio: '1' }}
-                                isHovered={isHovered}
-                                onMouseEnter={() => setHoveredBeeswarmPoint({
-                                  player_id: tp.player_id,
-                                  name: tp.name,
-                                  team_name: tp.team_name,
-                                  position: tp.position || tp.position_group,
-                                  position_group: tp.position_group,
-                                  minutes_played: tp.minutes_played,
-                                  age: tp.age ?? playerAge,
-                                  val: tp.val,
-                                  metricLabel: strip.label,
-                                  metricKey: strip.key,
-                                  svgX: tp.svgX,
-                                  svgY: pointsY,
-                                  isTarget: true,
-                                  percentile: strip.percentile,
-                                })}
-                                onMouseLeave={() => setHoveredBeeswarmPoint(null)}
-                              />
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                    {/* Interactive Floating Tooltip (Dark Minimalist Overlay) */}
-                    {hoveredBeeswarmPoint && hoveredBeeswarmPoint.metricKey === strip.key && (
-                      <div 
-                        className="export-ignore absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2.5 bg-[#18181b] text-white p-2.5 rounded-lg shadow-xl border border-zinc-700/50 text-left min-w-[170px]"
-                        style={{
-                          left: `${Math.max(16, Math.min(84, (hoveredBeeswarmPoint.svgX / 320) * 100))}%`,
-                          top: `${(hoveredBeeswarmPoint.svgY / canvasHeight) * 100}%`,
-                        }}
-                      >
-                        <div className="text-[12.5px] font-bold text-white tracking-tight leading-tight">
-                          {hoveredBeeswarmPoint.name}
-                        </div>
-                        <div className="text-[10px] text-zinc-400 mt-0.5 leading-snug">
-                          {hoveredBeeswarmPoint.team_name || 'Liga 1'} · {(() => {
-                            const rawPos = hoveredBeeswarmPoint.position === 'D' ? 'Full Back' : (hoveredBeeswarmPoint.position || hoveredBeeswarmPoint.position_group || t.floor3.playerFallback);
-                            return t.floor1.roles[rawPos] || rawPos;
-                          })()}
-                        </div>
-                        <div className="text-[9.5px] text-zinc-400 mt-0.5">
-                          {t.floor3.ageLabel} {hoveredBeeswarmPoint.age ?? (hoveredBeeswarmPoint.isTarget ? playerAge : null) ?? resolvePlayerAge(similarPlayersMap.get(hoveredBeeswarmPoint.player_id)) ?? '—'} · {t.floor3.minLabel} {hoveredBeeswarmPoint.minutes_played != null ? hoveredBeeswarmPoint.minutes_played.toLocaleString() : '—'}
-                        </div>
-                        <div className="border-t border-zinc-700/60 my-2" />
-                        <div className="text-[11px] font-medium text-zinc-300 flex justify-between gap-3">
-                          <span>{hoveredBeeswarmPoint.metricLabel}:</span>
-                          <span className="font-mono font-bold text-white">
-                            {hoveredBeeswarmPoint.val.toFixed(1)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200/80 p-3 flex flex-col justify-between h-full shadow-2xs">
+            {[beeswarm1Data, beeswarm2Data, beeswarm3Data].map((strip) => (
+              <BeeswarmCard
+                key={`strip-${strip.key}`}
+                strip={strip}
+                similarPeers={getTopStripPeers(strip)}
+                peerColors={PEER_RING_COLORS}
+                targetRingColor={clubTextColor}
+                hoveredPoint={hoveredBeeswarmPoint}
+                onHoverPoint={setHoveredBeeswarmPoint}
+                onSelectPlayer={(targetId) => navigate(`/scouting/${targetId}`)}
+                playerAge={playerAge}
+                resolvePlayerAge={resolvePlayerAge}
+                similarPlayersMap={similarPlayersMap}
+                t={t}
+              />
+            ))}
           </div>
 
           {/* FLOOR 3 RIGHT CONTAINER: 3B Scatter + 3C Defending (Cols 5-12) */}
-          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-[1fr_285px] gap-4 h-full">
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-[1fr_285px] gap-3 h-full">
 
             {/* FLOOR 3 CENTER: Large 2D Scatterplot */}
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm h-full p-3 flex flex-col justify-center items-center">
-            {/* 2D Scatter Canvas with Pure SVG Vector Visualizer */}
-            <div className="w-full h-full flex flex-col justify-center items-center py-2 px-1">
-              <div className="relative w-full">
-                <svg 
-                  viewBox="0 0 360 270" 
-                  className="w-full h-auto block select-none"
-                >
-                  {/* Minimalist Continuous Crosshair Axes */}
-                {/* L-Axis borders */}
-                <line
-                  x1={SCATTER_PLOT_LEFT}
-                  y1={SCATTER_PLOT_TOP}
-                  x2={SCATTER_PLOT_LEFT}
-                  y2={SCATTER_PLOT_BOTTOM}
-                  stroke="#A3A3A3"
-                  strokeWidth="0.8"
-                />
-                <line
-                  x1={SCATTER_PLOT_LEFT}
-                  y1={SCATTER_PLOT_BOTTOM}
-                  x2={SCATTER_PLOT_RIGHT}
-                  y2={SCATTER_PLOT_BOTTOM}
-                  stroke="#A3A3A3"
-                  strokeWidth="0.8"
-                />
-
-                {/* Continuous median vertical & horizontal lines intersecting the entire plot */}
-                <line
-                  x1={scatterPlotData.medSvgX}
-                  y1={SCATTER_PLOT_TOP}
-                  x2={scatterPlotData.medSvgX}
-                  y2={SCATTER_PLOT_BOTTOM}
-                  stroke="#CBD5E1"
-                  strokeWidth={0.7}
-                  strokeDasharray="2.5 2.5"
-                />
-                <line
-                  x1={SCATTER_PLOT_LEFT}
-                  y1={scatterPlotData.medSvgY}
-                  x2={SCATTER_PLOT_RIGHT}
-                  y2={scatterPlotData.medSvgY}
-                  stroke="#CBD5E1"
-                  strokeWidth={0.7}
-                  strokeDasharray="2.5 2.5"
-                />
-
-                {/* Axis Ticks & Micro Numeric Values */}
-                {/* X-Axis Ticks */}
-                <g pointerEvents="none">
-                  {xTicks.map((tick, idx) => {
-                    const svgX = scatterPlotData.mapSvgX(tick);
-                    return (
-                      <g key={`xtick-${idx}`}>
-                        <line
-                          x1={svgX}
-                          y1={SCATTER_PLOT_BOTTOM}
-                          x2={svgX}
-                          y2={SCATTER_PLOT_BOTTOM + 3}
-                          stroke="#A3A3A3"
-                          strokeWidth="0.8"
-                        />
-                        <text
-                          x={svgX}
-                          y={SCATTER_PLOT_BOTTOM + 11}
-                          textAnchor="middle"
-                          fontSize="5.8"
-                          fontFamily="ui-sans-serif, system-ui, sans-serif"
-                          fontWeight="500"
-                          fill="#52525B"
-                        >
-                          {formatScatterTickLabel(tick, xStep)}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </g>
-
-                {/* Y-Axis Ticks */}
-                <g pointerEvents="none">
-                  {yTicks.map((tick, idx) => {
-                    const svgY = scatterPlotData.mapSvgY(tick);
-                    return (
-                      <g key={`ytick-${idx}`}>
-                        <line
-                          x1={SCATTER_PLOT_LEFT - 3}
-                          y1={svgY}
-                          x2={SCATTER_PLOT_LEFT}
-                          y2={svgY}
-                          stroke="#A3A3A3"
-                          strokeWidth="0.8"
-                        />
-                        <text
-                          x={SCATTER_PLOT_LEFT - 5}
-                          y={svgY}
-                          textAnchor="end"
-                          dominantBaseline="central"
-                          fontSize="5.8"
-                          fontFamily="ui-sans-serif, system-ui, sans-serif"
-                          fontWeight="500"
-                          fill="#52525B"
-                        >
-                          {formatScatterTickLabel(tick, yStep)}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </g>
-
-                {/* Axis Titles */}
-                <text
-                  x={SCATTER_PLOT_LEFT + SCATTER_PLOT_WIDTH / 2}
-                  y={SCATTER_PLOT_BOTTOM + 25}
-                  textAnchor="middle"
-                  fontSize="6.8"
-                  fill="#1F2937"
-                  fontWeight="600"
-                  fontFamily="ui-sans-serif, system-ui, sans-serif"
-                  className="select-none pointer-events-none"
-                >
-                  {metricXLabel}
-                </text>
-                <text
-                  x="12"
-                  y={SCATTER_PLOT_TOP + SCATTER_PLOT_HEIGHT / 2}
-                  textAnchor="middle"
-                  transform={`rotate(-90 12 ${SCATTER_PLOT_TOP + SCATTER_PLOT_HEIGHT / 2})`}
-                  fontSize="6.8"
-                  fill="#1F2937"
-                  fontWeight="600"
-                  fontFamily="ui-sans-serif, system-ui, sans-serif"
-                  className="select-none pointer-events-none"
-                >
-                  {metricYLabel}
-                </text>
-
-                {/* Layer 2: Neutral Peer Dots */}
-                <g>
-                  {backgroundPeerPoints.map((pt) => {
-                    const isHovered = hoveredScatterPoint?.player_id === pt.player_id;
-                    return (
-                      <circle
-                        key={`peer-${pt.player_id}`}
-                        cx={pt.svgX}
-                        cy={pt.svgY}
-                        r={isHovered ? "4.5" : "2.5"}
-                        fill={isHovered ? "#0F172A" : "#7A7A7A"}
-                        fillOpacity={isHovered ? 1 : 0.6}
-                        className="transition-all duration-150 cursor-pointer"
-                        onMouseEnter={() => setHoveredScatterPoint(pt)}
-                        onMouseLeave={() => setHoveredScatterPoint(null)}
-                      />
-                    );
-                  })}
-                </g>
-              </svg>
-
-              {/* Layer 3: Highlighted Peer & Target Player Avatars Overlay */}
-              <div className="absolute inset-0 pointer-events-none">
-                {highlightedPeerPoints.map((pt, pIdx) => {
-                  const ringColor = PEER_RING_COLORS[pIdx % PEER_RING_COLORS.length];
-                  const ringClass = PEER_RING_CLASSES[pIdx % PEER_RING_CLASSES.length];
-                  const isHovered = hoveredScatterPoint?.player_id === pt.player_id;
-                  const leftPct = (pt.svgX / 360) * 100;
-                  const topPct = (pt.svgY / 270) * 100;
-                  return (
-                    <div
-                      key={`scatter-avatar-${pt.player_id}`}
-                      className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2"
-                      style={{ left: `${leftPct}%`, top: `${topPct}%` }}
-                    >
-                      <PlayerNodeAvatar
-                        playerId={pt.player_id}
-                        name={pt.name}
-                        ringColor={ringColor}
-                        ringClass={ringClass}
-                        isHovered={isHovered}
-                        onMouseEnter={() => setHoveredScatterPoint(pt)}
-                        onMouseLeave={() => setHoveredScatterPoint(null)}
-                        onClick={() => navigate(`/scouting/${pt.player_id}`)}
-                      />
-                    </div>
-                  );
-                })}
-
-                {scatterPlotData.targetPoint && (() => {
-                  const tp = scatterPlotData.targetPoint;
-                  const isHovered = hoveredScatterPoint?.player_id === tp.player_id;
-                  const leftPct = (tp.svgX / 360) * 100;
-                  const topPct = (tp.svgY / 270) * 100;
-                  return (
-                    <div
-                      key={`scatter-target-avatar-${tp.player_id}`}
-                      className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 z-15"
-                      style={{ left: `${leftPct}%`, top: `${topPct}%` }}
-                    >
-                      <PlayerNodeAvatar
-                        playerId={tp.player_id}
-                        name={tp.name}
-                        isTarget={true}
-                        targetRingColor={clubTextColor}
-                        isHovered={isHovered}
-                        onMouseEnter={() => setHoveredScatterPoint(tp)}
-                        onMouseLeave={() => setHoveredScatterPoint(null)}
-                      />
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Layer 5 (Top): Interactive Tooltip Layer (Dark Minimalist Overlay) */}
-              {hoveredScatterPoint && (
-                <div 
-                  className={`export-ignore absolute z-50 pointer-events-none transform -translate-x-1/2 bg-[#18181b] text-white p-2.5 rounded-lg shadow-xl border border-zinc-700/50 text-left min-w-[170px] ${
-                    hoveredScatterPoint.svgY < 80 ? 'translate-y-3' : '-translate-y-full -mt-2.5'
-                  }`}
-                  style={{
-                    left: `${Math.max(16, Math.min(84, (hoveredScatterPoint.svgX / 360) * 100))}%`,
-                    top: `${(hoveredScatterPoint.svgY / 270) * 100}%`,
-                  }}
-                >
-                  <div className="text-[12.5px] font-bold text-white tracking-tight leading-tight">
-                    {hoveredScatterPoint.name}
-                  </div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5 leading-snug">
-                    {hoveredScatterPoint.team_name || 'Liga 1'} · {(() => {
-                      const rawPos = hoveredScatterPoint.position === 'D' ? 'Full Back' : (hoveredScatterPoint.position || hoveredScatterPoint.position_group || t.floor3.playerFallback);
-                      return t.floor1.roles[rawPos] || rawPos;
-                    })()}
-                  </div>
-                  <div className="text-[9.5px] text-zinc-400 mt-0.5">
-                    {t.floor3.ageLabel} {hoveredScatterPoint.age ?? (hoveredScatterPoint.isTarget ? playerAge : null) ?? resolvePlayerAge(similarPlayersMap.get(hoveredScatterPoint.player_id)) ?? '—'} · {t.floor3.minLabel} {hoveredScatterPoint.minutes_played != null ? hoveredScatterPoint.minutes_played.toLocaleString() : '—'}
-                  </div>
-                  <div className="border-t border-zinc-700/60 my-2" />
-                  <div className="space-y-1">
-                    <div className="text-[11px] font-medium text-zinc-300 flex justify-between gap-3">
-                      <span>{metricXLabel}:</span>
-                      <span className="font-mono font-bold text-white">
-                        {hoveredScatterPoint.x.toFixed(1)}
-                      </span>
-                    </div>
-                    <div className="text-[11px] font-medium text-zinc-300 flex justify-between gap-3">
-                      <span>{metricYLabel}:</span>
-                      <span className="font-mono font-bold text-white">
-                        {hoveredScatterPoint.y.toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
+            <ScatterPlotCard
+              rawPoints={scatterPlotData.points}
+              backgroundPeerPoints={backgroundPeerPoints}
+              minX={scatterPlotData.minX}
+              maxX={scatterPlotData.maxX}
+              minY={scatterPlotData.minY}
+              maxY={scatterPlotData.maxY}
+              medianX={scatterPlotData.medianX}
+              medianY={scatterPlotData.medianY}
+              xTicks={xTicks}
+              yTicks={yTicks}
+              metricXLabel={metricXLabel}
+              metricYLabel={metricYLabel}
+              xStep={xStep}
+              yStep={yStep}
+              highlightedPeers={highlightedPeerPoints}
+              targetPoint={scatterPlotData.targetPoint}
+              clubTextColor={clubTextColor}
+              peerRingColors={PEER_RING_COLORS}
+              hoveredPoint={hoveredScatterPoint}
+              onHoverPoint={setHoveredScatterPoint}
+              onSelectPlayer={(targetId) => navigate(`/scouting/${targetId}`)}
+              playerAge={playerAge}
+              resolvePlayerAge={resolvePlayerAge}
+              similarPlayersMap={similarPlayersMap}
+              t={t}
+            />
 
           {/* FLOOR 3 RIGHT: Dedicated Vertical Defending Zonal Grid Pitch */}
-            <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm h-full p-3 flex flex-col items-center justify-center">
-              <div className="flex flex-col items-center justify-center text-center mb-2 gap-0.5">
-                <div className="font-sans font-semibold text-slate-800 text-[12px] tracking-normal normal-case">
-                  {playerName} — {t.floor3.defendingTitle}
-                </div>
-                <p className="text-[10px] text-slate-500 font-sans">
-                  {t.floor3.defendingSubtitle(totalDefendingActions, tacklesCount, recoveriesCount, aerialCount)}
-                </p>
-              </div>
-
-              {/* Vertical Pitch Visual with 30-Zone grid overlay & aspect-[68/105] */}
-              <div className="relative w-full aspect-[68/105] max-w-[245px] mx-auto bg-[#F8FAFC] overflow-hidden">
-                <svg 
-                viewBox="0 0 68 105" 
-                className="w-full h-full block pointer-events-auto"
-              >
-                {/* Layer 1 (Bottom): 30-Zone Tactical Heatmap Grid */}
-                <g>
-                  {defendingGrid.map((row, r) => 
-                    row.map((count, c) => {
-                      const fill = getDefendingCellFill(count);
-                      return (
-                        <rect 
-                          key={`def-zone-${r}-${c}`}
-                          x={c * defColWidth} 
-                          y={r * defRowHeight} 
-                          width={defColWidth} 
-                          height={defRowHeight} 
-                          fill={fill} 
-                          stroke="none"
-                        />
-                      );
-                    })
-                  )}
-                </g>
-
-                {/* Layer 2 (Middle): Ultra-fine regulatory pitch vector lines */}
-                <g stroke="#363835" strokeWidth="0.28" fill="none" pointerEvents="none">
-                  {/* Boundary: 68m x 105m */}
-                  <rect x="0" y="0" width="68" height="105" />
-
-                  {/* Midfield center line (Y = 52.5) and center circle (r = 6.5m) */}
-                  <line x1="0" y1="52.5" x2="68" y2="52.5" />
-                  <circle cx="34" cy="52.5" r="6.5" />
-                  <circle cx="34" cy="52.5" r="0.45" fill="#363835" />
-
-                  {/* Attacking Penalty Area & Six-Yard Box (Top, Y = 0) */}
-                  <rect x="13.84" y="0" width="40.32" height="16.5" />
-                  <rect x="24.84" y="0" width="18.32" height="5.5" />
-                  <path d="M 27.2 16.5 A 9.15 9.15 0 0 0 40.8 16.5" />
-
-                  {/* Defending Penalty Area & Six-Yard Box (Bottom, Y = 105) */}
-                  <rect x="13.84" y="88.5" width="40.32" height="16.5" />
-                  <rect x="24.84" y="99.5" width="18.32" height="5.5" />
-                  <path d="M 27.2 88.5 A 9.15 9.15 0 0 1 40.8 88.5" />
-                </g>
-
-                {/* Layer 3 (Top): Micro-typography count labels centered in each active cell */}
-                <g pointerEvents="none">
-                  {defendingGrid.map((row, r) =>
-                    row.map((count, c) => {
-                      const cellCenterX = c * defColWidth + defColWidth / 2;
-                      const cellCenterY = r * defRowHeight + defRowHeight / 2;
-
-                      if (count <= 0) {
-                        return null;
-                      }
-
-                      return (
-                        <text 
-                          key={`def-zone-txt-${r}-${c}`}
-                          x={cellCenterX}
-                          y={cellCenterY}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fontSize="2.6"
-                          fontWeight="500"
-                          fill={count > 10 ? '#FFFFFF' : '#0F172A'}
-                          fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                        >
-                          {count}
-                        </text>
-                      );
-                    })
-                  )}
-                </g>
-              </svg>
-            </div>
-          </div>
+            <DefendingPitchCard
+              playerName={playerName}
+              clubThemeColor={clubThemeColor}
+              defendingGrid={defendingGrid}
+              totalDefendingActions={totalDefendingActions}
+              tacklesCount={tacklesCount}
+              recoveriesCount={recoveriesCount}
+              aerialCount={aerialCount}
+              getDefendingCellFill={getDefendingCellFill}
+              t={t}
+            />
 
           </div>
 
