@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-export const APP_BRAND_NAME = 'LIGA 1 SCOUT';
-export const APP_SUBTITLE = 'Plataforma de Rendimiento y Análisis Deportivo';
+export const APP_BRAND_NAME = 'L1Scan';
 
 interface NavItem {
   label: string;
@@ -50,13 +49,13 @@ export const Navbar: React.FC = () => {
         isVisible ? 'translate-y-0' : '-translate-y-full'
       }`}
     >
-      {/* Bloque Izquierdo: Marca y Contexto */}
-      <Link to="/scouting" className="flex flex-col group select-none">
-        <span className="text-base font-bold text-slate-900 tracking-tight leading-none group-hover:text-slate-700 transition-colors">
-          {APP_BRAND_NAME}
+      {/* Bloque Izquierdo: Marca */}
+      <Link to="/scouting" className="flex items-center gap-1.5 group select-none">
+        <span className="bg-slate-900 text-white text-[11px] font-black px-1.5 py-0.5 rounded-md tracking-tight shadow-2xs group-hover:bg-slate-800 transition-colors">
+          L1
         </span>
-        <span className="text-xs text-slate-500 font-medium leading-none mt-1">
-          {APP_SUBTITLE}
+        <span className="text-sm font-extrabold text-slate-900 tracking-wider group-hover:text-slate-700 transition-colors">
+          SCAN
         </span>
       </Link>
 

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, ChevronDown, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { TeamBase, PlayerProfile, PlayerSearchResult } from '../../services/api';
 import { ScoutingTranslations } from '../../i18n/scoutingReport';
 
@@ -11,6 +11,8 @@ export interface AvailableMetricOption {
 
 export interface ScoutingConfigPanelProps {
   t: ScoutingTranslations;
+  lang?: 'es' | 'en';
+  setLang?: (l: 'es' | 'en') => void;
   minAge: number;
   setMinAge: React.Dispatch<React.SetStateAction<number>>;
   maxAge: number;
@@ -70,6 +72,8 @@ export interface ScoutingConfigPanelProps {
 
 const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
   t,
+  lang,
+  setLang,
   minAge,
   setMinAge,
   maxAge,
@@ -126,15 +130,65 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
   radarSliceOptions,
   toggleRadarSlice,
 }) => {
-  return (
-    <section className="w-full bg-[#fafafa] border border-[#e0e0e0] rounded-[6px] p-3 flex flex-col gap-[12px] mb-[10px] text-slate-700 text-sm">
-      {/* FILA 1: DATA CONFIGURATION */}
-      <div className="space-y-2">
-        <h2 className="text-[11px] font-semibold text-[#888888] uppercase tracking-[0.6px]">
-          {t.config.dataConfigTitle}
-        </h2>
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-        <div className="flex flex-wrap gap-4 items-end">
+  return (
+    <section className={`w-full bg-[#fafafa] border border-[#e0e0e0] rounded-xl p-4 flex flex-col ${isCollapsed ? 'gap-0 !py-2.5' : 'gap-3.5'} mb-3 text-slate-700 text-sm shadow-2xs transition-all`}>
+      {/* Cabecera del Panel: Título, Idioma y Botón Colapsable */}
+      <div className={`flex items-center justify-between ${!isCollapsed ? 'pb-2.5 border-b border-[#e0e0e0]/70' : ''}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            {(t as any).config?.title || t.config?.dataConfigTitle || 'Configuración de Datos'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {lang && setLang && (
+            <div className="inline-flex items-center bg-slate-200/60 p-0.5 rounded-lg border border-[#e0e0e0] gap-0.5">
+              <button
+                type="button"
+                onClick={() => setLang('es')}
+                className={`px-2 py-0.5 text-xs rounded-md font-medium transition-all cursor-pointer ${
+                  lang === 'es'
+                    ? 'bg-white text-slate-900 font-bold shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                ES
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang('en')}
+                className={`px-2 py-0.5 text-xs rounded-md font-medium transition-all cursor-pointer ${
+                  lang === 'en'
+                    ? 'bg-white text-slate-900 font-bold shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            aria-label={isCollapsed ? 'Mostrar filtros' : 'Ocultar filtros'}
+            className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#e0e0e0] bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer select-none"
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {!isCollapsed && (
+        <>
+          {/* FILA 1: DATA CONFIGURATION */}
+          <div className="flex flex-wrap gap-4 items-end">
           {/* Sliders de edad a la izquierda */}
           <div className="flex flex-wrap items-center gap-4 flex-1 min-w-[280px]">
             <div className="flex items-center space-x-2 flex-1 min-w-[160px]">
@@ -151,7 +205,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
                   const clamped = Math.max(16, Math.min(val, maxAge));
                   setMinAge(clamped);
                 }}
-                className="w-12 px-1.5 py-1 border border-slate-300 rounded text-center text-xs font-medium text-slate-800 bg-white focus:outline-none focus:border-slate-500"
+                className="w-12 px-1.5 py-1 border border-[#e0e0e0] rounded-lg text-center text-xs font-semibold text-slate-800 bg-white shadow-2xs focus:outline-none focus:border-slate-400"
               />
               <input
                 type="range"
@@ -184,7 +238,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
                   const clamped = Math.min(42, Math.max(val, minAge));
                   setMaxAge(clamped);
                 }}
-                className="w-12 px-1.5 py-1 border border-slate-300 rounded text-center text-xs font-medium text-slate-800 bg-white focus:outline-none focus:border-slate-500"
+                className="w-12 px-1.5 py-1 border border-[#e0e0e0] rounded-lg text-center text-xs font-semibold text-slate-800 bg-white shadow-2xs focus:outline-none focus:border-slate-400"
               />
               <input
                 type="range"
@@ -244,7 +298,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
                 }
                 setIsExcludeDropdownOpen(!isExcludeDropdownOpen);
               }}
-              className="w-full flex items-center justify-between border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-between border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs hover:border-slate-300 focus:outline-none cursor-pointer"
             >
               <span>{t.config.excludedStatus(appliedExcludedTeams.length)}</span>
               <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -289,7 +343,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
                   placeholder={t.config.filterTeamPlaceholder}
                   value={teamSearchQuery}
                   onChange={(e) => setTeamSearchQuery(e.target.value)}
-                  className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
+                  className="w-full border border-[#e0e0e0] rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
                 />
 
                 <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
@@ -337,82 +391,81 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             )}
           </div>
         </div>
-      </div>
 
-      <hr className="border-t border-[#e0e0e0] my-1" />
+        <div className="border-b border-[#e0e0e0]/70" />
 
       {/* FILA 2: BENCHMARK MODE & TARGET LEAGUE */}
       <div className="space-y-2">
-        <h2 className="text-[11px] font-semibold text-[#888888] uppercase tracking-[0.6px]">
+        <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
           {t.config.benchmarkTitle}
         </h2>
 
-        <div className="flex flex-wrap gap-6 items-center">
-          <div className="flex flex-wrap items-center gap-6 text-xs">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                name="benchmarkMode"
-                checked={benchmarkMode === 'all'}
-                onChange={() => setBenchmarkMode('all')}
-                className="text-slate-800 focus:ring-0 cursor-pointer"
-              />
-              <span className="text-slate-800 font-medium">{t.config.vsAllTeams}</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                name="benchmarkMode"
-                checked={benchmarkMode === 'own'}
-                onChange={() => setBenchmarkMode('own')}
-                className="text-slate-800 focus:ring-0 cursor-pointer"
-              />
-              <span className="text-slate-800 font-medium">{t.config.vsOwnTeam}</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                name="benchmarkMode"
-                checked={benchmarkMode === 'target'}
-                onChange={() => setBenchmarkMode('target')}
-                className="text-slate-800 focus:ring-0 cursor-pointer"
-              />
-              <span className="text-slate-800 font-medium">{t.config.vsTargetTier}</span>
-            </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center bg-slate-200/60 p-0.5 rounded-lg border border-[#e0e0e0] gap-0.5">
+            <button
+              type="button"
+              onClick={() => setBenchmarkMode('all')}
+              className={`px-3 py-1 text-xs rounded-md font-medium transition-all duration-150 select-none cursor-pointer ${
+                benchmarkMode === 'all'
+                  ? 'bg-white text-slate-900 font-semibold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {(t as any).benchmark?.all || t.config.vsAllTeams}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBenchmarkMode('own')}
+              className={`px-3 py-1 text-xs rounded-md font-medium transition-all duration-150 select-none cursor-pointer ${
+                benchmarkMode === 'own'
+                  ? 'bg-white text-slate-900 font-semibold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {(t as any).benchmark?.own || t.config.vsOwnTeam}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBenchmarkMode('target')}
+              className={`px-3 py-1 text-xs rounded-md font-medium transition-all duration-150 select-none cursor-pointer ${
+                benchmarkMode === 'target'
+                  ? 'bg-white text-slate-900 font-semibold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {((t as any).benchmark?.target || t.config.vsTargetTier)} →
+            </button>
           </div>
 
           {benchmarkMode === 'target' && (
-            <div className="flex items-center gap-2 min-w-[220px]">
-              <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">
-                {t.config.targetTierLabel}
-              </label>
+            <div className="flex items-center gap-2">
               <select
                 value={targetGroup}
                 onChange={(e) => setTargetGroup(e.target.value)}
-                className="border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800 bg-white cursor-pointer"
+                className="border border-[#e0e0e0] rounded-lg px-2.5 py-1 text-xs text-slate-800 bg-white shadow-2xs cursor-pointer focus:outline-none focus:border-slate-400"
               >
-                <option value="top6">{t.config.targetGroups.top6}</option>
-                <option value="lima">{t.config.targetGroups.lima}</option>
-                <option value="altitude">{t.config.targetGroups.altitude}</option>
-                <option value="provincial">{t.config.targetGroups.provincial}</option>
+                <option value="top6">{(t as any).benchmark?.top6 || t.config.targetGroups.top6}</option>
+                <option value="lima">{(t as any).benchmark?.lima || t.config.targetGroups.lima}</option>
+                <option value="altitude">{(t as any).benchmark?.altitude || t.config.targetGroups.altitude}</option>
+                <option value="provincial">{(t as any).benchmark?.provincial || t.config.targetGroups.provincial}</option>
               </select>
             </div>
           )}
         </div>
       </div>
 
-      <hr className="border-t border-[#e0e0e0] my-1" />
+      <div className="border-b border-[#e0e0e0]/70" />
 
       {/* FILA 3: METRICS FOR SCATTERPLOT & BEESWARM DISTRIBUTIONS */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-semibold text-[#888888] uppercase tracking-[0.6px]">
+          <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
             {t.config.metricsSectionTitle}
           </h2>
           <button
             type="button"
             onClick={() => applyPreset(currentRole)}
-            className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer shrink-0"
+            className="text-xs font-semibold text-sky-600 hover:text-sky-800 transition-colors cursor-pointer shrink-0"
             title={t.config.resetPresetTitle(currentRole ? t.floor1.roles[currentRole] || currentRole : null)}
           >
             {t.config.resetPreset(currentRole ? t.floor1.roles[currentRole] || currentRole : null)}
@@ -425,7 +478,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <select
               value={xAxisMetric}
               onChange={(e) => setXAxisMetric(e.target.value)}
-              className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white cursor-pointer"
+              className="w-full border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs cursor-pointer hover:border-slate-300 focus:outline-none focus:border-slate-400"
             >
               {availableMetrics.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -440,7 +493,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <select
               value={yAxisMetric}
               onChange={(e) => setYAxisMetric(e.target.value)}
-              className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white cursor-pointer"
+              className="w-full border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs cursor-pointer hover:border-slate-300 focus:outline-none focus:border-slate-400"
             >
               {availableMetrics.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -457,7 +510,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <select
               value={beeswarm1}
               onChange={(e) => setBeeswarm1(e.target.value)}
-              className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white cursor-pointer"
+              className="w-full border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs cursor-pointer hover:border-slate-300 focus:outline-none focus:border-slate-400"
             >
               {availableMetrics.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -474,7 +527,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <select
               value={beeswarm2}
               onChange={(e) => setBeeswarm2(e.target.value)}
-              className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white cursor-pointer"
+              className="w-full border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs cursor-pointer hover:border-slate-300 focus:outline-none focus:border-slate-400"
             >
               {availableMetrics.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -491,7 +544,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <select
               value={beeswarm3}
               onChange={(e) => setBeeswarm3(e.target.value)}
-              className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white cursor-pointer"
+              className="w-full border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs cursor-pointer hover:border-slate-300 focus:outline-none focus:border-slate-400"
             >
               {availableMetrics.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -503,11 +556,11 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
         </div>
       </div>
 
-      <hr className="border-t border-[#e0e0e0] my-1" />
+      <div className="border-b border-[#e0e0e0]/70" />
 
       {/* FILA 4: SELECT POSITION, PLAYER & SLICES */}
       <div className="space-y-2">
-        <h2 className="text-[11px] font-semibold text-[#888888] uppercase tracking-[0.6px]">
+        <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
           {t.config.positionPlayerSlicesTitle}
         </h2>
 
@@ -519,7 +572,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <select
               value={selectedPositionGroup}
               onChange={(e) => setSelectedPositionGroup(e.target.value)}
-              className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white cursor-pointer"
+              className="w-full border border-[#e0e0e0] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs cursor-pointer hover:border-slate-300 focus:outline-none focus:border-slate-400"
             >
               {positionGroups.map((pos) => (
                 <option key={pos} value={pos}>
@@ -536,7 +589,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <button
               type="button"
               onClick={() => setIsPlayerSearchOpen(!isPlayerSearchOpen)}
-              className="w-full flex items-center justify-between border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white text-left truncate cursor-pointer"
+              className="w-full flex items-center justify-between border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs hover:border-slate-300 focus:outline-none text-left truncate cursor-pointer"
             >
               <span className="truncate font-medium">
                 {isProfileLoading
@@ -556,7 +609,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
                       value={playerSearchQuery}
                       onChange={(e) => setPlayerSearchQuery(e.target.value)}
                       placeholder={t.config.searchPlayerPlaceholder}
-                      className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-300 rounded text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
+                      className="w-full pl-8 pr-2 py-1.5 text-xs border border-[#e0e0e0] rounded-lg text-slate-800 focus:outline-none focus:border-slate-400 bg-white"
                       autoFocus
                     />
                   </div>
@@ -610,7 +663,7 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
             <button
               type="button"
               onClick={() => setIsRadarDropdownOpen(!isRadarDropdownOpen)}
-              className="w-full flex items-center justify-between border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 bg-white text-left cursor-pointer"
+              className="w-full flex items-center justify-between border border-[#e0e0e0] rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 bg-white shadow-2xs hover:border-slate-300 focus:outline-none text-left cursor-pointer"
             >
               <span>
                 {t.config.slicesSelected(
@@ -662,6 +715,8 @@ const ScoutingConfigPanel: React.FC<ScoutingConfigPanelProps> = ({
           </div>
         </div>
       </div>
+      </>
+      )}
     </section>
   );
 };
