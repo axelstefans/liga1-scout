@@ -11,7 +11,6 @@ SEASON_ID  = 88529    # 2026 season
 DB_PATH    = os.getenv("DB_PATH", "liga1.db")
 
 # ── Scraping behaviour ────────────────────────────────────────────────────────
-HEADLESS            = os.getenv("HEADLESS", "true").lower() == "true"
 MIN_DELAY_SECONDS   = 2.0   # minimum pause between JSON API calls
 MAX_DELAY_SECONDS   = 5.0   # maximum pause between JSON API calls
 MAX_RETRIES         = 3     # retries on 429/503

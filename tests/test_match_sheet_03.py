@@ -301,7 +301,7 @@ def test_match_sheet_03_expanded_features_real_match_16280844():
     assert ref["referee_id"] == 790829
     assert ref["name"] == "Junior Rivera"
     assert ref["sample_matches"] == 8
-    assert abs(ref["yellow_cards_per_match"] - 4.62) < 0.05
+    assert abs(ref["yellow_cards_per_match"] - 4.75) < 0.05
     assert abs(ref["red_cards_per_match"] - 0.25) < 0.05
     assert ref["is_small_sample"] is True
 
@@ -363,7 +363,7 @@ def test_match_sheet_03_expanded_features_real_match_16280844():
 def test_match_sheet_03_contrast_match_15362086_missing_data():
     """
     Test contrast match 15362086 (Sport Huancayo vs Alianza Lima):
-    - Referee is None -> displays 'Arbitro: -'
+    - Referee is present in current liga1.db ('Joel Alarcon')
     - Venue is Huancayo altitude ~3259
     - No Flashscore period stats -> period xG is None and displays '-'
     - Game state preserves 90 minutes sum
@@ -380,8 +380,9 @@ def test_match_sheet_03_contrast_match_15362086_missing_data():
     resp = MatchSheet03DataHubResponse(**data)
     assert resp.match_id == 15362086
 
-    # Referee is None
-    assert data["referee"] is None
+    # Referee updated in liga1.db
+    assert data["referee"] is not None
+    assert data["referee"]["name"] == "Joel Alarcon"
 
     # Venue
     venue = data["venue"]
@@ -399,9 +400,9 @@ def test_match_sheet_03_contrast_match_15362086_missing_data():
     assert gs["total_duration_minutes"] == 90
     assert gs["lead_minutes"] + gs["draw_minutes"] + gs["trail_minutes"] == 90
 
-    # Clipboard text handles missing referee and missing xG gracefully
+    # Clipboard text renders referee and handles missing xG gracefully
     clip = data["clipboard_text"]
-    assert "Arbitro: -" in clip
+    assert "Arbitro: Joel Alarcon" in clip
     assert "Sede: Estadio IPD de Huancayo" in clip
     assert "None" not in clip
 

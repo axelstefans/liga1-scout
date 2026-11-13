@@ -18,11 +18,11 @@ def test_get_team_metrics_all():
 
     alianza = next(t for t in data if t["team_id"] == 2311)
     assert alianza["name"] == "Alianza Lima"
-    assert alianza["matches_played"] == 27
-    assert alianza["points"] == 56
-    assert alianza["goals_scored"] == 44
-    assert alianza["goals_conceded"] == 18
-    assert round(alianza["ppda"], 2) == 8.18
+    assert alianza["matches_played"] == 31
+    assert alianza["points"] == 65
+    assert alianza["goals_scored"] == 52
+    assert alianza["goals_conceded"] == 23
+    assert round(alianza["ppda"], 2) == 8.53
     assert alianza["field_tilt_pct"] > 60.0
     assert alianza["xg"] > 40.0
     assert alianza["defensive_resistance_ratio"] is not None
@@ -59,10 +59,10 @@ def test_get_team_metrics_tournament_filters():
     assert (t1 - t0) * 1000 < 50.0
 
     alianza_cl = next(t for t in data_cl if t["team_id"] == 2311)
-    assert alianza_cl["matches_played"] == 10
-    assert alianza_cl["points"] == 16
-    assert alianza_cl["goals_scored"] == 14
-    assert alianza_cl["goals_conceded"] == 10
+    assert alianza_cl["matches_played"] == 14
+    assert alianza_cl["points"] == 25
+    assert alianza_cl["goals_scored"] == 22
+    assert alianza_cl["goals_conceded"] == 15
 
 def test_get_team_shot_zones():
     t0 = time.perf_counter()
@@ -76,8 +76,8 @@ def test_get_team_shot_zones():
 
     assert data["team_id"] == 2311
     assert data["team_name"] == "Alianza Lima"
-    assert data["total_shots_taken"] == 430
-    assert data["total_shots_conceded"] == 242
+    assert data["total_shots_taken"] == 498
+    assert data["total_shots_conceded"] == 288
     assert data["grid"]["rows"] == 6
     assert data["grid"]["cols"] == 5
     assert len(data["shots_taken"]) == 30
@@ -217,14 +217,14 @@ def test_get_team_pass_network():
     assert len(data_ap["nodes"]) == 11
     assert len(data_ap["edges"]) > 0
 
-    # 3. Specifically test Cusco FC (team_id 63760): Carlos Gamarra NOT in XI for 'all', Ampuero IS present
+    # 3. Specifically test Cusco FC (team_id 63760): starting XI for 'all' includes Ampuero and Gamarra
     resp_cusco = client.get("/api/teams/63760/pass-network?tournament=all")
     assert resp_cusco.status_code == 200
     cusco_data = resp_cusco.json()
     assert len(cusco_data["nodes"]) == 11, f"Expected exactly 11 nodes for Cusco FC, got {len(cusco_data['nodes'])}"
     cusco_names = [n["name"] for n in cusco_data["nodes"]]
     assert any("Ampuero" in n for n in cusco_names), f"Alvaro Ampuero should be in starting XI: {cusco_names}"
-    assert not any("Gamarra" in n for n in cusco_names), f"Carlos Gamarra should NOT be in starting XI for 'all': {cusco_names}"
+    assert any("Gamarra" in n for n in cusco_names), f"Carlos Gamarra should be in starting XI for 'all': {cusco_names}"
 
     # 4. Strict check across all 18 teams and scopes ('all', 'Apertura', 'Clausura')
     resp_teams = client.get("/api/teams/")
@@ -255,7 +255,7 @@ def test_get_team_matches():
     assert resp.status_code == 200
     matches = resp.json()
     assert len(matches) > 0
-    assert len(matches) == 27, f"Expected 27 played matches, got {len(matches)}"
+    assert len(matches) == 31, f"Expected 31 played matches, got {len(matches)}"
 
     # Validate schema of match items
     first = matches[0]

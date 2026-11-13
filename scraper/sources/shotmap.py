@@ -141,17 +141,43 @@ def scrape_and_store_shotmaps(conn, api_client, test_mode=True) -> int:
     return total_inserted
 
 
-def calculate_and_store_pending_xg(conn, model_path: str = "xg_model_pipeline.pkl") -> int:
+PENALTY_XG = 0.79
+MODEL_VERSION = "v1.0-pipeline"
+
+
+def group_shot_situation(sit: str | None) -> str | None:
+    """Normaliza la situación de tiro al vocabulario esperado por xg_model_pipeline.pkl."""
+    if sit == "fast-break":
+        return "regular"
+    if sit == "throw-in-set-piece":
+        return "set-piece"
+    return sit
+
+
+def calculate_and_store_pending_xg(
+    conn,
+    model_path: str = "xg_model_pipeline.pkl",
+    force_all: bool = False,
+) -> int:
     """
-    Calculate and store expected goals (xG) for any shots in player_shots
-    that lack an entry in player_shots_xg.
+    Calculate and store expected goals (xG) for shots in player_shots.
+    If force_all is True, recalculates all shots in player_shots; otherwise only
+    processes shots that lack an entry in player_shots_xg.
+    Open-play/set-piece shots are evaluated with xg_model_pipeline.pkl and penalties
+    receive the standard fixed value of 0.79 xG.
     """
-    query = """
-        SELECT ps.shot_id, ps.distance_m, ps.angle_rad, ps.body_part, ps.situation
-        FROM player_shots ps
-        LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
-        WHERE psx.shot_id IS NULL;
-    """
+    if force_all:
+        query = """
+            SELECT ps.shot_id, ps.distance_m, ps.angle_rad, ps.body_part, ps.situation
+            FROM player_shots ps;
+        """
+    else:
+        query = """
+            SELECT ps.shot_id, ps.distance_m, ps.angle_rad, ps.body_part, ps.situation
+            FROM player_shots ps
+            LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
+            WHERE psx.shot_id IS NULL;
+        """
     rows = conn.execute(query).fetchall()
 
     if not rows:
@@ -169,7 +195,7 @@ def calculate_and_store_pending_xg(conn, model_path: str = "xg_model_pipeline.pk
             logger.warning(f"xG model file not found at '{model_path}' or '{alt_model_path}'. Skipping xG calculation.")
             return 0
 
-    logger.info(f"Found {len(rows)} pending shots without xG. Calculating xG using {model_path}...")
+    logger.info(f"Calculating xG for {len(rows)} shots using {model_path} (force_all={force_all})...")
 
     try:
         import joblib
@@ -178,21 +204,19 @@ def calculate_and_store_pending_xg(conn, model_path: str = "xg_model_pipeline.pk
         model = joblib.load(model_path)
         df = pd.DataFrame([dict(r) for r in rows])
 
-        def group_situation(sit):
-            if sit == "fast-break":
-                return "regular"
-            elif sit == "throw-in-set-piece":
-                return "set-piece"
-            return sit
+        df["situation_grouped"] = df["situation"].apply(group_shot_situation)
+        df["calculated_xg"] = 0.0
 
-        df["situation_grouped"] = df["situation"].apply(group_situation)
-        X_pred = df[["distance_m", "angle_rad", "body_part", "situation_grouped"]]
+        non_penalty_mask = df["situation"] != "penalty"
+        if non_penalty_mask.any():
+            X_pred = df.loc[non_penalty_mask, ["distance_m", "angle_rad", "body_part", "situation_grouped"]]
+            df.loc[non_penalty_mask, "calculated_xg"] = model.predict_proba(X_pred)[:, 1].round(3)
 
-        df["calculated_xg"] = model.predict_proba(X_pred)[:, 1].round(3)
+        df.loc[~non_penalty_mask, "calculated_xg"] = PENALTY_XG
         now = datetime.utcnow().isoformat()
 
         records = [
-            (int(row["shot_id"]), float(row["calculated_xg"]), "v1.0-pipeline", now)
+            (int(row["shot_id"]), float(row["calculated_xg"]), MODEL_VERSION, now)
             for _, row in df.iterrows()
         ]
 
@@ -206,5 +230,5 @@ def calculate_and_store_pending_xg(conn, model_path: str = "xg_model_pipeline.pk
         return len(records)
 
     except Exception as e:
-        logger.error(f"Failed to calculate xG for pending shots: {e}")
+        logger.error(f"Failed to calculate xG for shots: {e}")
         return 0

@@ -259,7 +259,7 @@ def get_player_match_stats(db: sqlite3.Connection, player_id: int) -> List[Dict[
     return results
 
 def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Optional[int] = None) -> List[Dict[str, Any]]:
-    """Fetch all shots for a player and calculate xG dynamically with AI."""
+    """Fetch all shots for a player reading precalculated xG from player_shots_xg (with pipeline fallback)."""
     
     if season_id is None:
         # Default to the player's most recent season in the shots table
@@ -267,7 +267,7 @@ def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Option
         if row and row['max_season']:
             season_id = row['max_season']
 
-    # 1. Obtenemos los tiros crudos de la base de datos excluyendo penales
+    # 1. Obtenemos los tiros con su xG unificado desde player_shots_xg (excluyendo penales en el mapa de juego abierto)
     query = """
         SELECT
             ps.shot_id,
@@ -283,8 +283,10 @@ def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Option
             ps.goal_mouth_x,
             ps.goal_mouth_y,
             ps.goal_mouth_z,
-            ps.goal_mouth_location
+            ps.goal_mouth_location,
+            psx.calculated_xg
         FROM player_shots ps
+        LEFT JOIN player_shots_xg psx ON ps.shot_id = psx.shot_id
         WHERE ps.player_id = ? AND ps.situation != 'penalty'
     """
     params = [player_id]
@@ -300,33 +302,30 @@ def get_player_shotmap(db: sqlite3.Connection, player_id: int, season_id: Option
     if not rows:
         return []
         
-    # 2. Convertimos a DataFrame para procesarlo con nuestro modelo XGBoost
     df = pd.DataFrame([dict(row) for row in rows])
     
-    # 3. Aplicamos la Inteligencia Artificial si el modelo se cargó correctamente
-    if xg_model is not None:
-        # Replicamos la limpieza exacta que usamos en el entrenamiento
-        def group_situation(sit):
-            if sit == 'fast-break': return 'regular'
-            elif sit == 'throw-in-set-piece': return 'set-piece'
-            return sit
-        
-        df['situation_grouped'] = df['situation'].apply(group_situation)
-        
-        # Le damos los datos al modelo para predecir
-        X_pred = df[['distance_m', 'angle_rad', 'body_part', 'situation_grouped']]
-        df['calculated_xg'] = xg_model.predict_proba(X_pred)[:, 1]
-        
-        # Redondeamos a 3 decimales para la interfaz visual
-        df['calculated_xg'] = df['calculated_xg'].round(3)
-        
-        # Limpiamos las columnas temporales que no necesita el Frontend
-        df = df.drop(columns=['situation_grouped'])
-    else:
-        # Fallback de seguridad en caso de que el modelo no esté disponible
-        df['calculated_xg'] = 0.0
-        
-    # 4. Convertimos de vuelta a formato lista de diccionarios para enviar como JSON
+    # 2. Fallback al pipeline únicamente si algún tiro aún no tuviera registro en player_shots_xg
+    missing_mask = df['calculated_xg'].isna()
+    if missing_mask.any():
+        if xg_model is not None:
+            def group_situation(sit):
+                if sit == 'fast-break': return 'regular'
+                elif sit == 'throw-in-set-piece': return 'set-piece'
+                return sit
+            
+            df_missing = df.loc[missing_mask].copy()
+            df_missing['situation_grouped'] = df_missing['situation'].apply(group_situation)
+            non_pen = df_missing['situation'] != 'penalty'
+            if non_pen.any():
+                X_pred = df_missing.loc[non_pen, ['distance_m', 'angle_rad', 'body_part', 'situation_grouped']]
+                df.loc[missing_mask & (df['situation'] != 'penalty'), 'calculated_xg'] = (
+                    xg_model.predict_proba(X_pred)[:, 1].round(3)
+                )
+            df.loc[missing_mask & (df['situation'] == 'penalty'), 'calculated_xg'] = 0.79
+        else:
+            df.loc[missing_mask, 'calculated_xg'] = 0.0
+
+    df['calculated_xg'] = df['calculated_xg'].astype(float).round(3)
     return df.to_dict(orient='records')
 
 def get_player_passes(db: sqlite3.Connection, player_id: int, match_id: Optional[int] = None) -> List[Dict[str, Any]]:

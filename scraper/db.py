@@ -44,7 +44,7 @@ def run_migrations(conn: sqlite3.Connection, migrations_dir: str):
             try:
                 conn.executescript(sql_script)
                 conn.execute(
-                    "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
+                    "INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)",
                     (version, datetime.utcnow().isoformat())
                 )
                 logger.info(f"Migration {filename} applied successfully.")
