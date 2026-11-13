@@ -403,12 +403,16 @@ export const TeamDefensiveTerritory: React.FC<TeamDefensiveTerritoryProps> = ({
               orientation="horizontal"
               half={false}
               theme="warm-ivory"
+              outerRx={4}
+              outerStrokeWidth={1.8}
+              strokeWidth={1.5}
               viewBox={`0 0 ${DEFENSIVE_PITCH_DIMENSIONS.SVG_WIDTH} ${DEFENSIVE_PITCH_DIMENSIONS.SVG_HEIGHT}`}
               pitchX={DEFENSIVE_PITCH_DIMENSIONS.PITCH_X}
               pitchY={DEFENSIVE_PITCH_DIMENSIONS.PITCH_Y}
               pitchWidth={DEFENSIVE_PITCH_DIMENSIONS.PITCH_WIDTH}
               pitchHeight={DEFENSIVE_PITCH_DIMENSIONS.PITCH_HEIGHT}
-              svgClassName="w-full h-auto overflow-visible select-none rounded-lg"
+              className="w-full"
+              svgClassName="w-full h-auto block overflow-visible select-none rounded-lg"
               defs={
                 <>
                   <filter id="defPillShadow" x="-20%" y="-20%" width="140%" height="140%">

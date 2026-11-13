@@ -377,30 +377,33 @@ export const TeamAttackZones: React.FC<TeamAttackZonesProps> = ({
               orientation="vertical"
               half={true}
               theme="warm-ivory"
+              outerRx={4}
               viewBox={`0 0 ${ATTACK_ZONES_PITCH_DIMENSIONS.SVG_WIDTH} ${ATTACK_ZONES_PITCH_DIMENSIONS.SVG_HEIGHT}`}
               pitchX={ATTACK_ZONES_PITCH_DIMENSIONS.PITCH_X}
               pitchY={ATTACK_ZONES_PITCH_DIMENSIONS.PITCH_Y}
               pitchWidth={ATTACK_ZONES_PITCH_DIMENSIONS.PITCH_WIDTH}
               pitchHeight={ATTACK_ZONES_PITCH_DIMENSIONS.PITCH_HEIGHT}
-              svgClassName="w-full h-auto overflow-visible select-none rounded-lg"
+              className="w-full"
+              svgClassName="w-full h-auto block overflow-visible select-none rounded-lg"
               defs={
                 <filter id="dominantBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
                   <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.12" />
                 </filter>
               }
-            >
-              <AttackZoneOverlay
-                channelDataMap={channelDataMap}
-                summary={summary}
-                maxShare={maxShare}
-                activeChannelId={activeChannelId}
-                mode={mode}
-                dimensions={ATTACK_ZONES_PITCH_DIMENSIONS}
-                onChannelMouseMove={handleMouseMove}
-                onChannelMouseLeave={handleMouseLeave}
-                onChannelClick={handleChannelClick}
-              />
-            </SoccerPitchCanvas>
+              underlay={
+                <AttackZoneOverlay
+                  channelDataMap={channelDataMap}
+                  summary={summary}
+                  maxShare={maxShare}
+                  activeChannelId={activeChannelId}
+                  mode={mode}
+                  dimensions={ATTACK_ZONES_PITCH_DIMENSIONS}
+                  onChannelMouseMove={handleMouseMove}
+                  onChannelMouseLeave={handleMouseLeave}
+                  onChannelClick={handleChannelClick}
+                />
+              }
+            />
 
             {/* Macro Corridor Distribution Summary */}
             <AttackZonesLegend distribution={flankDistribution} />

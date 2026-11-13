@@ -262,13 +262,15 @@ export const TeamShotMap: React.FC<TeamShotMapProps> = ({
             <SoccerPitchCanvas
               orientation="vertical"
               half={true}
-              theme="warm-ivory"
+              theme="light"
+              outerRx={4}
               viewBox={`0 0 ${SHOT_PITCH_DIMENSIONS.SVG_WIDTH} ${SHOT_PITCH_DIMENSIONS.SVG_HEIGHT}`}
               pitchX={SHOT_PITCH_DIMENSIONS.PITCH_X}
               pitchY={SHOT_PITCH_DIMENSIONS.PITCH_Y}
               pitchWidth={SHOT_PITCH_DIMENSIONS.PITCH_WIDTH}
               pitchHeight={SHOT_PITCH_DIMENSIONS.PITCH_HEIGHT}
-              svgClassName="max-h-[480px] w-auto mx-auto overflow-visible select-none rounded-lg"
+              className="w-full max-w-[540px] mx-auto"
+              svgClassName="w-full h-auto max-h-[480px] block overflow-visible select-none rounded-lg"
               defs={
                 <>
                   <filter id="shotGoalHalo" x="-50%" y="-50%" width="200%" height="200%">

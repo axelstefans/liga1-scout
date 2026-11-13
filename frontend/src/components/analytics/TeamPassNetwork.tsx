@@ -258,9 +258,9 @@ export const TeamPassNetwork: React.FC<TeamPassNetworkProps> = ({
           <SoccerPitchCanvas
             orientation="vertical"
             half={false}
-            theme="warm-ivory"
-            className="flex items-center justify-center w-full"
-            svgClassName="max-h-[480px] w-auto mx-auto overflow-visible select-none"
+            theme="light"
+            className="w-full max-w-[432px] mx-auto"
+            svgClassName="w-full h-auto max-h-[480px] block overflow-visible select-none"
             defs={<PassNetworkSvgDefs teamColor={teamColor} idPrefix={svgPrefix} />}
           >
             <PassNetworkGraphOverlay
