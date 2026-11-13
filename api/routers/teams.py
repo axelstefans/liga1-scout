@@ -10,7 +10,7 @@ from ..schemas.team import (
     MostUsedXIResponse
 )
 from ..repositories import team_repo
-from services.flashscore_service import get_team_flashscore_summary
+from api.services.flashscore_service import get_team_flashscore_summary
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
 

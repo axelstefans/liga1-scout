@@ -13,7 +13,7 @@ from scraper.flashscore_client import FlashscoreClient
 from scraper.flashscore_mapping import seed_flashscore_team_mappings
 
 SAMPLE_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "tools", "raw_stats_sample.json"
+    os.path.dirname(__file__), "fixtures", "raw_stats_sample.json"
 )
 MIGRATION_020_PATH = os.path.join(
     os.path.dirname(__file__), "..", "migrations", "020_flashscore_match_team_stats.sql"

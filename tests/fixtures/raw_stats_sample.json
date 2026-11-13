@@ -1,0 +1,2395 @@
+{
+    "data": {
+        "findEventById": {
+            "__typename": "TeamStatsEvent",
+            "shouldUpdate": false,
+            "teamStats": {
+                "__typename": "TeamStats",
+                "entries": [
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_goals",
+                        "value": "0.23",
+                        "subValue": null,
+                        "rawValue": "0.2311",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "ball_possession",
+                        "value": "57%",
+                        "subValue": null,
+                        "rawValue": "57.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "touches_in_opposition_box",
+                        "value": "10",
+                        "subValue": null,
+                        "rawValue": "10.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_attempts",
+                        "value": "9",
+                        "subValue": null,
+                        "rawValue": "9.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_off_goal",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_on_goal",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "corner_kicks",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "yellow_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "red_cards",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xg_on_target",
+                        "value": "0.27",
+                        "subValue": null,
+                        "rawValue": "0.2708",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "blocked_shots",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_inside_box",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_outside_box",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "hit_woodwork",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "headed_goals",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_scored",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_missed",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "free_kicks",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "offsides",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_passes",
+                        "value": "456",
+                        "subValue": null,
+                        "rawValue": "456.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_completed_passes",
+                        "value": "390",
+                        "subValue": "(86%)",
+                        "rawValue": "390.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "long_balls_total",
+                        "value": "35",
+                        "subValue": null,
+                        "rawValue": "35.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_long_balls_completed",
+                        "value": "12",
+                        "subValue": "(34%)",
+                        "rawValue": "12.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "passes_in_the_final_third",
+                        "value": "121",
+                        "subValue": null,
+                        "rawValue": "121.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_passes_in_the_final_third_completed",
+                        "value": "80",
+                        "subValue": "(66%)",
+                        "rawValue": "80.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_crosses",
+                        "value": "19",
+                        "subValue": null,
+                        "rawValue": "19.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_crosses",
+                        "value": "2",
+                        "subValue": "(11%)",
+                        "rawValue": "2.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_assists",
+                        "value": "0.36",
+                        "subValue": null,
+                        "rawValue": "0.364008",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "key_passes",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "throw_in",
+                        "value": "18",
+                        "subValue": null,
+                        "rawValue": "18.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "fouls",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "duels_won",
+                        "value": "28",
+                        "subValue": null,
+                        "rawValue": "28.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_tackles",
+                        "value": "12",
+                        "subValue": null,
+                        "rawValue": "12.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_tackles_won",
+                        "value": "9",
+                        "subValue": "(75%)",
+                        "rawValue": "9.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "interceptions",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "clearances_total",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_shot",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_goal",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goalkeeper_saves",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xgot_faced",
+                        "value": "0.64",
+                        "subValue": null,
+                        "rawValue": "0.6353",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "result_against",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goals_prevented",
+                        "value": "-0.36",
+                        "subValue": null,
+                        "rawValue": "-0.3647",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_kicks",
+                        "value": "11",
+                        "subValue": null,
+                        "rawValue": "11.0",
+                        "eventStageId": 74,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_goals",
+                        "value": "0.19",
+                        "subValue": null,
+                        "rawValue": "0.1897",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "ball_possession",
+                        "value": "61%",
+                        "subValue": null,
+                        "rawValue": "61.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "touches_in_opposition_box",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_attempts",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_off_goal",
+                        "value": "4",
+                        "subValue": null,
+                        "rawValue": "4.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_on_goal",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "corner_kicks",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "yellow_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "red_cards",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xg_on_target",
+                        "value": "0.00",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "blocked_shots",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_inside_box",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_outside_box",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "hit_woodwork",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "headed_goals",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_scored",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_missed",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "free_kicks",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "offsides",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_passes",
+                        "value": "249",
+                        "subValue": null,
+                        "rawValue": "249.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_completed_passes",
+                        "value": "215",
+                        "subValue": "(86%)",
+                        "rawValue": "215.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "long_balls_total",
+                        "value": "15",
+                        "subValue": null,
+                        "rawValue": "15.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_long_balls_completed",
+                        "value": "3",
+                        "subValue": "(20%)",
+                        "rawValue": "3.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "passes_in_the_final_third",
+                        "value": "84",
+                        "subValue": null,
+                        "rawValue": "84.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_passes_in_the_final_third_completed",
+                        "value": "59",
+                        "subValue": "(70%)",
+                        "rawValue": "59.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_crosses",
+                        "value": "11",
+                        "subValue": null,
+                        "rawValue": "11.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_crosses",
+                        "value": "1",
+                        "subValue": "(9%)",
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_assists",
+                        "value": "0.31",
+                        "subValue": null,
+                        "rawValue": "0.308299",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "key_passes",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "throw_in",
+                        "value": "13",
+                        "subValue": null,
+                        "rawValue": "13.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "fouls",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "duels_won",
+                        "value": "12",
+                        "subValue": null,
+                        "rawValue": "12.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_tackles",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_tackles_won",
+                        "value": "5",
+                        "subValue": "(71%)",
+                        "rawValue": "5.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "interceptions",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "clearances_total",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_shot",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_goal",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goalkeeper_saves",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xgot_faced",
+                        "value": "0.63",
+                        "subValue": null,
+                        "rawValue": "0.625",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "result_against",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goals_prevented",
+                        "value": "-0.38",
+                        "subValue": null,
+                        "rawValue": "-0.375",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_kicks",
+                        "value": "4",
+                        "subValue": null,
+                        "rawValue": "4.0",
+                        "eventStageId": 12,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_goals",
+                        "value": "0.04",
+                        "subValue": null,
+                        "rawValue": "0.04139999999999999",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "ball_possession",
+                        "value": "53%",
+                        "subValue": null,
+                        "rawValue": "53.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "touches_in_opposition_box",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_attempts",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_off_goal",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_on_goal",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "corner_kicks",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "yellow_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "red_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xg_on_target",
+                        "value": "0.27",
+                        "subValue": null,
+                        "rawValue": "0.2708",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "blocked_shots",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_inside_box",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_outside_box",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "hit_woodwork",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "headed_goals",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_scored",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_missed",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "free_kicks",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "offsides",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_passes",
+                        "value": "207",
+                        "subValue": null,
+                        "rawValue": "207.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_completed_passes",
+                        "value": "175",
+                        "subValue": "(85%)",
+                        "rawValue": "175.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "long_balls_total",
+                        "value": "20",
+                        "subValue": null,
+                        "rawValue": "20.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_long_balls_completed",
+                        "value": "9",
+                        "subValue": "(45%)",
+                        "rawValue": "9.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "passes_in_the_final_third",
+                        "value": "37",
+                        "subValue": null,
+                        "rawValue": "37.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_passes_in_the_final_third_completed",
+                        "value": "21",
+                        "subValue": "(57%)",
+                        "rawValue": "21.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_crosses",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_crosses",
+                        "value": "1",
+                        "subValue": "(12%)",
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_assists",
+                        "value": "0.06",
+                        "subValue": null,
+                        "rawValue": "0.05570900000000001",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "key_passes",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "throw_in",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "fouls",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "duels_won",
+                        "value": "16",
+                        "subValue": null,
+                        "rawValue": "16.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_tackles",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_tackles_won",
+                        "value": "4",
+                        "subValue": "(80%)",
+                        "rawValue": "4.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "interceptions",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "clearances_total",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_shot",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_goal",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goalkeeper_saves",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xgot_faced",
+                        "value": "0.01",
+                        "subValue": null,
+                        "rawValue": "0.010299999999999976",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "result_against",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goals_prevented",
+                        "value": "0.01",
+                        "subValue": null,
+                        "rawValue": "0.010299999999999976",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_kicks",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 13,
+                        "teamId": "zDuHd68m"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_goals",
+                        "value": "0.82",
+                        "subValue": null,
+                        "rawValue": "0.8208",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "ball_possession",
+                        "value": "43%",
+                        "subValue": null,
+                        "rawValue": "43.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "touches_in_opposition_box",
+                        "value": "11",
+                        "subValue": null,
+                        "rawValue": "11.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_attempts",
+                        "value": "13",
+                        "subValue": null,
+                        "rawValue": "13.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_off_goal",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_on_goal",
+                        "value": "4",
+                        "subValue": null,
+                        "rawValue": "4.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "corner_kicks",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "yellow_cards",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "red_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xg_on_target",
+                        "value": "0.64",
+                        "subValue": null,
+                        "rawValue": "0.6353",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "blocked_shots",
+                        "value": "4",
+                        "subValue": null,
+                        "rawValue": "4.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_inside_box",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_outside_box",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "hit_woodwork",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "headed_goals",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_scored",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_missed",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "free_kicks",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "offsides",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_passes",
+                        "value": "351",
+                        "subValue": null,
+                        "rawValue": "351.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_completed_passes",
+                        "value": "287",
+                        "subValue": "(82%)",
+                        "rawValue": "287.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "long_balls_total",
+                        "value": "50",
+                        "subValue": null,
+                        "rawValue": "50.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_long_balls_completed",
+                        "value": "19",
+                        "subValue": "(38%)",
+                        "rawValue": "19.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "passes_in_the_final_third",
+                        "value": "62",
+                        "subValue": null,
+                        "rawValue": "62.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_passes_in_the_final_third_completed",
+                        "value": "36",
+                        "subValue": "(58%)",
+                        "rawValue": "36.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_crosses",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_crosses",
+                        "value": "3",
+                        "subValue": "(50%)",
+                        "rawValue": "3.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_assists",
+                        "value": "0.50",
+                        "subValue": null,
+                        "rawValue": "0.504144",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "key_passes",
+                        "value": "10",
+                        "subValue": null,
+                        "rawValue": "10.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "throw_in",
+                        "value": "9",
+                        "subValue": null,
+                        "rawValue": "9.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "fouls",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "duels_won",
+                        "value": "27",
+                        "subValue": null,
+                        "rawValue": "27.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_tackles",
+                        "value": "11",
+                        "subValue": null,
+                        "rawValue": "11.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_tackles_won",
+                        "value": "10",
+                        "subValue": "(91%)",
+                        "rawValue": "10.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "interceptions",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "clearances_total",
+                        "value": "23",
+                        "subValue": null,
+                        "rawValue": "23.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_shot",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_goal",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goalkeeper_saves",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xgot_faced",
+                        "value": "0.27",
+                        "subValue": null,
+                        "rawValue": "0.2708",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "result_against",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goals_prevented",
+                        "value": "-0.73",
+                        "subValue": null,
+                        "rawValue": "-0.7292000000000001",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_kicks",
+                        "value": "18",
+                        "subValue": null,
+                        "rawValue": "18.0",
+                        "eventStageId": 74,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_goals",
+                        "value": "0.37",
+                        "subValue": null,
+                        "rawValue": "0.3719",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "ball_possession",
+                        "value": "39%",
+                        "subValue": null,
+                        "rawValue": "39.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "touches_in_opposition_box",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_attempts",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_off_goal",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_on_goal",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "corner_kicks",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "yellow_cards",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "red_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xg_on_target",
+                        "value": "0.63",
+                        "subValue": null,
+                        "rawValue": "0.625",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "blocked_shots",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_inside_box",
+                        "value": "4",
+                        "subValue": null,
+                        "rawValue": "4.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_outside_box",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "hit_woodwork",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "headed_goals",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_scored",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_missed",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "free_kicks",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "offsides",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_passes",
+                        "value": "165",
+                        "subValue": null,
+                        "rawValue": "165.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_completed_passes",
+                        "value": "132",
+                        "subValue": "(80%)",
+                        "rawValue": "132.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "long_balls_total",
+                        "value": "26",
+                        "subValue": null,
+                        "rawValue": "26.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_long_balls_completed",
+                        "value": "9",
+                        "subValue": "(35%)",
+                        "rawValue": "9.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "passes_in_the_final_third",
+                        "value": "32",
+                        "subValue": null,
+                        "rawValue": "32.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_passes_in_the_final_third_completed",
+                        "value": "20",
+                        "subValue": "(63%)",
+                        "rawValue": "20.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_crosses",
+                        "value": "4",
+                        "subValue": null,
+                        "rawValue": "4.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_crosses",
+                        "value": "2",
+                        "subValue": "(50%)",
+                        "rawValue": "2.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_assists",
+                        "value": "0.26",
+                        "subValue": null,
+                        "rawValue": "0.26245",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "key_passes",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "throw_in",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "fouls",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "duels_won",
+                        "value": "12",
+                        "subValue": null,
+                        "rawValue": "12.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_tackles",
+                        "value": "4",
+                        "subValue": null,
+                        "rawValue": "4.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_tackles_won",
+                        "value": "3",
+                        "subValue": "(75%)",
+                        "rawValue": "3.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "interceptions",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "clearances_total",
+                        "value": "15",
+                        "subValue": null,
+                        "rawValue": "15.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_shot",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_goal",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goalkeeper_saves",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xgot_faced",
+                        "value": "0.00",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "result_against",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goals_prevented",
+                        "value": "0.00",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_kicks",
+                        "value": "10",
+                        "subValue": null,
+                        "rawValue": "10.0",
+                        "eventStageId": 12,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_goals",
+                        "value": "0.45",
+                        "subValue": null,
+                        "rawValue": "0.44889999999999997",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "ball_possession",
+                        "value": "47%",
+                        "subValue": null,
+                        "rawValue": "47.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "touches_in_opposition_box",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_attempts",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_off_goal",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_on_goal",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "corner_kicks",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "yellow_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "red_cards",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xg_on_target",
+                        "value": "0.01",
+                        "subValue": null,
+                        "rawValue": "0.010299999999999976",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "blocked_shots",
+                        "value": "3",
+                        "subValue": null,
+                        "rawValue": "3.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_inside_box",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "shots_outside_box",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "hit_woodwork",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "headed_goals",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_scored",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "big_chances_missed",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "free_kicks",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "offsides",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_passes",
+                        "value": "186",
+                        "subValue": null,
+                        "rawValue": "186.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_completed_passes",
+                        "value": "155",
+                        "subValue": "(83%)",
+                        "rawValue": "155.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "long_balls_total",
+                        "value": "24",
+                        "subValue": null,
+                        "rawValue": "24.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_long_balls_completed",
+                        "value": "10",
+                        "subValue": "(42%)",
+                        "rawValue": "10.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "passes_in_the_final_third",
+                        "value": "30",
+                        "subValue": null,
+                        "rawValue": "30.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_passes_in_the_final_third_completed",
+                        "value": "16",
+                        "subValue": "(53%)",
+                        "rawValue": "16.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_crosses",
+                        "value": "2",
+                        "subValue": null,
+                        "rawValue": "2.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_crosses",
+                        "value": "1",
+                        "subValue": "(50%)",
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "expected_assists",
+                        "value": "0.24",
+                        "subValue": null,
+                        "rawValue": "0.24169400000000002",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "key_passes",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "throw_in",
+                        "value": "6",
+                        "subValue": null,
+                        "rawValue": "6.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "fouls",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "duels_won",
+                        "value": "15",
+                        "subValue": null,
+                        "rawValue": "15.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "total_tackles",
+                        "value": "7",
+                        "subValue": null,
+                        "rawValue": "7.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "calculated_tackles_won",
+                        "value": "7",
+                        "subValue": "(100%)",
+                        "rawValue": "7.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "interceptions",
+                        "value": "5",
+                        "subValue": null,
+                        "rawValue": "5.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "clearances_total",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_shot",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "errors_lead_to_a_goal",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goalkeeper_saves",
+                        "value": "0",
+                        "subValue": null,
+                        "rawValue": "0.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "xgot_faced",
+                        "value": "0.27",
+                        "subValue": null,
+                        "rawValue": "0.2708",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "result_against",
+                        "value": "1",
+                        "subValue": null,
+                        "rawValue": "1.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goals_prevented",
+                        "value": "-0.73",
+                        "subValue": null,
+                        "rawValue": "-0.7292000000000001",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    },
+                    {
+                        "__typename": "TeamStatsEntry",
+                        "typeId": "goal_kicks",
+                        "value": "8",
+                        "subValue": null,
+                        "rawValue": "8.0",
+                        "eventStageId": 13,
+                        "teamId": "tSWpiWmI"
+                    }
+                ],
+                "subscriptionSubjects": {
+                    "__typename": "SubscriptionSubjects",
+                    "updateTeamStatsSubscriptionSubjects": [
+                        "/fsds/changes/dtsu/event/teamStats/101/QPinjf7b"
+                    ]
+                }
+            }
+        }
+    }
+}

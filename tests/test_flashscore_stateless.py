@@ -19,7 +19,7 @@ from scraper.sources.flashscore import (
 from scraper.flashscore_parser import insert_flashscore_team_stats
 
 SAMPLE_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "tools", "raw_stats_sample.json"
+    os.path.dirname(__file__), "fixtures", "raw_stats_sample.json"
 )
 
 

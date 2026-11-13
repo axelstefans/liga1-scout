@@ -89,13 +89,15 @@ GEMINI.md
 scratch/
 
 *.pkl
-xg_model_pipeline.pkl
+!xg_model_pipeline.pkl
 
 # ==========================================
 # Testing & Build Artifacts Faltantes
 # ==========================================
 .pytest_cache/
 frontend/dist/
+frontend/vite.config.js
+frontend/vite.config.d.ts
 *.log
 
 # ==========================================
@@ -103,7 +105,10 @@ frontend/dist/
 # ==========================================
 debug_*.py
 test_frontend.py
+eval/
+tools/
 tools/*.json
+scripts/discovered_matches.json
 
 # Backups y bases de datos temporales
 /backups/

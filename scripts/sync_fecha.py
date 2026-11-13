@@ -1,12 +1,19 @@
 import sys
 import time
 import sqlite3
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from scraper.flashscore_client import FlashscoreClient
 import scraper.flashscore_parser as fp
 
+
 def sync_jornada(dias_atras: int = 5):
     client = FlashscoreClient()
-    conn = sqlite3.connect("liga1.db")
+    conn = sqlite3.connect(str(ROOT_DIR / "liga1.db"))
     conn.row_factory = sqlite3.Row
 
     print("=" * 75)
@@ -47,7 +54,10 @@ def sync_jornada(dias_atras: int = 5):
     sync_count = 0
     for eid in event_ids[:20]:
         # Si el evento ya existe en BD, lo saltamos directamente
-        exists = conn.execute("SELECT 1 FROM flashscore_match_team_stats WHERE flashscore_event_id = ?", (eid,)).fetchone()
+        exists = conn.execute(
+            "SELECT 1 FROM flashscore_match_team_stats WHERE flashscore_event_id = ?",
+            (eid,),
+        ).fetchone()
         if exists:
             continue
 
@@ -62,17 +72,21 @@ def sync_jornada(dias_atras: int = 5):
 
         t1, t2 = team_ids[0], team_ids[1]
 
-        target = next((
-            m for m in pending 
-            if (m["home_team_id"] in (t1, t2) and m["away_team_id"] in (t1, t2))
-        ), None)
+        target = next(
+            (
+                m
+                for m in pending
+                if (m["home_team_id"] in (t1, t2) and m["away_team_id"] in (t1, t2))
+            ),
+            None,
+        )
 
         if target:
             saved = fp.process_and_save_flashscore_stats(
                 db_conn=conn,
                 raw_data=raw,
                 match_id=target["match_id"],
-                flashscore_event_id=eid
+                flashscore_event_id=eid,
             )
             print(f"✅ Sincronizado: {target['home_name']} vs {target['away_name']} ({len(saved)} bloques)")
             sync_count += 1
@@ -80,6 +94,7 @@ def sync_jornada(dias_atras: int = 5):
 
     print(f"\nProceso finalizado: {sync_count} partidos nuevos sincronizados.")
     print("=" * 75)
+
 
 if __name__ == "__main__":
     dias = int(sys.argv[1]) if len(sys.argv) > 1 else 5

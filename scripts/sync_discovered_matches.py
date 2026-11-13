@@ -27,7 +27,7 @@ from scraper.flashscore_client import (
 )
 
 DEFAULT_EVENTS_FILE = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "tools", "discovered_matches.json")
+    os.path.join(os.path.dirname(__file__), "discovered_matches.json")
 )
 
 logging.basicConfig(
@@ -123,7 +123,7 @@ def filter_pending_events(
 
 def run_sync(
     db_path: str = "liga1.db",
-    events_file: str = "tools/discovered_matches.json",
+    events_file: str = "scripts/discovered_matches.json",
     limit: Optional[int] = None,
     dry_run: bool = False,
     client: Optional[FlashscoreClient] = None,
@@ -281,7 +281,7 @@ def parse_args() -> argparse.Namespace:
         "--events-file",
         type=str,
         default=None,
-        help="Path to discovered matches JSON file (default: tools/discovered_matches.json)",
+        help="Path to discovered matches JSON file (default: scripts/discovered_matches.json)",
     )
     parser.add_argument(
         "--limit",

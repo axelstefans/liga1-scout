@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
-from services.flashscore_service import get_match_flashscore_stats
+from api.services.flashscore_service import get_match_flashscore_stats
 from scraper.flashscore_parser import ALL_STAT_COLUMNS
 
 client = TestClient(app)
@@ -186,7 +186,7 @@ def test_api_endpoint_match_flashscore_stats_404():
 
 
 def test_get_team_flashscore_summary_service(mock_match_db):
-    from services.flashscore_service import get_team_flashscore_summary
+    from api.services.flashscore_service import get_team_flashscore_summary
 
     result = get_team_flashscore_summary(mock_match_db, team_id=2311)
 
@@ -222,7 +222,7 @@ def test_get_team_flashscore_summary_service(mock_match_db):
 
 
 def test_get_team_flashscore_summary_zero_matches(mock_match_db):
-    from services.flashscore_service import get_team_flashscore_summary
+    from api.services.flashscore_service import get_team_flashscore_summary
 
     # Insert a team with no matches
     mock_match_db.execute(
@@ -241,7 +241,7 @@ def test_get_team_flashscore_summary_zero_matches(mock_match_db):
 
 
 def test_get_team_flashscore_summary_nonexistent(mock_match_db):
-    from services.flashscore_service import get_team_flashscore_summary
+    from api.services.flashscore_service import get_team_flashscore_summary
 
     result = get_team_flashscore_summary(mock_match_db, team_id=99999999)
     assert result is None

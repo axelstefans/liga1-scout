@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from ..core.database import get_db
 from ..schemas.match import MatchSheet02Response, MatchSheet03DataHubResponse
 from .matches_sheet_03 import build_match_sheet_03_datahub, _build_sheet_03_datahub
-from services.flashscore_service import get_match_flashscore_stats
+from api.services.flashscore_service import get_match_flashscore_stats
 
 router = APIRouter(prefix="/matches", tags=["Matches"])
 
