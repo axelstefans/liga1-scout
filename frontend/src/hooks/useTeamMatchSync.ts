@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTeamMatches } from './useTeam';
 import { TeamMatchItem } from '../services/api';
 
@@ -36,6 +36,8 @@ export function useTeamMatchSync({
 }: UseTeamMatchSyncProps): UseTeamMatchSyncResult {
   const isMatchMode = viewMode === 'match';
   const queryTournament = (tournament as TournamentType) || 'all';
+  const onSelectMatchRef = useRef(onSelectMatch);
+  onSelectMatchRef.current = onSelectMatch;
 
   const {
     data: matches,
@@ -43,12 +45,10 @@ export function useTeamMatchSync({
     isError: isErrorMatches,
   } = useTeamMatches(teamId, queryTournament);
 
-  // 1. Reset selected match when switching clubs or tournament to avoid stale ID mismatch
+  // 1. Reset selected match strictly when switching clubs or tournament to avoid stale ID mismatch
   useEffect(() => {
-    if (onSelectMatch) {
-      onSelectMatch(null);
-    }
-  }, [teamId, tournament, onSelectMatch]);
+    onSelectMatchRef.current?.(null);
+  }, [teamId, tournament]);
 
   // 2. Validate whether selectedMatchId exists in the current team's fixture
   const isMatchValid = useMemo(() => {
@@ -61,12 +61,10 @@ export function useTeamMatchSync({
   useEffect(() => {
     if (isMatchMode && matches && matches.length > 0) {
       if (!selectedMatchId || !matches.some((m) => m.match_id === selectedMatchId)) {
-        if (onSelectMatch) {
-          onSelectMatch(matches[0].match_id);
-        }
+        onSelectMatchRef.current?.(matches[0].match_id);
       }
     }
-  }, [isMatchMode, matches, selectedMatchId, onSelectMatch]);
+  }, [isMatchMode, matches, selectedMatchId]);
 
   // 4. Resolve safe validMatchId
   const validMatchId = useMemo(() => {
