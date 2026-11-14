@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 22 140 112" role="img" aria-label="L1Scan">
+  <style>
+    .l1-l { fill: #3A3A3C; }
+    @media (prefers-color-scheme: dark) {
+      .l1-l { fill: #F8FAFC; }
+    }
+  </style>
+  <g transform="translate(21 0) skewX(-14)">
+    <path class="l1-l" d="M32 30 L58 30 L58 100 L96 100 L96 126 L52 126 Q32 126 32 106 Z" fill="#3A3A3C"/>
+    <path d="M136 28 L136 126 L112 126 Q108 126 108 120 L108 66 L84 84 Q78 88 78 80 L78 62 Q78 54 86 49 Z" fill="#C8102E"/>
+  </g>
+</svg>

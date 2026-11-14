@@ -50,12 +50,31 @@ export const Navbar: React.FC = () => {
       }`}
     >
       {/* Bloque Izquierdo: Marca */}
-      <Link to="/scouting" className="flex items-center gap-1.5 group select-none">
-        <span className="bg-slate-900 text-white text-[11px] font-black px-1.5 py-0.5 rounded-md tracking-tight shadow-2xs group-hover:bg-slate-800 transition-colors">
-          L1
-        </span>
-        <span className="text-sm font-extrabold text-slate-900 tracking-wider group-hover:text-slate-700 transition-colors">
-          SCAN
+      <Link to="/scouting" className="flex items-center gap-3 group select-none">
+        <svg
+          width="40"
+          viewBox="16 22 140 126"
+          role="img"
+          aria-label="Logo L1Scan"
+          className="w-10 h-auto block shrink-0"
+        >
+          <g transform="translate(21 0) skewX(-14)">
+            <path
+              d="M32 30 L58 30 L58 100 L96 100 L96 126 L52 126 Q32 126 32 106 Z"
+              fill="#3A3A3C"
+            />
+            <path
+              d="M136 28 L136 126 L112 126 Q108 126 108 120 L108 66 L84 84 Q78 88 78 80 L78 62 Q78 54 86 49 Z"
+              fill="#C8102E"
+            />
+            <circle cx="128" cy="138" r="5" fill="#C8102E" />
+          </g>
+        </svg>
+        <span
+          className="text-2xl leading-none font-extrabold italic tracking-tight text-[#111318] whitespace-nowrap group-hover:opacity-80 transition-opacity"
+          style={{ fontFamily: "'Barlow', sans-serif" }}
+        >
+          L1Scan
         </span>
       </Link>
 

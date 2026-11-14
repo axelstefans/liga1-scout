@@ -32,7 +32,7 @@ flowchart LR
 ## 2. Árbol del Repositorio
 
 ```text
-liga1-scout-pruebas/
+l1scan/
 ├── api/                                # Backend FastAPI (conexión SQLite en solo lectura)
 │   ├── core/                           # Configuración, conexión RO y catálogo de roles tácticos
 │   ├── models/ & schemas/              # Contratos de entrada/salida Pydantic v2

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/banner.png" alt="L1Scan" width="760" />
+</p>
+
 # L1Scan
 
 Plataforma local de scouting, análisis espacial y reportes de partido para la Liga 1 de Perú.
@@ -20,8 +24,8 @@ Plataforma local de scouting, análisis espacial y reportes de partido para la L
 
 1. Clonar el repositorio y crear el entorno virtual de Python:
    ```bash
-   git clone https://github.com/axelstefans/liga1-scout.git
-   cd liga1-scout
+   git clone https://github.com/axelstefans/l1scan.git
+   cd l1scan
    python -m venv .venv
    ```
 
